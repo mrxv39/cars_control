@@ -1,18 +1,38 @@
 # Python
-backend/.venv/
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual envs
+.venv/
+venv/
+env/
+backend/.venv/
 
 # Django
+*.log
+db.sqlite3
 backend/db.sqlite3
+media/
+staticfiles/
+
+# Secrets / env files
+.env
+*.env
+backend/secrets/
+secrets/
+
+# Django media uploads
+media/
 backend/media/
+backend/vehicles/
 
-# Node / Next.js
-frontend/node_modules/
-frontend/.next/
+# Uploaded media / user files
+backend/vehicles/
+backend/media/
+media/
 
-# OS
-.DS_Store
-Thumbs.db
