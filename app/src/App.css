@@ -1022,6 +1022,38 @@ select {
   margin-bottom: 1.5rem;
 }
 
+/* ── Suggestions ── */
+
+.suggestions-list {
+  border-top: 1px solid rgba(0,0,0,0.06);
+  margin-top: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.suggestion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.suggestion-item:hover {
+  background: #f0f4ff;
+}
+
+.suggestion-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.suggestion-meta {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
 .catalog-contact-form {
   background: #f8fafc;
   border: 1px solid rgba(0,0,0,0.08);

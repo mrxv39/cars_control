@@ -312,6 +312,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
   const companyId = session.company.id;
   const [currentView, setCurrentView] = useState<ViewKey>("stock");
   const [vehicles, setVehicles] = useState<api.Vehicle[]>([]);
+  const [allVehicles, setAllVehicles] = useState<api.Vehicle[]>([]);
   const [leads, setLeads] = useState<api.Lead[]>([]);
   const [clients, setClients] = useState<api.Client[]>([]);
   const [salesRecords, setSalesRecords] = useState<api.SalesRecord[]>([]);
@@ -326,14 +327,16 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
   async function loadAll() {
     setLoading(true);
     try {
-      const [v, l, c, s, p] = await Promise.all([
+      const [v, allV, l, c, s, p] = await Promise.all([
         api.listVehicles(companyId),
+        api.listAllVehicles(companyId),
         api.listLeads(companyId),
         api.listClients(companyId),
         api.listSalesRecords(companyId),
         api.listPurchaseRecords(companyId),
       ]);
       setVehicles(v);
+      setAllVehicles(allV);
       setLeads(l);
       setClients(c);
       setSalesRecords(s);
@@ -384,7 +387,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
       </aside>
       <section className="content">
         {currentView === "stock" && !selectedVehicle && (
-          <StockList vehicles={vehicles} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
+          <StockList vehicles={vehicles} allVehicles={allVehicles} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
         )}
         {currentView === "stock" && selectedVehicle && (
           <VehicleDetail vehicle={selectedVehicle} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
@@ -402,7 +405,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
 // ============================================================
 // Stock List
 // ============================================================
-function StockList({ vehicles, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
+function StockList({ vehicles, allVehicles, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
@@ -416,6 +419,14 @@ function StockList({ vehicles, companyId, onSelect, onReload }: { vehicles: api.
         .some((field) => field.toLowerCase().includes(q))
     );
   }, [vehicles, search]);
+
+  const suggestions = useMemo(() => {
+    const q = newName.toLowerCase().trim();
+    if (!q || q.length < 2) return [];
+    return allVehicles
+      .filter((v) => v.name.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [allVehicles, newName]);
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
@@ -458,12 +469,32 @@ function StockList({ vehicles, companyId, onSelect, onReload }: { vehicles: api.
 
       {showAdd && (
         <section className="panel" style={{ padding: "1.5rem" }}>
-          <form onSubmit={(e) => void handleAdd(e)} style={{ display: "flex", gap: "0.75rem", alignItems: "end" }}>
-            <div style={{ flex: 1 }}>
-              <label className="field-label">Marca y modelo</label>
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="SEAT Ibiza 1.0 MPI Style" autoFocus />
+          <form onSubmit={(e) => void handleAdd(e)}>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "end" }}>
+              <div style={{ flex: 1, position: "relative" }}>
+                <label className="field-label">Marca y modelo</label>
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Escribe para buscar coincidencias..." autoFocus />
+              </div>
+              <button type="submit" className="button primary" disabled={adding}>{adding ? "Añadiendo..." : "Añadir"}</button>
             </div>
-            <button type="submit" className="button primary" disabled={adding}>{adding ? "Añadiendo..." : "Añadir"}</button>
+            {suggestions.length > 0 && (
+              <div className="suggestions-list">
+                <p className="field-label" style={{ margin: "0.75rem 0 0.4rem", fontSize: "0.72rem" }}>Coincidencias en la base de datos:</p>
+                {suggestions.map((s) => (
+                  <div
+                    key={s.id}
+                    className="suggestion-item"
+                    onClick={() => setNewName(s.name)}
+                  >
+                    <span className="suggestion-name">{s.name}</span>
+                    <span className="suggestion-meta">
+                      {[s.anio, s.km ? `${s.km.toLocaleString()} km` : null, s.estado].filter(Boolean).join(" · ")}
+                      {s.precio_venta ? ` · ${s.precio_venta.toLocaleString("es-ES")} €` : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </form>
         </section>
       )}

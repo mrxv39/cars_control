@@ -169,6 +169,16 @@ export async function listVehicles(companyId: number): Promise<Vehicle[]> {
   return data || [];
 }
 
+export async function listAllVehicles(companyId: number): Promise<Vehicle[]> {
+  const { data, error } = await supabase
+    .from("vehicles")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("name");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 export async function getVehicle(id: number): Promise<Vehicle> {
   const { data, error } = await supabase.from("vehicles").select("*").eq("id", id).single();
   if (error) throw new Error(error.message);
