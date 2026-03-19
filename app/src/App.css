@@ -429,6 +429,11 @@ select {
   color: #1e40af;
 }
 
+.badge-coches {
+  background: #ff6b00;
+  color: #fff;
+}
+
 .error-banner {
   margin: 0;
   padding: 1rem 1.15rem;

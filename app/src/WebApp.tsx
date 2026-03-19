@@ -739,10 +739,19 @@ function LeadsList({ leads, vehicles, companyId, onReload }: { leads: api.Lead[]
                 <p className="record-title">{lead.name}</p>
                 <p className="muted">{lead.phone || "Sin telefono"}</p>
               </div>
-              <span className="badge">{lead.estado}</span>
+              <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                {lead.canal === "coches.net" && <span className="badge badge-coches">coches.net</span>}
+                <span className="badge">{lead.estado}</span>
+              </div>
             </div>
             {lead.vehicle_interest && <p className="record-line">Interes: {lead.vehicle_interest}</p>}
             {lead.notes && <p className="record-notes">{lead.notes}</p>}
+            {lead.canal === "coches.net" && (
+              <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
+                className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
+                Responder en coches.net
+              </a>
+            )}
           </article>
         ))}
       </section>
