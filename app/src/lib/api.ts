@@ -1,0 +1,346 @@
+import { supabase } from "./supabase";
+
+// Detect if running inside Tauri
+function isTauri(): boolean {
+  return !!(window as any).__TAURI_INTERNALS__;
+}
+
+async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<T>(command, args);
+}
+
+// ============================================================
+// Types (shared between Tauri and Web)
+// ============================================================
+
+export interface Company {
+  id: number;
+  trade_name: string;
+  legal_name: string;
+  cif: string;
+  address: string;
+  phone: string;
+  email: string;
+}
+
+export interface User {
+  id: number;
+  company_id: number;
+  full_name: string;
+  username: string;
+  role: string;
+  active: boolean;
+}
+
+export interface LoginResult {
+  user: User;
+  company: Company;
+}
+
+export interface Vehicle {
+  id: number;
+  company_id: number;
+  name: string;
+  precio_compra: number | null;
+  precio_venta: number | null;
+  km: number | null;
+  anio: number | null;
+  estado: string;
+  ad_url: string;
+  ad_status: string;
+  fuel: string;
+  cv: string;
+  transmission: string;
+  color: string;
+  notes: string;
+}
+
+export interface Lead {
+  id: number;
+  company_id: number;
+  name: string;
+  phone: string;
+  email: string;
+  notes: string;
+  vehicle_interest: string;
+  vehicle_id: number | null;
+  converted_client_id: number | null;
+  estado: string;
+  fecha_contacto: string;
+  canal: string;
+}
+
+export interface Client {
+  id: number;
+  company_id: number;
+  name: string;
+  phone: string;
+  email: string;
+  dni: string;
+  notes: string;
+  vehicle_id: number | null;
+  source_lead_id: number | null;
+}
+
+export interface SalesRecord {
+  id: number;
+  company_id: number;
+  vehicle_id: number | null;
+  client_id: number | null;
+  lead_id: number | null;
+  price_final: number;
+  date: string;
+  notes: string;
+}
+
+export interface PurchaseRecord {
+  id: number;
+  company_id: number;
+  expense_type: string;
+  vehicle_id: number | null;
+  vehicle_name: string;
+  plate: string;
+  supplier_name: string;
+  purchase_date: string;
+  purchase_price: number;
+  invoice_number: string;
+  payment_method: string;
+  notes: string;
+  source_file: string;
+}
+
+export interface VehiclePhoto {
+  id: number;
+  vehicle_id: number;
+  file_name: string;
+  url: string;
+}
+
+// Hash password (same as Rust backend)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`codinacars_salt_${password}`);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// ============================================================
+// Auth
+// ============================================================
+
+export async function login(username: string, password: string): Promise<LoginResult> {
+  const hash = await hashPassword(password);
+  const { data: user, error: userErr } = await supabase
+    .from("users")
+    .select("id, company_id, full_name, username, password_hash, role, active")
+    .eq("username", username)
+    .single();
+
+  if (userErr || !user) throw new Error("Usuario o contrasena incorrectos.");
+  if (user.password_hash !== hash || !user.active) throw new Error("Usuario o contrasena incorrectos.");
+
+  const { data: company, error: compErr } = await supabase
+    .from("companies")
+    .select("*")
+    .eq("id", user.company_id)
+    .single();
+
+  if (compErr || !company) throw new Error("Empresa no encontrada.");
+
+  return {
+    user: { id: user.id, company_id: user.company_id, full_name: user.full_name, username: user.username, role: user.role, active: user.active },
+    company,
+  };
+}
+
+// ============================================================
+// Vehicles
+// ============================================================
+
+export async function listVehicles(companyId: number): Promise<Vehicle[]> {
+  const { data, error } = await supabase
+    .from("vehicles")
+    .select("*")
+    .eq("company_id", companyId)
+    .neq("estado", "vendido")
+    .order("name");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function getVehicle(id: number): Promise<Vehicle> {
+  const { data, error } = await supabase.from("vehicles").select("*").eq("id", id).single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function createVehicle(companyId: number, name: string): Promise<Vehicle> {
+  const { data, error } = await supabase
+    .from("vehicles")
+    .insert({ company_id: companyId, name, estado: "disponible" })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateVehicle(id: number, updates: Partial<Vehicle>): Promise<Vehicle> {
+  const { data, error } = await supabase
+    .from("vehicles")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteVehicle(id: number): Promise<void> {
+  const { error } = await supabase.from("vehicles").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// ============================================================
+// Vehicle Photos
+// ============================================================
+
+export async function listVehiclePhotos(vehicleId: number): Promise<VehiclePhoto[]> {
+  const { data, error } = await supabase
+    .from("vehicle_photos")
+    .select("*")
+    .eq("vehicle_id", vehicleId)
+    .order("created_at");
+  if (error) throw new Error(error.message);
+
+  return (data || []).map((p) => ({
+    ...p,
+    url: supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path).data.publicUrl,
+  }));
+}
+
+export async function uploadVehiclePhoto(vehicleId: number, file: File): Promise<VehiclePhoto> {
+  const ext = file.name.split(".").pop() || "jpg";
+  const storagePath = `${vehicleId}/${Date.now()}.${ext}`;
+
+  const { error: uploadErr } = await supabase.storage
+    .from("vehicle-photos")
+    .upload(storagePath, file);
+  if (uploadErr) throw new Error(uploadErr.message);
+
+  const { data, error } = await supabase
+    .from("vehicle_photos")
+    .insert({ vehicle_id: vehicleId, file_name: file.name, storage_path: storagePath })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+
+  return {
+    ...data,
+    url: supabase.storage.from("vehicle-photos").getPublicUrl(storagePath).data.publicUrl,
+  };
+}
+
+export async function deleteVehiclePhoto(photo: VehiclePhoto): Promise<void> {
+  const { data: row } = await supabase.from("vehicle_photos").select("storage_path").eq("id", photo.id).single();
+  if (row) {
+    await supabase.storage.from("vehicle-photos").remove([row.storage_path]);
+  }
+  await supabase.from("vehicle_photos").delete().eq("id", photo.id);
+}
+
+// ============================================================
+// Leads
+// ============================================================
+
+export async function listLeads(companyId: number): Promise<Lead[]> {
+  const { data, error } = await supabase.from("leads").select("*").eq("company_id", companyId).order("name");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function createLead(companyId: number, input: Partial<Lead>): Promise<Lead> {
+  const { data, error } = await supabase.from("leads").insert({ ...input, company_id: companyId }).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateLead(id: number, input: Partial<Lead>): Promise<Lead> {
+  const { data, error } = await supabase.from("leads").update(input).eq("id", id).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteLead(id: number): Promise<void> {
+  const { error } = await supabase.from("leads").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// ============================================================
+// Clients
+// ============================================================
+
+export async function listClients(companyId: number): Promise<Client[]> {
+  const { data, error } = await supabase.from("clients").select("*").eq("company_id", companyId).order("name");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function createClient(companyId: number, input: Partial<Client>): Promise<Client> {
+  const { data, error } = await supabase.from("clients").insert({ ...input, company_id: companyId }).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateClient(id: number, input: Partial<Client>): Promise<Client> {
+  const { data, error } = await supabase.from("clients").update(input).eq("id", id).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteClient(id: number): Promise<void> {
+  const { error } = await supabase.from("clients").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// ============================================================
+// Sales Records
+// ============================================================
+
+export async function listSalesRecords(companyId: number): Promise<SalesRecord[]> {
+  const { data, error } = await supabase.from("sales_records").select("*").eq("company_id", companyId).order("date", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function addSalesRecord(companyId: number, input: Partial<SalesRecord>): Promise<SalesRecord> {
+  const { data, error } = await supabase.from("sales_records").insert({ ...input, company_id: companyId }).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteSalesRecord(id: number): Promise<void> {
+  const { error } = await supabase.from("sales_records").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// ============================================================
+// Purchase Records
+// ============================================================
+
+export async function listPurchaseRecords(companyId: number): Promise<PurchaseRecord[]> {
+  const { data, error } = await supabase.from("purchase_records").select("*").eq("company_id", companyId).order("purchase_date", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function addPurchaseRecord(companyId: number, input: Partial<PurchaseRecord>): Promise<PurchaseRecord> {
+  const { data, error } = await supabase.from("purchase_records").insert({ ...input, company_id: companyId }).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deletePurchaseRecord(id: number): Promise<void> {
+  const { error } = await supabase.from("purchase_records").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
