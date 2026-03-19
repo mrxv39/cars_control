@@ -248,9 +248,56 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
             <a href="tel:+34646131565" className="button primary" style={{ textDecoration: "none", textAlign: "center" }}>Llamar: 646 13 15 65</a>
             <a href="https://wa.me/34646131565" className="button secondary" style={{ textDecoration: "none", textAlign: "center" }} target="_blank" rel="noopener">WhatsApp</a>
           </div>
+
+          <ContactForm vehicleName={vehicle.name} />
         </div>
       </div>
     </main>
+  );
+}
+
+// ============================================================
+// Contact Form (sends to codinacars@gmail.com via formsubmit.co)
+// ============================================================
+function ContactForm({ vehicleName }: { vehicleName: string }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [sent, setSent] = useState(false);
+
+  if (sent) {
+    return (
+      <div className="catalog-contact-form">
+        <p className="success-banner" style={{ textAlign: "center" }}>Mensaje enviado. Te contactaremos pronto.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="catalog-contact-form"
+      action="https://formsubmit.co/codinacars@gmail.com"
+      method="POST"
+      onSubmit={() => setSent(true)}
+    >
+      <input type="hidden" name="_subject" value={`Consulta: ${vehicleName}`} />
+      <input type="hidden" name="_template" value="table" />
+      <input type="hidden" name="_captcha" value="false" />
+      <input type="hidden" name="Vehiculo" value={vehicleName} />
+      <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Contactar por este vehiculo</p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+        <div>
+          <label className="field-label">Nombre</label>
+          <input name="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" required />
+        </div>
+        <div>
+          <label className="field-label">Telefono</label>
+          <input name="Telefono" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="600 123 456" required />
+        </div>
+      </div>
+      <button type="submit" className="button primary" style={{ width: "100%", marginTop: "0.75rem" }}>
+        Enviar consulta
+      </button>
+    </form>
   );
 }
 
