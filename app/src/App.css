@@ -742,6 +742,12 @@ select {
   gap: 0.75rem;
 }
 
+.catalog-logo-img {
+  height: 40px;
+  width: auto;
+  border-radius: 4px;
+}
+
 .catalog-logo {
   font-size: 1.4rem;
   font-weight: 800;

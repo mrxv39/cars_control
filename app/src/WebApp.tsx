@@ -74,6 +74,7 @@ function CatalogHeader({ onLogin, onCatalog, isAdmin }: { onLogin: () => void; o
     <header className="catalog-topbar">
       <div className="catalog-topbar-inner">
         <div className="catalog-brand" onClick={onCatalog} style={{ cursor: "pointer" }}>
+          <img src="/logo-codinacars.png" alt="CodinaCars" className="catalog-logo-img" />
           <span className="catalog-logo">CodinaCars</span>
           <span className="catalog-tagline">Vehiculos de ocasion en Barcelona</span>
         </div>
