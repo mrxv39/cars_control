@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:web": "vite build --config vite.config.web.ts",
+    "build:web": "vite build --config vite.config.web.ts && mv dist-web/index-web.html dist-web/index.html",
     "preview": "vite preview",
     "preview:web": "vite preview --outDir dist-web",
     "tauri": "tauri"
