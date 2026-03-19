@@ -1,0 +1,39 @@
+Proyecto cars_control. La app Tauri está en la carpeta `app`. El stock son carpetas dentro de `app_data_dir()/data/stock`. Ya existe: listado de vehículos (load_app_state), abrir carpeta, miniatura (get_vehicle_thumbnail), get_stock_folder_path, open_folder.
+
+OBJETIVO: Implementar CRUD completo para stock (solo operaciones sobre carpetas en data/stock, sin base de datos).
+
+BACKEND (Rust, app/src-tauri/src/lib.rs):
+
+1) create_vehicle(app, name: String) -> Result<StockVehicle, String>
+   - Validar que name no esté vacío (trim).
+   - Sanitizar el nombre para usar como nombre de carpeta: quitar o reemplazar caracteres inválidos (\, /, :, *, ?, ", <, >, |), colapsar espacios, limitar longitud razonable.
+   - Si ya existe una carpeta con ese nombre en data/stock, devolver error o añadir sufijo (ej. "Coche (2)").
+   - Crear la carpeta dentro de app_stock_dir() y devolver StockVehicle { name: nombre mostrado, folder_path: ruta absoluta }.
+   - Registrar el comando en invoke_handler.
+
+2) rename_vehicle(app, folder_path: String, new_name: String) -> Result<StockVehicle, String>
+   - Validar que folder_path es un path dentro de app_stock_dir() (canonicalize y comprobar que empieza con stock_dir) y que es un directorio existente. Si no, devolver error.
+   - Sanitizar new_name igual que en create.
+   - Renombrar la carpeta; si new_name ya existe, devolver error o usar sufijo.
+   - Devolver el StockVehicle actualizado (name, folder_path).
+
+3) delete_vehicle(app, folder_path: String) -> Result<(), String>
+   - Validar que folder_path está dentro de app_stock_dir() y es un directorio (misma comprobación que rename).
+   - Eliminar la carpeta y todo su contenido (fs::remove_dir_all).
+   - Registrar ambos comandos en invoke_handler.
+
+FRONTEND (React, app/src/App.tsx):
+
+4) Añadir botón "Añadir vehículo" (junto a "Abrir carpeta de datos" / "Recargar"). Al pulsar, mostrar un modal o un formulario inline con un campo "Nombre" y botones "Crear" / "Cancelar". Al enviar, llamar a create_vehicle con el nombre, cerrar el modal y llamar a loadState() para refrescar la lista. Mostrar error si falla.
+
+5) En cada tarjeta de vehículo: añadir botón "Editar" y botón "Eliminar".
+   - Editar: abrir modal o inline con el nombre actual, permitir cambiarlo y guardar. Llamar a rename_vehicle(folder_path, new_name), luego loadState() y limpiar thumbnails para la ruta antigua si hace falta.
+   - Eliminar: mostrar confirmación ("¿Eliminar [nombre]? Se borrará la carpeta y todo su contenido."). Si confirma, llamar a delete_vehicle(folder_path), luego loadState() y quitar esa entrada de thumbnails.
+
+6) Mantener el estilo actual (panel, botones primary/secondary, error-banner). Los modales pueden ser un div fijo con overlay y el formulario dentro, o un estado que muestre/oculte el formulario encima del contenido.
+
+REQUISITOS DE SEGURIDAD:
+- En Rust, nunca operar fuera de app_stock_dir(): en rename_vehicle y delete_vehicle comprobar de forma explícita que el path canonicalizado tiene como prefijo el stock_dir canonicalizado y que es un directorio.
+
+ENTREGABLE:
+- Código listo para ejecutar con `cd app && npm run tauri dev`. Sin auth; CRUD solo sobre las carpetas de stock.

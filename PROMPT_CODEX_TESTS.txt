@@ -1,0 +1,50 @@
+Project: cars_control. Tauri app in folder `app`. Backend: app/src-tauri/src/lib.rs. Stock = folders under app_data_dir()/data/stock; CRUD: create_vehicle, rename_vehicle, delete_vehicle; plus load_app_state, get_vehicle_thumbnail.
+
+OBJECTIVE: Ensure the existing backend behaviour is covered by unit tests. Only add tests you are confident are necessary. Focus on Rust; no frontend/E2E.
+
+---
+
+1) IF TESTS ALREADY EXIST
+
+If app/src-tauri/src/lib.rs already has a #[cfg(test)] mod tests with tests for sanitize_vehicle_name, ensure_unique_vehicle_path, and stock_vehicle_from_path, then:
+- Run: cd app/src-tauri && cargo test
+- If all pass, reply that tests are in place and passing. Do not duplicate tests.
+- If any fail, fix the failing test(s) or the implementation so that cargo test passes.
+
+---
+
+2) IF TESTS ARE MISSING OR INCOMPLETE
+
+Ensure the following exist. Expose only what is needed for tests (e.g. pub(crate) fn for sanitize_vehicle_name, ensure_unique_vehicle_path, stock_vehicle_from_path).
+
+A) sanitize_vehicle_name
+- Empty or whitespace-only -> Err (message containing "vacío" or similar).
+- Invalid path chars \ / : * ? " < > | -> replaced by spaces, collapse spaces, trim; if non-empty -> Ok(sanitized).
+- Valid name e.g. "SEAT IBIZA 4168LNZ" -> Ok(same or trimmed).
+- Leading/trailing spaces and dots -> trimmed.
+- Length > 80 chars -> Ok(first 80 chars, trimmed).
+- Only invalid chars and spaces -> Err (invalid/válido message).
+
+B) ensure_unique_vehicle_path (use tempfile::tempdir; add tempfile to [dev-dependencies] if missing)
+- Empty temp dir, base_name "Coche" -> Ok(path) where path == stock_dir.join("Coche").
+- Temp dir already has folder "Coche" -> Ok(path) with "Coche (2)" (or next suffix).
+- Temp dir has "Coche", current_path Some(canonical path to that folder) -> Ok(same path), not "Coche (2)".
+
+C) stock_vehicle_from_path
+- Path with valid file_name e.g. "any/SEAT IBIZA" -> Ok(StockVehicle { name: "SEAT IBIZA", folder_path }).
+- Path with empty or missing file_name -> Err.
+
+---
+
+3) DO NOT ADD
+
+- No Tauri app or webview tests.
+- No frontend test runner or E2E.
+- No tests requiring real app_data_dir or running the app.
+
+---
+
+4) DELIVERABLE
+
+- cargo test in app/src-tauri passes.
+- All tests short and readable; one main assertion per test when possible.

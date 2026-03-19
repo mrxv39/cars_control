@@ -1,0 +1,18 @@
+Crea una app de escritorio con Tauri 2 (Rust + frontend) para el proyecto cars_control. La raíz del proyecto está en la carpeta donde está este archivo. Toda la documentación legacy (CODINACARS PC, FISCAL, GASTOS, etc.) está dentro de docs_legacy.
+
+OBJETIVO (MVP - Fase 0):
+1) Al abrir la app, si no hay configuración guardada: mostrar una pantalla para que el usuario seleccione la carpeta raíz del proyecto (la que contiene docs_legacy). Guardar esa ruta en un archivo de configuración local (por ejemplo en el directorio de datos de la app o en la raíz del proyecto, en un .json o similar). Si ya existe configuración, ir directo al punto 2.
+2) Pantalla principal: STOCK. Listar las carpetas que hay dentro de docs_legacy/CODINACARS PC/COCHES STOCK (cada carpeta = un vehículo). Mostrar el nombre de cada carpeta. En cada fila un botón "Abrir carpeta" que abra esa carpeta en el explorador del sistema (Windows). Opcional pero recomendable: mostrar una miniatura con la primera imagen .jpg o .jpeg encontrada dentro de esa carpeta (o en subcarpetas como "fotos definitivas") para identificar el coche.
+3) Navegación mínima: menú o pestañas donde por ahora solo esté activo "Stock"; el resto puede estar deshabilitado o no implementado aún.
+4) La app debe usar la ruta configurada (no rutas hardcodeadas) para construir la ruta a docs_legacy y a COCHES STOCK.
+
+TECNOLOGÍAS:
+- Tauri 2, Rust en el backend.
+- Frontend: el que prefieras (React, Vue, Svelte) con TypeScript; mantenerlo simple.
+- Sin base de datos en esta fase; solo lectura del sistema de archivos y abrir carpetas/archivos con el programa por defecto del SO.
+
+ENTREGABLES:
+- Proyecto Tauri funcional en la raíz de cars_control (o en una subcarpeta tipo "app" si lo consideras mejor), con instrucciones en README para instalar dependencias y ejecutar (npm/pnpm, cargo).
+- Que al ejecutar la app se pueda configurar la ruta, ver la lista de coches en stock y abrir cada carpeta con un clic.
+
+Referencia: en la misma carpeta del proyecto está ANALISIS_PROYECTO_Y_APP_TAURI.md con el contexto completo y la estructura de carpetas (docs_legacy, CODINACARS PC, COCHES STOCK, etc.).

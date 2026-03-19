@@ -1,0 +1,15 @@
+Proyecto: cars_control. La app Tauri está en la carpeta `app` (raíz del proyecto = donde está este archivo).
+
+OBJETIVO: Asegurar que la app cumple esto y funciona.
+
+1) NO pedir al usuario que seleccione ninguna carpeta. Al abrir la app debe ir directo a la pantalla principal de Stock.
+
+2) Estructura de datos: la app usa su propia carpeta de datos (Tauri app_data_dir). Dentro de ella debe existir una subcarpeta `data/stock`. Ruta final del stock = app_data_dir() + "data" + "stock". Esa carpeta se crea automáticamente si no existe. Cada subcarpeta dentro de `stock` = un vehículo (nombre = nombre de la carpeta; opcional: primera imagen .jpg o .jpeg dentro de la carpeta o subcarpetas = miniatura).
+
+3) Pantalla principal: lista de vehículos (carpetas en data/stock). Por cada uno: nombre, miniatura si hay imagen, botón "Abrir carpeta" que abre esa carpeta en el explorador del sistema. Un botón "Abrir carpeta de datos" que abre la carpeta data/stock en el explorador. Si no hay vehículos, mostrar mensaje claro y botones "Abrir carpeta de datos" y "Recargar".
+
+4) Backend (Rust): comandos load_app_state (devuelve stock_folder + lista de vehículos desde data/stock), get_stock_folder_path (ruta de data/stock), open_folder(path), get_vehicle_thumbnail(folder_path). Sin configuración guardada de ruta; sin referencias a docs_legacy ni CODINACARS PC.
+
+5) Frontend (React + TypeScript): sin pantalla de configuración inicial; sin uso del plugin dialog. Al cargar, invocar load_app_state y mostrar el stock o el estado vacío.
+
+Tareas para Codex: (1) Revisar que app/src-tauri y app/src cumplen lo anterior. (2) Ejecutar `cd app && npm install && npm run tauri dev` y corregir cualquier error de compilación o runtime hasta que la app abra, muestre la lista de stock (vacía o con carpetas) y los botones funcionen.

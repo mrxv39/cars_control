@@ -1,0 +1,37 @@
+Project: Cars Control — Tauri 2 + React desktop app for Codina Cars. Repo: c:\Users\Usuario\Desktop\proyectos\cars_control. Frontend in app/, backend in app/src-tauri/ (Rust).
+
+Context (from index.md and app/README.md):
+- Done: Stock CRUD, Leads & Clients CRUD with lead→client conversion and optional link to stock vehicle, Ventas históricas (read-only list/open from docs_legacy), per-vehicle ad link (Coches.net URL, status, date). Data in data/stock, data/leads.json, data/clients.json, data/vehicle_ads.json.
+- Pending (next): search/filter in Leads and Clients lists; optional export/backup of app data.
+
+Implement the following. Both are high-impact and well-scoped.
+
+---
+
+1) Search or filter in Leads and in Clients lists
+- Frontend: Add a search/filter input (or inputs) above the Leads list and above the Clients list. Filter in real time as the user types. Search by: name, phone, and (for leads) vehicle_interest text and linked vehicle name; (for clients) linked vehicle name. Matching can be case-insensitive substring; empty search shows all.
+- No backend change required if the full lists are already in load_app_state; filtering can be done in the frontend. If you prefer a backend command (e.g. filter_leads, filter_clients) for very large lists, you can add it, but client-side filtering is acceptable for typical list sizes.
+- Ensure the existing create/edit/delete and “convert lead to client” flows still work and that the filter does not break selection or modals.
+
+---
+
+2) Optional export or backup of app data
+- Backend: Add a command (e.g. export_app_data or backup_data) that writes a copy of the current app data to a user-chosen location (or to a fixed subfolder under app data, e.g. data/backups/ with a timestamped file or folder). Include: leads.json, clients.json, vehicle_ads.json. Optionally include a minimal manifest (e.g. export date, app version). Do not export or copy the whole stock folder (too large); only the JSON data. If the user must choose the path, use a Tauri dialog or return a path that the frontend can use with a “Save as” dialog; if you prefer a one-click “Export to data/backups/YYYY-MM-DD…” that does not ask for path, document it in README.
+- Frontend: Add a button or menu item (e.g. in a settings area or in the main nav) “Exportar datos” / “Export data” or “Copia de seguridad” that calls the backend command and shows a short success message (and path if applicable). If you use a save dialog, ensure it is wired correctly on Windows.
+- Keep export read-only over the live data: only read and copy; do not modify existing files.
+
+---
+
+3) Documentation and task list (mandatory)
+- Update the project task list to reflect what you implemented:
+  - In index.md: if the file exists at repo root (cars_control/index.md) or at proyectos_notes\cars_control\index.md, update the “Pendientes” section. Mark as done [x]: “Búsqueda o filtro en listas de Leads y de Clients” and “Exportar o copia de seguridad de datos (leads, clients, vehicle_ads)” if you implemented them. Leave “Citas / ITV / mantenimiento / fiscal / gastos” and “Auth” as pending. Keep Objetivo, Notas and Preguntas consistent.
+  - In app/README.md: under “Pendiente / roadmap corto” (or equivalent), add or adjust bullets so that search/filter in Leads and Clients and export/backup are listed as done if implemented; leave other items as pending.
+- Do not remove or contradict existing product decisions (no auth, no invented sales data, etc.).
+
+---
+
+4) Validation
+- Run npm run build and cargo test (and cargo check). Fix any build or test failures.
+- Add or extend tests for the new backend behavior (e.g. export command) if straightforward.
+
+Use ANALISIS_PROYECTO_Y_APP_TAURI.md and INFORME_ANALISIS_REPO.md for context. After implementing, always update the implemented tasks in index.md and app/README.md as described above.
