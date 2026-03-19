@@ -158,9 +158,19 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
 // Stock List
 // ============================================================
 function StockList({ vehicles, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
+  const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return vehicles;
+    return vehicles.filter((v) =>
+      [v.name, v.estado, v.fuel, String(v.anio || ""), String(v.precio_venta || "")]
+        .some((field) => field.toLowerCase().includes(q))
+    );
+  }, [vehicles, search]);
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
@@ -191,6 +201,16 @@ function StockList({ vehicles, companyId, onSelect, onReload }: { vehicles: api.
         </div>
       </header>
 
+      <section className="panel filter-panel">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por marca, modelo, año..."
+          className="sales-search"
+        />
+        {search && <p className="muted" style={{ margin: "0.5rem 0 0" }}>{filtered.length} resultado{filtered.length !== 1 ? "s" : ""}</p>}
+      </section>
+
       {showAdd && (
         <section className="panel" style={{ padding: "1.5rem" }}>
           <form onSubmit={(e) => void handleAdd(e)} style={{ display: "flex", gap: "0.75rem", alignItems: "end" }}>
@@ -204,7 +224,7 @@ function StockList({ vehicles, companyId, onSelect, onReload }: { vehicles: api.
       )}
 
       <section className="stock-grid">
-        {vehicles.map((v) => (
+        {filtered.map((v) => (
           <article key={v.id} className="vehicle-card vehicle-card-clickable" onClick={() => onSelect(v)}>
             <VehicleThumb vehicleId={v.id} />
             <div className="vehicle-copy">

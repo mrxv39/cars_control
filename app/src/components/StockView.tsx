@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { StockVehicle } from "../types";
 
@@ -18,6 +19,17 @@ export function StockView({
   onEditVehicle,
   onReload,
 }: Props) {
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return stock;
+    return stock.filter((v) =>
+      [v.name, v.estado ?? "", String(v.anio ?? ""), String(v.precio_venta ?? "")]
+        .some((field) => field.toLowerCase().includes(q))
+    );
+  }, [stock, search]);
+
   async function openStockDataFolder() {
     try {
       const path = await invoke<string>("get_stock_folder_path");
@@ -47,11 +59,20 @@ export function StockView({
           </button>
         </div>
       </header>
+      <section className="panel filter-panel">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por marca, modelo, año..."
+          className="sales-search"
+        />
+        {search && <p className="muted" style={{ margin: "0.5rem 0 0" }}>{filtered.length} resultado{filtered.length !== 1 ? "s" : ""}</p>}
+      </section>
       {stock.length ? (
         <>
           {(() => {
-            const sinFoto = stock.filter((v) => !thumbnails[v.folder_path]);
-            const conFoto = stock.filter((v) => !!thumbnails[v.folder_path]);
+            const sinFoto = filtered.filter((v) => !thumbnails[v.folder_path]);
+            const conFoto = filtered.filter((v) => !!thumbnails[v.folder_path]);
             return (
               <>
                 {sinFoto.length > 0 && (
