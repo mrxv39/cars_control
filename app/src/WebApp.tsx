@@ -5,6 +5,7 @@ import "./App.css";
 type ViewKey = "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers";
 
 function WebApp() {
+  const [page, setPage] = useState<"catalog" | "login" | "admin">("catalog");
   const [session, setSession] = useState<api.LoginResult | null>(null);
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -18,6 +19,7 @@ function WebApp() {
     try {
       const result = await api.login(loginUsername, loginPassword);
       setSession(result);
+      setPage("admin");
     } catch (err) {
       setLoginError(String(err));
     } finally {
@@ -25,33 +27,230 @@ function WebApp() {
     }
   }
 
-  if (!session) {
+  // Login page
+  if (page === "login" && !session) {
     return (
-      <main className="shell" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <section className="panel" style={{ maxWidth: 400, width: "100%", padding: "2rem" }}>
-          <p className="eyebrow">Cars Control</p>
-          <h1 style={{ marginBottom: "0.5rem" }}>Iniciar sesion</h1>
-          <p className="muted" style={{ marginBottom: "1.5rem" }}>Introduce tus credenciales para acceder.</p>
-          <form onSubmit={(e) => void handleLogin(e)}>
-            <div style={{ marginBottom: "1rem" }}>
-              <label className="field-label" htmlFor="login-user">Usuario</label>
-              <input id="login-user" type="text" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="Usuario" autoFocus />
-            </div>
-            <div style={{ marginBottom: "1rem" }}>
-              <label className="field-label" htmlFor="login-pass">Contrasena</label>
-              <input id="login-pass" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Contrasena" />
-            </div>
-            {loginError && <p className="error-banner" style={{ marginBottom: "1rem" }}>{loginError}</p>}
-            <button type="submit" className="button primary" style={{ width: "100%" }} disabled={loginSubmitting}>
-              {loginSubmitting ? "Entrando..." : "Entrar"}
-            </button>
-          </form>
-        </section>
-      </main>
+      <div className="catalog-page">
+        <CatalogHeader onLogin={() => setPage("login")} onCatalog={() => setPage("catalog")} isAdmin={false} />
+        <main style={{ maxWidth: 420, margin: "3rem auto", padding: "0 1rem" }}>
+          <section className="panel" style={{ padding: "2rem" }}>
+            <p className="eyebrow">Acceso usuarios</p>
+            <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesion</h2>
+            <p className="muted" style={{ marginBottom: "1.5rem" }}>Panel de gestion para usuarios autorizados.</p>
+            <form onSubmit={(e) => void handleLogin(e)}>
+              <div style={{ marginBottom: "1rem" }}>
+                <label className="field-label" htmlFor="login-user">Usuario</label>
+                <input id="login-user" type="text" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="Usuario" autoFocus />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label className="field-label" htmlFor="login-pass">Contrasena</label>
+                <input id="login-pass" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Contrasena" />
+              </div>
+              {loginError && <p className="error-banner" style={{ marginBottom: "1rem" }}>{loginError}</p>}
+              <button type="submit" className="button primary" style={{ width: "100%" }} disabled={loginSubmitting}>
+                {loginSubmitting ? "Entrando..." : "Entrar"}
+              </button>
+            </form>
+          </section>
+        </main>
+      </div>
     );
   }
 
-  return <AuthenticatedWebApp session={session} onLogout={() => setSession(null)} />;
+  // Admin panel
+  if (page === "admin" && session) {
+    return <AuthenticatedWebApp session={session} onLogout={() => { setSession(null); setPage("catalog"); }} />;
+  }
+
+  // Public catalog (default)
+  return <PublicCatalog onLogin={() => setPage("login")} />;
+}
+
+// ============================================================
+// Header for public pages
+// ============================================================
+function CatalogHeader({ onLogin, onCatalog, isAdmin }: { onLogin: () => void; onCatalog: () => void; isAdmin: boolean }) {
+  return (
+    <header className="catalog-topbar">
+      <div className="catalog-topbar-inner">
+        <div className="catalog-brand" onClick={onCatalog} style={{ cursor: "pointer" }}>
+          <span className="catalog-logo">CodinaCars</span>
+          <span className="catalog-tagline">Vehiculos de ocasion en Barcelona</span>
+        </div>
+        <nav className="catalog-nav">
+          <a href="tel:+34646131565" className="catalog-nav-link">646 13 15 65</a>
+          <button type="button" className="catalog-nav-btn" onClick={onLogin}>
+            Acceso usuarios
+          </button>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+// ============================================================
+// Public Catalog
+// ============================================================
+function PublicCatalog({ onLogin }: { onLogin: () => void }) {
+  const [vehicles, setVehicles] = useState<api.Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selectedVehicle, setSelectedVehicle] = useState<api.Vehicle | null>(null);
+
+  React.useEffect(() => {
+    void api.listVehicles(1).then((v) => { setVehicles(v); setLoading(false); });
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return vehicles;
+    return vehicles.filter((v) =>
+      [v.name, v.fuel, String(v.anio || ""), String(v.precio_venta || "")]
+        .some((f) => f.toLowerCase().includes(q))
+    );
+  }, [vehicles, search]);
+
+  if (selectedVehicle) {
+    return (
+      <div className="catalog-page">
+        <CatalogHeader onLogin={onLogin} onCatalog={() => setSelectedVehicle(null)} isAdmin={false} />
+        <PublicVehicleDetail vehicle={selectedVehicle} onBack={() => setSelectedVehicle(null)} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="catalog-page">
+      <CatalogHeader onLogin={onLogin} onCatalog={() => setSelectedVehicle(null)} isAdmin={false} />
+
+      <section className="catalog-hero-banner">
+        <h1>Vehiculos de ocasion</h1>
+        <p>Compraventa de coches en Molins de Rei, Barcelona</p>
+      </section>
+
+      <main className="catalog-main">
+        <div className="catalog-toolbar">
+          <input
+            className="catalog-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por marca, modelo, año..."
+          />
+          <span className="muted">{filtered.length} vehiculo{filtered.length !== 1 ? "s" : ""}</span>
+        </div>
+
+        {loading ? (
+          <p className="muted" style={{ textAlign: "center", padding: "3rem" }}>Cargando vehiculos...</p>
+        ) : (
+          <div className="catalog-grid">
+            {filtered.map((v) => (
+              <article key={v.id} className="catalog-card" onClick={() => setSelectedVehicle(v)}>
+                <CatalogThumb vehicleId={v.id} />
+                <div className="catalog-card-body">
+                  <h3 className="catalog-card-title">{v.name}</h3>
+                  <div className="catalog-card-specs">
+                    {v.anio && <span>{v.anio}</span>}
+                    {v.km && <span>{v.km.toLocaleString()} km</span>}
+                    {v.fuel && <span>{v.fuel}</span>}
+                  </div>
+                  {v.precio_venta && (
+                    <p className="catalog-card-price">{v.precio_venta.toLocaleString("es-ES")} €</p>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </main>
+
+      <footer className="catalog-footer">
+        <p>CodinaCars · C/ Sant Antoni Maria Claret 3, Bajos 2, 08750 Molins de Rei (Barcelona)</p>
+        <p>Tel: 646 13 15 65 · codinacars@gmail.com</p>
+      </footer>
+    </div>
+  );
+}
+
+// ============================================================
+// Catalog Thumbnail
+// ============================================================
+function CatalogThumb({ vehicleId }: { vehicleId: number }) {
+  const [url, setUrl] = useState<string | null>(null);
+  React.useEffect(() => {
+    void api.listVehiclePhotos(vehicleId).then((photos) => {
+      if (photos.length > 0) setUrl(photos[0].url);
+    });
+  }, [vehicleId]);
+
+  return (
+    <div className="catalog-card-img">
+      {url ? <img src={url} alt="" /> : <div className="catalog-card-noimg">Sin foto</div>}
+    </div>
+  );
+}
+
+// ============================================================
+// Public Vehicle Detail
+// ============================================================
+function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack: () => void }) {
+  const [photos, setPhotos] = useState<api.VehiclePhoto[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    void api.listVehiclePhotos(vehicle.id).then(setPhotos);
+  }, [vehicle.id]);
+
+  const mainPhoto = selectedPhoto != null ? photos.find((p) => p.id === selectedPhoto)?.url : photos[0]?.url;
+
+  return (
+    <main className="catalog-main">
+      <button type="button" className="catalog-back" onClick={onBack}>Volver al listado</button>
+
+      <div className="catalog-detail">
+        <div className="catalog-detail-gallery">
+          {mainPhoto && (
+            <div className="catalog-detail-main-img">
+              <img src={mainPhoto} alt={vehicle.name} />
+            </div>
+          )}
+          {photos.length > 1 && (
+            <div className="catalog-detail-thumbs">
+              {photos.map((p) => (
+                <img
+                  key={p.id} src={p.url} alt=""
+                  className={selectedPhoto === p.id || (!selectedPhoto && p === photos[0]) ? "active" : ""}
+                  onClick={() => setSelectedPhoto(p.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="catalog-detail-info">
+          <h1>{vehicle.name}</h1>
+          {vehicle.precio_venta && (
+            <p className="catalog-detail-price">{vehicle.precio_venta.toLocaleString("es-ES")} €</p>
+          )}
+          <table className="catalog-detail-specs">
+            <tbody>
+              {vehicle.anio && <tr><td>Año</td><td>{vehicle.anio}</td></tr>}
+              {vehicle.km && <tr><td>Kilometraje</td><td>{vehicle.km.toLocaleString()} km</td></tr>}
+              {vehicle.fuel && <tr><td>Combustible</td><td>{vehicle.fuel}</td></tr>}
+              {vehicle.cv && <tr><td>Potencia</td><td>{vehicle.cv}</td></tr>}
+              {vehicle.transmission && <tr><td>Cambio</td><td>{vehicle.transmission}</td></tr>}
+              {vehicle.color && <tr><td>Color</td><td>{vehicle.color}</td></tr>}
+              <tr><td>Estado</td><td style={{ textTransform: "capitalize" }}>{vehicle.estado}</td></tr>
+            </tbody>
+          </table>
+          {vehicle.notes && <p className="catalog-detail-notes">{vehicle.notes}</p>}
+          <div className="catalog-detail-contact">
+            <a href="tel:+34646131565" className="button primary" style={{ textDecoration: "none", textAlign: "center" }}>Llamar: 646 13 15 65</a>
+            <a href="https://wa.me/34646131565" className="button secondary" style={{ textDecoration: "none", textAlign: "center" }} target="_blank" rel="noopener">WhatsApp</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
 }
 
 const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
