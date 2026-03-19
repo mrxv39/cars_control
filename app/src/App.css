@@ -911,6 +911,13 @@ select {
   color: #1d4ed8;
 }
 
+.catalog-card-financing {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: #16a34a;
+  font-weight: 600;
+}
+
 .catalog-footer {
   background: #0a0a0a;
   color: rgba(255,255,255,0.6);
@@ -1019,6 +1026,21 @@ select {
   color: #475569;
   line-height: 1.6;
   margin-bottom: 1.5rem;
+}
+
+.catalog-detail-financing {
+  background: #f0fdf4;
+  border: 1px solid rgba(22, 163, 74, 0.15);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.catalog-detail-financing-text {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #16a34a;
 }
 
 .catalog-detail-contact {

@@ -155,6 +155,9 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
                   {v.precio_venta && (
                     <p className="catalog-card-price">{v.precio_venta.toLocaleString("es-ES")} €</p>
                   )}
+                  {v.notes && v.notes.startsWith("Desde") && (
+                    <p className="catalog-card-financing">{v.notes.split("|")[0].trim()}</p>
+                  )}
                 </div>
               </article>
             ))}
@@ -241,7 +244,12 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
               <tr><td>Estado</td><td style={{ textTransform: "capitalize" }}>{vehicle.estado}</td></tr>
             </tbody>
           </table>
-          {vehicle.notes && <p className="catalog-detail-notes">{vehicle.notes}</p>}
+          {vehicle.notes && vehicle.notes.startsWith("Desde") && (
+            <div className="catalog-detail-financing">
+              <p className="eyebrow" style={{ marginBottom: "0.4rem" }}>Financiacion</p>
+              <p className="catalog-detail-financing-text">{vehicle.notes}</p>
+            </div>
+          )}
           <div className="catalog-detail-contact">
             <a href="tel:+34646131565" className="button primary" style={{ textDecoration: "none", textAlign: "center" }}>Llamar: 646 13 15 65</a>
             <a href="https://wa.me/34646131565" className="button secondary" style={{ textDecoration: "none", textAlign: "center" }} target="_blank" rel="noopener">WhatsApp</a>
