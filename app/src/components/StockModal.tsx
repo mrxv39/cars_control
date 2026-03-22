@@ -71,8 +71,8 @@ export function StockModal({
             </>
           )}
 
-          {!isCreate && (
-            <>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <div>
               <label className="field-label" htmlFor="vehicle-year">Año</label>
               <input
                 id="vehicle-year" type="number"
@@ -80,6 +80,8 @@ export function StockModal({
                 onChange={(e) => setStockVehicleForm({ ...stockVehicleForm, anio: e.currentTarget.value ? parseInt(e.currentTarget.value) : null })}
                 placeholder="2020" min="1900" max={new Date().getFullYear()}
               />
+            </div>
+            <div>
               <label className="field-label" htmlFor="vehicle-km">Kilometros</label>
               <input
                 id="vehicle-km" type="number"
@@ -87,20 +89,31 @@ export function StockModal({
                 onChange={(e) => setStockVehicleForm({ ...stockVehicleForm, km: e.currentTarget.value ? parseInt(e.currentTarget.value) : null })}
                 placeholder="125000" min="0"
               />
-              <label className="field-label" htmlFor="vehicle-precio-compra">Precio de compra</label>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <div>
+              <label className="field-label" htmlFor="vehicle-precio-compra">Precio compra</label>
               <input
                 id="vehicle-precio-compra" type="number" step="100"
                 value={stockVehicleForm.precio_compra || ""}
                 onChange={(e) => setStockVehicleForm({ ...stockVehicleForm, precio_compra: e.currentTarget.value ? parseFloat(e.currentTarget.value) : null })}
                 placeholder="8500" min="0"
               />
-              <label className="field-label" htmlFor="vehicle-precio-venta">Precio de venta</label>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="vehicle-precio-venta">Precio venta</label>
               <input
                 id="vehicle-precio-venta" type="number" step="100"
                 value={stockVehicleForm.precio_venta || ""}
                 onChange={(e) => setStockVehicleForm({ ...stockVehicleForm, precio_venta: e.currentTarget.value ? parseFloat(e.currentTarget.value) : null })}
                 placeholder="10500" min="0"
               />
+            </div>
+          </div>
+
+          {!isCreate && (
+            <>
               <label className="field-label" htmlFor="vehicle-ad-url">Enlace anuncio</label>
               <input
                 id="vehicle-ad-url"

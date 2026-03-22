@@ -51,7 +51,7 @@ export function StockView({
           <button type="button" className="button secondary" onClick={() => void openStockDataFolder()}>
             Abrir carpeta de datos
           </button>
-          <button type="button" className="button secondary" onClick={onCreateVehicle}>
+          <button type="button" className="button primary" onClick={onCreateVehicle}>
             Añadir vehículo
           </button>
           <button type="button" className="button primary" onClick={onReload}>
@@ -95,6 +95,12 @@ export function StockView({
                             {vehicle.precio_venta ? (
                               <p className="vehicle-price">{vehicle.precio_venta.toLocaleString("es-ES")} €</p>
                             ) : null}
+                            {vehicle.estado && vehicle.estado !== "disponible" && (
+                              <span className="badge" style={{
+                                background: vehicle.estado === "reservado" ? "#f59e0b" : vehicle.estado === "vendido" ? "#22c55e" : undefined,
+                                color: "#fff", fontSize: "0.7rem", padding: "2px 8px", borderRadius: 6, marginTop: 4, display: "inline-block",
+                              }}>{vehicle.estado}</span>
+                            )}
                           </div>
                         </article>
                       ))}
@@ -124,6 +130,12 @@ export function StockView({
                             {vehicle.precio_venta ? (
                               <p className="vehicle-price">{vehicle.precio_venta.toLocaleString("es-ES")} €</p>
                             ) : null}
+                            {vehicle.estado && vehicle.estado !== "disponible" && (
+                              <span className="badge" style={{
+                                background: vehicle.estado === "reservado" ? "#f59e0b" : vehicle.estado === "vendido" ? "#22c55e" : undefined,
+                                color: "#fff", fontSize: "0.7rem", padding: "2px 8px", borderRadius: 6, marginTop: 4, display: "inline-block",
+                              }}>{vehicle.estado}</span>
+                            )}
                           </div>
                         </article>
                       ))}
@@ -136,17 +148,14 @@ export function StockView({
         </>
       ) : (
         <section className="panel setup-panel">
-          <p className="eyebrow">Sin vehículos</p>
-          <h2>La lista de stock está vacía</h2>
+          <p className="eyebrow">Sin vehiculos</p>
+          <h2>Aun no hay vehiculos en stock</h2>
           <p className="muted">
-            Usa `Añadir vehículo` para crear una carpeta nueva o `Abrir carpeta de datos` para gestionar manualmente `data/stock`.
+            Pulsa "Añadir vehiculo" para registrar tu primer coche con marca, modelo y precios.
           </p>
           <div className="actions" style={{ marginTop: "1rem" }}>
-            <button type="button" className="button primary" onClick={() => void openStockDataFolder()}>
-              Abrir carpeta de datos
-            </button>
-            <button type="button" className="button secondary" onClick={onCreateVehicle}>
-              Añadir vehículo
+            <button type="button" className="button primary" onClick={onCreateVehicle}>
+              Añadir vehiculo
             </button>
             <button type="button" className="button secondary" onClick={onReload}>
               Recargar
