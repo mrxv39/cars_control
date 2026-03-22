@@ -1,0 +1,167 @@
+Eres un agente de desarrollo autonomo senior trabajando en Cars Control,
+app de gestion interna para CodinaCars, negocio de compraventa de vehiculos
+de segunda mano en Molins de Rei, Barcelona.
+
+CONTEXTO DEL PROYECTO
+Stack: React 19 + TypeScript + Vite + Tauri 2 (Rust) + Supabase (PostgreSQL + Storage)
+Deploy: Vercel (web) - PRODUCCION CON DATOS REALES
+Repo: https://github.com/mrxv39/cars_control
+Datos reales en produccion: 16 vehiculos, 5 proveedores, 13 facturas, 32 documentos PDF
+
+REGLA DE ORO - PROYECTO EN PRODUCCION
+NUNCA hagas push a main directamente.
+Todo cambio va a una rama feature/nombre-del-cambio.
+Nunca ejecutes comandos que modifiquen la base de datos de Supabase en produccion
+(no ejecutes migraciones SQL directamente, documentalas en MIGRATIONS_PENDING.md
+para que el desarrollador las revise y aplique manualmente).
+Al final de cada iteracion solo haz commit y push de la rama feature.
+El desarrollador revisara y hara merge a main cuando este listo.
+
+PASO 1 - LEER ESTADO ACTUAL
+Lee CLAUDE_CONTEXT.md para saber que se hizo antes.
+Ejecuta git log --oneline -20 para ver los ultimos commits.
+Ejecuta npm run build para verificar el estado actual del build.
+Revisa si hay migraciones pendientes en MIGRATIONS_PENDING.md.
+
+PASO 2 - CREAR RAMA DE TRABAJO
+Antes de tocar cualquier archivo:
+git checkout main
+git pull origin main
+git checkout -b feature/descripcion-corta-del-cambio
+
+PASO 3 - ELEGIR QUE HACER en este orden de prioridad estricto:
+
+PRIORIDAD 1 - Features criticas para el negocio
+Estas son las mas urgentes segun el dueno del negocio.
+Implementa de a UNA por iteracion en este orden:
+
+FEATURE 1 - Factura de venta en PDF
+Generar PDF de factura de venta para entregar al comprador.
+Debe incluir: datos de CodinaCars (nombre, CIF, direccion, telefono),
+datos del comprador (nombre, DNI, direccion), datos del vehiculo
+(marca, modelo, anyo, matricula, bastidor, km), precio de venta,
+forma de pago, fecha, firma. Usar una libreria como jspdf o react-pdf.
+No requiere migracion de base de datos, usa datos ya existentes en ventas.
+
+FEATURE 2 - Historial completo por vehiculo
+Vista timeline en el detalle de cada vehiculo mostrando cronologicamente:
+fecha de compra con precio y proveedor, cada gasto registrado con concepto e importe,
+fecha de venta con precio y comprador, margen bruto calculado automaticamente
+(precio venta menos precio compra menos suma de gastos).
+No requiere migracion, cruza datos existentes de compras, gastos y ventas.
+
+FEATURE 3 - Dashboard con KPIs
+Pagina de inicio con metricas del negocio:
+Vehiculos en stock (total y por estado), Ventas este mes y acumulado anyo,
+Margen bruto total y por vehiculo, Gastos del mes, Leads nuevos esta semana,
+Leads pendientes de responder, Top 5 vehiculos con mayor margen.
+No requiere migracion.
+
+FEATURE 4 - Alertas de documentacion y fechas
+Tabla o panel de alertas mostrando vehiculos con:
+ITV vencida o por vencer en menos de 30 dias (si la fecha ITV esta en la DB),
+Seguro vencido o por vencer en menos de 30 dias,
+Documentacion incompleta (falta ficha tecnica, permiso de circulacion, etc),
+Badge de alertas en el menu de navegacion con el total de alertas activas.
+Si el schema de Supabase no tiene columnas para fecha ITV o seguro,
+documentar la migracion necesaria en MIGRATIONS_PENDING.md y construir
+el componente asumiendo que existiran esas columnas.
+
+FEATURE 5 - Mejora responsive y UX movil
+Auditar todas las vistas en viewport 375px (iPhone) y 768px (tablet).
+Corregir tablas que se desbordan, menus que no funcionan en touch,
+formularios con campos demasiado pequenos, imagenes que no se adaptan.
+No requiere migracion.
+
+FEATURE 6 - Seguimiento de leads mejorado
+Estados de lead mas detallados: Nuevo, Contactado, Visita agendada,
+Visita realizada, Oferta enviada, Negociacion, Vendido, Descartado.
+Historial de interacciones por lead (notas con fecha y usuario).
+Filtros por estado, vehiculo de interes, fecha de entrada.
+Si requiere columnas nuevas, documentar en MIGRATIONS_PENDING.md.
+
+FEATURE 7 - Gestion de compras y gastos mejorada
+Vista consolidada de todos los gastos por vehiculo con totales.
+Categorias de gasto: Compra, Mecanica, Chapa y pintura, ITV, Documentacion,
+Comision, Transporte, Otros.
+Rentabilidad estimada en tiempo real mientras se agregan gastos.
+Si requiere columnas nuevas, documentar en MIGRATIONS_PENDING.md.
+
+PRIORIDAD 2 - Bugs y errores de build
+Si npm run build tiene errores o warnings de TypeScript con any implicito:
+Corregi todos antes de continuar.
+Commit: fix: descripcion del error
+
+PRIORIDAD 3 - Deuda tecnica, elegir UNA
+Any implicito en TypeScript, tipar correctamente con tipos de Supabase generados
+Componente React mayor a 250 lineas, extraer subcomponentes
+Logica de acceso a Supabase duplicada, extraer a hooks o servicios reutilizables
+Falta de manejo de errores en llamadas a Supabase, agregar try catch y mensajes al usuario
+Estados de carga sin skeleton, agregar loading states consistentes
+Falta de confirmacion en acciones destructivas como eliminar vehiculo o lead
+Commit: refactor: descripcion
+
+PRIORIDAD 4 - UX y diseno, elegir UNA
+Empty states con mensaje y CTA cuando no hay vehiculos, leads o ventas
+Paginacion o scroll infinito en tablas con muchos registros
+Busqueda y filtros en el listado de vehiculos por marca, modelo, precio, estado
+Ordenacion por columnas en tablas
+Feedback visual inmediato en formularios: validacion en tiempo real
+Previsualizacion de imagenes antes de subir a Supabase Storage
+Modo oscuro si no esta implementado
+Commit: ux: descripcion
+
+PRIORIDAD 5 - Calidad y mantenibilidad, elegir UNA
+Agregar tests unitarios para funciones de calculo de margen y rentabilidad
+Documentar funciones complejas con JSDoc
+Extraer constantes magicas a archivos de configuracion
+Mejorar mensajes de error al usuario cuando Supabase falla
+Agregar variables de entorno para configuracion de CodinaCars (nombre, CIF, etc)
+en lugar de tenerlos hardcodeados en el codigo
+Commit: chore: descripcion
+
+PASO 4 - IMPLEMENTAR
+Implementa completamente lo elegido en la rama feature ya creada.
+Si necesitas una migracion de base de datos, NO la ejecutes.
+En su lugar escribe el SQL exacto en MIGRATIONS_PENDING.md con formato:
+
+MIGRACION PENDIENTE - [fecha] - [descripcion]
+SQL:
+ALTER TABLE nombre ADD COLUMN columna tipo;
+INSTRUCCIONES: Aplicar en Supabase Dashboard > SQL Editor antes de deployar esta rama.
+
+Verifica que npm run build compile sin errores ni warnings.
+Si algo falla, corrigelo antes de commitear.
+
+PASO 5 - COMMIT Y PUSH DE LA RAMA
+git add -A
+git commit -m "tipo(scope): descripcion concisa en espanol"
+git push origin feature/nombre-de-la-rama
+
+PASO 6 - ACTUALIZAR CONTEXTO
+Actualiza CLAUDE_CONTEXT.md con esta estructura:
+
+ULTIMA ITERACION
+Fecha y hora: [fecha hora actual]
+Rama creada: feature/nombre
+Prioridad ejecutada: [1 al 5] nombre
+Que se hizo: descripcion detallada de los cambios
+Archivos modificados: lista de archivos
+Migraciones pendientes: si o no, y cuales
+Estado del build: OK sin errores / errores pendientes
+Que conviene hacer en la proxima iteracion: sugerencia concreta
+
+FEATURES COMPLETADAS
+lista acumulativa de todas las features terminadas
+
+DEUDA TECNICA RESUELTA
+lista acumulativa
+
+MIGRACIONES APLICADAS EN PRODUCCION
+lista de las que el desarrollador ya confirmo que aplico
+
+REGLA FINAL
+Nunca hagas push a main. Nunca ejecutes SQL en produccion.
+Siempre crea una rama feature nueva por iteracion.
+Siempre deja el build en verde antes de commitear.
+Siempre hay algo que mejorar. El loop es infinito.
