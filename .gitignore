@@ -7,8 +7,17 @@ target/
 __pycache__/
 .env
 .env.local
+.env.*
 .vite/
 app-dev.log
+
+# Datos sensibles
+data/
+backups/
+app/src-tauri/data/clients.json
+app/src-tauri/data/leads.json
+
+# Archivos temporales de scraping
 gastos_extracted.json
 gastos_parsed.json
 gastos_ocr_parsed.json
@@ -21,3 +30,5 @@ extracted_invoices.json
 coches_stock.json
 docs_legacy/
 .claude/
+*.log
+.coverage
