@@ -4,9 +4,10 @@ interface Props {
   stock: StockVehicle[];
   leads: Lead[];
   onReload: () => void;
+  onNavigate?: (view: string) => void;
 }
 
-export function DashboardView({ stock, leads, onReload }: Props) {
+export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
   // Stock stats
   const stockDisponible = stock.filter((v) => v.estado !== "reservado" && v.estado !== "vendido").length;
   const stockReservado = stock.filter((v) => v.estado === "reservado").length;
@@ -18,13 +19,15 @@ export function DashboardView({ stock, leads, onReload }: Props) {
   const leadsCerrados = leads.filter((l) => l.estado === "cerrado").length;
   const leadsPerdidos = leads.filter((l) => l.estado === "perdido").length;
 
-  // Leads sin seguimiento reciente (sin fecha_contacto o muy antigua)
+  // Leads sin seguimiento reciente (sin fecha_contacto o > 7 dias)
   const hoy = new Date();
   const hace7Dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const estadosFinales = ["cerrado", "perdido", "vendido", "descartado"];
   const leadsSinSeguimiento = leads.filter((l) => {
-    if (!l.fecha_contacto) return false;
+    if (estadosFinales.includes(l.estado || "")) return false;
+    if (!l.fecha_contacto) return true;
     const fecha = new Date(l.fecha_contacto);
-    return fecha < hace7Dias && !["cerrado", "perdido"].includes(l.estado || "");
+    return fecha < hace7Dias;
   }).length;
 
   // Últimos 5 leads
@@ -136,19 +139,41 @@ export function DashboardView({ stock, leads, onReload }: Props) {
         </section>
 
         {/* Leads sin seguimiento */}
-        {leadsSinSeguimiento > 0 && (
-          <section className="panel dashboard-card warning-card">
-            <div className="dashboard-header">
-              <p className="eyebrow">Alerta</p>
-              <h3>Leads sin seguimiento</h3>
-            </div>
-            <div className="warning-content">
-              <p className="warning-number">{leadsSinSeguimiento}</p>
-              <p className="warning-text">lead{leadsSinSeguimiento !== 1 ? "s" : ""} sin contacto hace más de 7 días</p>
-              <p className="warning-hint">Considera hacer seguimiento próximamente</p>
-            </div>
-          </section>
-        )}
+        <section
+          className={`panel dashboard-card ${leadsSinSeguimiento > 0 ? "warning-card" : ""}`}
+          style={leadsSinSeguimiento > 0 ? { cursor: "pointer" } : undefined}
+          onClick={leadsSinSeguimiento > 0 && onNavigate ? () => onNavigate("reminders") : undefined}
+        >
+          <div className="dashboard-header">
+            <p className="eyebrow">{leadsSinSeguimiento > 0 ? "Alerta" : "Seguimiento"}</p>
+            <h3>Leads sin contactar</h3>
+          </div>
+          <div className="warning-content">
+            <p className="warning-number" style={leadsSinSeguimiento > 0 ? { color: "#e53e3e", fontSize: "2.5rem" } : undefined}>
+              {leadsSinSeguimiento}
+            </p>
+            {leadsSinSeguimiento > 0 ? (
+              <>
+                <p className="warning-text">
+                  lead{leadsSinSeguimiento !== 1 ? "s" : ""} sin contacto en mas de 7 dias
+                </p>
+                <button
+                  type="button"
+                  className="button"
+                  style={{ marginTop: "0.5rem", background: "#e53e3e", color: "#fff", border: "none" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate?.("reminders");
+                  }}
+                >
+                  Ver recordatorios
+                </button>
+              </>
+            ) : (
+              <p className="warning-text" style={{ color: "#38a169" }}>Todos los leads estan al dia</p>
+            )}
+          </div>
+        </section>
       </section>
 
       {/* Últimos Leads */}

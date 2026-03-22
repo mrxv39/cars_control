@@ -449,7 +449,7 @@ function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogou
       </aside>
       <section className="content">
         {currentView === "dashboard" && (
-          <DashboardView stock={appState.stock} leads={appState.leads} onReload={() => void loadState()} />
+          <DashboardView stock={appState.stock} leads={appState.leads} onReload={() => void loadState()} onNavigate={(view) => setCurrentView(view as ViewKey)} />
         )}
 
         {currentView === "stock" && !selectedVehicle && (
