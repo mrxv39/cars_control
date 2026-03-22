@@ -1,11 +1,11 @@
 import { supabase } from "./supabase";
 
 // Detect if running inside Tauri
-function isTauri(): boolean {
+export function isTauri(): boolean {
   return !!(window as any).__TAURI_INTERNALS__;
 }
 
-async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+export async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<T>(command, args);
 }
@@ -185,10 +185,22 @@ export async function getVehicle(id: number): Promise<Vehicle> {
   return data;
 }
 
-export async function createVehicle(companyId: number, name: string): Promise<Vehicle> {
+export async function createVehicle(companyId: number, fields: Partial<Vehicle> & { name: string }): Promise<Vehicle> {
   const { data, error } = await supabase
     .from("vehicles")
-    .insert({ company_id: companyId, name, estado: "disponible" })
+    .insert({
+      company_id: companyId,
+      name: fields.name,
+      estado: fields.estado || "disponible",
+      anio: fields.anio ?? null,
+      km: fields.km ?? null,
+      precio_compra: fields.precio_compra ?? null,
+      precio_venta: fields.precio_venta ?? null,
+      fuel: fields.fuel || "",
+      color: fields.color || "",
+      notes: fields.notes || "",
+      ad_url: fields.ad_url || "",
+    })
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -207,6 +219,26 @@ export async function updateVehicle(id: number, updates: Partial<Vehicle>): Prom
 }
 
 export async function deleteVehicle(id: number): Promise<void> {
+  // Remove photos from storage first
+  const { data: photos } = await supabase
+    .from("vehicle_photos")
+    .select("storage_path")
+    .eq("vehicle_id", id);
+  if (photos && photos.length > 0) {
+    await supabase.storage
+      .from("vehicle-photos")
+      .remove(photos.map((p) => p.storage_path));
+  }
+
+  // Unlink leads and sales that reference this vehicle (don't delete them)
+  await supabase.from("leads").update({ vehicle_id: null }).eq("vehicle_id", id);
+  await supabase.from("sales_records").update({ vehicle_id: null }).eq("vehicle_id", id);
+  await supabase.from("purchase_records").update({ vehicle_id: null }).eq("vehicle_id", id);
+  await supabase.from("clients").update({ vehicle_id: null }).eq("vehicle_id", id);
+
+  // vehicle_photos has ON DELETE CASCADE, but delete explicitly to be safe
+  await supabase.from("vehicle_photos").delete().eq("vehicle_id", id);
+
   const { error } = await supabase.from("vehicles").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }

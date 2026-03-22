@@ -23,6 +23,9 @@ from email.header import decode_header
 import re
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 from supabase import create_client
 
 SUPABASE_URL = 'https://hyydkyhvgcekvtkrnspf.supabase.co'
@@ -183,8 +186,26 @@ def main():
                 print(f"  SKIP: lead with phone {lead['phone']} already exists")
                 continue
 
+        # Try to match vehicle in database
+        vehicle_id = None
+        if lead['vehicle_interest']:
+            # Search by name containing the vehicle interest text
+            words = lead['vehicle_interest'].split()
+            # Try matching with brand + model (first two words usually)
+            query = sb.table('vehicles').select('id, name').eq('company_id', COMPANY_ID).eq('estado', 'disponible')
+            vehicles = query.execute()
+            if vehicles.data:
+                interest_lower = lead['vehicle_interest'].lower()
+                for v in vehicles.data:
+                    v_name_lower = v['name'].lower()
+                    # Check if brand and model from interest match the vehicle name
+                    if all(w.lower() in v_name_lower for w in words[:2]):
+                        vehicle_id = v['id']
+                        print(f"  MATCHED vehicle: {v['name']} (id={vehicle_id})")
+                        break
+
         # Create lead in Supabase
-        sb.table('leads').insert({
+        lead_data = {
             'company_id': COMPANY_ID,
             'name': lead['name'],
             'phone': lead['phone'],
@@ -194,7 +215,11 @@ def main():
             'estado': 'nuevo',
             'canal': 'coches.net',
             'fecha_contacto': datetime.now().isoformat(),
-        }).execute()
+        }
+        if vehicle_id:
+            lead_data['vehicle_id'] = vehicle_id
+
+        sb.table('leads').insert(lead_data).execute()
 
         print(f"  CREATED lead: {lead['name']}")
         created += 1

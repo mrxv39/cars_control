@@ -143,6 +143,15 @@ CREATE TABLE vehicle_photos (
 
 CREATE INDEX idx_photos_vehicle ON vehicle_photos(vehicle_id);
 
+CREATE TABLE feedback (
+    id BIGSERIAL PRIMARY KEY,
+    user_name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'mejora',
+    message TEXT NOT NULL,
+    page TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- =============================================
 -- Seed data: CodinaCars + Ricard user
 -- =============================================
@@ -192,3 +201,5 @@ CREATE POLICY "anon_all" ON sales_records FOR ALL USING (true) WITH CHECK (true)
 CREATE POLICY "anon_all" ON purchase_records FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon_all" ON lead_notes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon_all" ON vehicle_photos FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all" ON feedback FOR ALL USING (true) WITH CHECK (true);

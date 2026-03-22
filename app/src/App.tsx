@@ -33,6 +33,7 @@ import { StockModal as StockModalComponent } from "./components/StockModal";
 import { StockDetailView } from "./components/StockDetailView";
 import { LeadModal as LeadModalComponent } from "./components/LeadModal";
 import { ClientModal as ClientModalComponent } from "./components/ClientModal";
+import { FeedbackButton } from "./components/FeedbackButton";
 import "./App.css";
 
 const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
@@ -667,6 +668,15 @@ function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogou
         submitting={submitting}
         onSubmit={(event) => void submitClient(event)}
         onClose={closeAllModals}
+      />
+
+      <FeedbackButton
+        userName={session.user.full_name}
+        currentView={selectedVehicle ? "vehiculo: " + selectedVehicle.name : currentView}
+        stock={appState.stock}
+        leads={appState.leads}
+        clients={appState.clients}
+        selectedVehicle={selectedVehicle}
       />
     </main>
   );

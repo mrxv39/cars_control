@@ -1,5 +1,6 @@
 import React, { useState, useMemo, FormEvent } from "react";
 import * as api from "./lib/api";
+import { FeedbackButton } from "./components/FeedbackButton";
 import "./App.css";
 
 type ViewKey = "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers";
@@ -69,7 +70,7 @@ function WebApp() {
 // ============================================================
 // Header for public pages
 // ============================================================
-function CatalogHeader({ onLogin, onCatalog, isAdmin }: { onLogin: () => void; onCatalog: () => void; isAdmin: boolean }) {
+function CatalogHeader({ onLogin, onCatalog, isAdmin: _isAdmin }: { onLogin: () => void; onCatalog: () => void; isAdmin: boolean }) {
   return (
     <header className="catalog-topbar">
       <div className="catalog-topbar-inner">
@@ -406,6 +407,15 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}
         {currentView === "suppliers" && <SuppliersList records={purchaseRecords} />}
       </section>
+
+      <FeedbackButton
+        userName={session.user.full_name}
+        currentView={selectedVehicle ? "vehiculo: " + selectedVehicle.name : currentView}
+        stock={vehicles}
+        leads={leads}
+        clients={clients}
+        selectedVehicle={selectedVehicle}
+      />
     </main>
   );
 }
@@ -417,6 +427,13 @@ function StockList({ vehicles, allVehicles, companyId, onSelect, onReload }: { v
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newAnio, setNewAnio] = useState("");
+  const [newKm, setNewKm] = useState("");
+  const [newPrecioCompra, setNewPrecioCompra] = useState("");
+  const [newPrecioVenta, setNewPrecioVenta] = useState("");
+  const [newFuel, setNewFuel] = useState("");
+  const [newColor, setNewColor] = useState("");
+  const [newNotes, setNewNotes] = useState("");
   const [adding, setAdding] = useState(false);
 
   const filtered = useMemo(() => {
@@ -441,8 +458,17 @@ function StockList({ vehicles, allVehicles, companyId, onSelect, onReload }: { v
     if (!newName.trim()) return;
     setAdding(true);
     try {
-      await api.createVehicle(companyId, newName.trim());
-      setNewName("");
+      await api.createVehicle(companyId, {
+        name: newName.trim(),
+        anio: newAnio ? parseInt(newAnio) : null,
+        km: newKm ? parseInt(newKm) : null,
+        precio_compra: newPrecioCompra ? parseFloat(newPrecioCompra) : null,
+        precio_venta: newPrecioVenta ? parseFloat(newPrecioVenta) : null,
+        fuel: newFuel,
+        color: newColor,
+        notes: newNotes,
+      } as api.Vehicle);
+      setNewName(""); setNewAnio(""); setNewKm(""); setNewPrecioCompra(""); setNewPrecioVenta(""); setNewFuel(""); setNewColor(""); setNewNotes("");
       setShowAdd(false);
       await onReload();
     } finally {
@@ -483,7 +509,50 @@ function StockList({ vehicles, allVehicles, companyId, onSelect, onReload }: { v
                 <label className="field-label">Marca y modelo</label>
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Escribe para buscar coincidencias..." autoFocus />
               </div>
-              <button type="submit" className="button primary" disabled={adding}>{adding ? "Añadiendo..." : "Añadir"}</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
+              <div>
+                <label className="field-label">Año</label>
+                <input type="number" value={newAnio} onChange={(e) => setNewAnio(e.target.value)} placeholder="2024" />
+              </div>
+              <div>
+                <label className="field-label">Kilometros</label>
+                <input type="number" value={newKm} onChange={(e) => setNewKm(e.target.value)} placeholder="50000" />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
+              <div>
+                <label className="field-label">Precio compra</label>
+                <input type="number" step="100" value={newPrecioCompra} onChange={(e) => setNewPrecioCompra(e.target.value)} placeholder="8000" />
+              </div>
+              <div>
+                <label className="field-label">Precio venta</label>
+                <input type="number" step="100" value={newPrecioVenta} onChange={(e) => setNewPrecioVenta(e.target.value)} placeholder="10500" />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
+              <div>
+                <label className="field-label">Combustible</label>
+                <select value={newFuel} onChange={(e) => setNewFuel(e.target.value)}>
+                  <option value="">—</option>
+                  <option value="Gasolina">Gasolina</option>
+                  <option value="Diésel">Diésel</option>
+                  <option value="Híbrido">Híbrido</option>
+                  <option value="Eléctrico">Eléctrico</option>
+                  <option value="GLP">GLP</option>
+                </select>
+              </div>
+              <div>
+                <label className="field-label">Color</label>
+                <input value={newColor} onChange={(e) => setNewColor(e.target.value)} placeholder="Blanco" />
+              </div>
+            </div>
+            <div style={{ marginTop: "0.75rem" }}>
+              <label className="field-label">Notas</label>
+              <textarea value={newNotes} onChange={(e) => setNewNotes(e.target.value)} rows={2} placeholder="Observaciones..." />
+            </div>
+            <div style={{ marginTop: "0.75rem" }}>
+              <button type="submit" className="button primary" disabled={adding}>{adding ? "Añadiendo..." : "Añadir vehiculo"}</button>
             </div>
             {suggestions.length > 0 && (
               <div className="suggestions-list">
@@ -547,7 +616,7 @@ function VehicleThumb({ vehicleId }: { vehicleId: number }) {
 // ============================================================
 // Vehicle Detail
 // ============================================================
-function VehicleDetail({ vehicle, onBack, onReload }: { vehicle: api.Vehicle; onBack: () => void; onReload: () => void }) {
+function VehicleDetail({ vehicle, onBack, onReload: _onReload }: { vehicle: api.Vehicle; onBack: () => void; onReload: () => void }) {
   const [form, setForm] = useState(vehicle);
   const [photos, setPhotos] = useState<api.VehiclePhoto[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<number | null>(null);
@@ -717,7 +786,7 @@ function VehicleDetail({ vehicle, onBack, onReload }: { vehicle: api.Vehicle; on
 // ============================================================
 // Leads List
 // ============================================================
-function LeadsList({ leads, vehicles, companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
+function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload: _onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
   const [search, setSearch] = useState("");
   const filtered = useMemo(() => {
     if (!search.trim()) return leads;
@@ -770,7 +839,7 @@ function LeadsList({ leads, vehicles, companyId, onReload }: { leads: api.Lead[]
 // ============================================================
 // Clients List
 // ============================================================
-function ClientsList({ clients, companyId, onReload }: { clients: api.Client[]; companyId: number; onReload: () => void }) {
+function ClientsList({ clients, companyId: _companyId, onReload: _onReload }: { clients: api.Client[]; companyId: number; onReload: () => void }) {
   return (
     <>
       <header className="hero">
@@ -802,7 +871,7 @@ function ClientsList({ clients, companyId, onReload }: { clients: api.Client[]; 
 // ============================================================
 // Sales List
 // ============================================================
-function SalesList({ records, vehicles, clients, companyId, onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; onReload: () => void }) {
+function SalesList({ records, vehicles, clients, companyId: _companyId, onReload: _onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; onReload: () => void }) {
   const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
   const clientMap = new Map(clients.map((c) => [c.id, c]));
   const total = records.reduce((s, r) => s + r.price_final, 0);
@@ -847,7 +916,7 @@ function SalesList({ records, vehicles, clients, companyId, onReload }: { record
 // ============================================================
 // Purchases List
 // ============================================================
-function PurchasesList({ records, companyId, onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
+function PurchasesList({ records, companyId: _companyId, onReload: _onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
   const total = records.reduce((s, r) => s + r.purchase_price, 0);
   return (
     <>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Guia de Configuracion Gmail - CodinaCars</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #222;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 50px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #1a73e8;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: #1a73e8;
+            margin-bottom: 5px;
+        }
+        .header .subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+        .info-box {
+            background: #e8f0fe;
+            border-left: 4px solid #1a73e8;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-box strong { color: #1a73e8; }
+        .warning-box {
+            background: #fef7e0;
+            border-left: 4px solid #f9ab00;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .warning-box strong { color: #e37400; }
+        h2 {
+            font-size: 18px;
+            color: #1a73e8;
+            margin-top: 30px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        h3 {
+            font-size: 15px;
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
+        .step {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        .step-number {
+            display: inline-block;
+            background: #1a73e8;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        .step-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            display: inline;
+        }
+        ol, ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        li { margin-bottom: 8px; }
+        code {
+            background: #f1f3f4;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            color: #c7254e;
+        }
+        .code-block {
+            background: #263238;
+            color: #eeffff;
+            padding: 15px 20px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 2px solid #1a73e8;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        .checklist { list-style-type: none; margin-left: 0; }
+        .checklist li::before {
+            content: "\2610  ";
+            font-size: 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px 12px;
+            text-align: left;
+        }
+        th { background: #1a73e8; color: white; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        @media print {
+            body { padding: 20px 30px; }
+            .step { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Guia de Configuracion Gmail</h1>
+    <div class="subtitle">Acceso al correo codinacars@gmail.com para importacion automatica de leads</div>
+    <div class="subtitle" style="margin-top: 5px; font-size: 12px;">Documento para: <strong>Ricard</strong> | Fecha: Marzo 2026</div>
+</div>
+
+<div class="info-box">
+    <strong>Objetivo:</strong> Configurar el acceso al correo <code>codinacars@gmail.com</code> para que nuestra aplicacion pueda leer automaticamente los emails de coches.net y crear leads en el sistema de gestion.
+    <br><br>
+    <strong>Tiempo estimado:</strong> 10-15 minutos<br>
+    <strong>Requisitos:</strong> Acceso a la cuenta de Google de codinacars@gmail.com con permisos de administrador.
+</div>
+
+<h2>Resumen de pasos</h2>
+<table>
+    <tr><th>#</th><th>Paso</th><th>Donde</th></tr>
+    <tr><td>1</td><td>Activar la Verificacion en 2 pasos</td><td>Google Account</td></tr>
+    <tr><td>2</td><td>Crear una Contrasena de Aplicacion</td><td>Google Account</td></tr>
+    <tr><td>3</td><td>Activar IMAP en Gmail</td><td>Gmail Settings</td></tr>
+    <tr><td>4</td><td>Enviarnos la contrasena generada</td><td>-</td></tr>
+</table>
+
+<!-- PASO 1 -->
+<div class="step">
+    <span class="step-number">1</span>
+    <span class="step-title">Activar la Verificacion en 2 pasos (si no esta activa)</span>
+
+    <div class="warning-box" style="margin-top: 15px;">
+        <strong>Importante:</strong> Este paso es obligatorio. Google solo permite crear Contrasenas de Aplicacion si la cuenta tiene la verificacion en 2 pasos activada.
+    </div>
+
+    <ol>
+        <li>Abrir el navegador e ir a: <code>myaccount.google.com</code></li>
+        <li>Iniciar sesion con la cuenta <code>codinacars@gmail.com</code></li>
+        <li>En el menu lateral izquierdo, hacer clic en <strong>"Seguridad"</strong></li>
+        <li>Buscar la seccion <strong>"Como inicias sesion en Google"</strong></li>
+        <li>Hacer clic en <strong>"Verificacion en dos pasos"</strong></li>
+        <li>Seguir el asistente:
+            <ul>
+                <li>Google pedira confirmar el numero de telefono</li>
+                <li>Se enviara un codigo por SMS para verificar</li>
+                <li>Confirmar para activar</li>
+            </ul>
+        </li>
+    </ol>
+    <p style="margin-top: 10px; color: #666;"><em>Si ya tiene la verificacion en 2 pasos activa, pasar directamente al Paso 2.</em></p>
+</div>
+
+<!-- PASO 2 -->
+<div class="step">
+    <span class="step-number">2</span>
+    <span class="step-title">Crear una Contrasena de Aplicacion</span>
+
+    <div class="info-box" style="margin-top: 15px;">
+        <strong>Que es esto?</strong> Una contrasena de aplicacion es un codigo de 16 caracteres que permite a nuestra app acceder al correo de forma segura, sin usar la contrasena principal de la cuenta. Es como una llave especifica solo para leer emails.
+    </div>
+
+    <ol>
+        <li>Ir a: <code>myaccount.google.com/apppasswords</code>
+            <br><em>(o bien: Google Account &rarr; Seguridad &rarr; Verificacion en dos pasos &rarr; Contrasenas de aplicacion)</em>
+        </li>
+        <li>En el campo <strong>"Nombre de la aplicacion"</strong>, escribir: <code>Cars Control</code></li>
+        <li>Hacer clic en <strong>"Crear"</strong></li>
+        <li>Google mostrara una contrasena de 16 caracteres con este formato:
+            <div class="code-block">abcd efgh ijkl mnop</div>
+        </li>
+        <li><strong style="color: #d32f2f;">COPIAR Y GUARDAR esta contrasena.</strong> Solo se muestra una vez. Si se pierde, hay que crear una nueva.</li>
+    </ol>
+
+    <div class="warning-box" style="margin-top: 15px;">
+        <strong>Seguridad:</strong> Esta contrasena SOLO permite leer correos. No da acceso a cambiar la contrasena de la cuenta, ni a Google Drive, ni a ningun otro servicio. Si en algun momento se quiere revocar el acceso, simplemente se elimina desde la misma pagina de contrasenas de aplicacion.
+    </div>
+</div>
+
+<!-- PASO 3 -->
+<div class="step">
+    <span class="step-number">3</span>
+    <span class="step-title">Activar IMAP en Gmail</span>
+
+    <ol>
+        <li>Abrir Gmail en el navegador: <code>mail.google.com</code> (con la cuenta codinacars@gmail.com)</li>
+        <li>Hacer clic en el icono del engranaje (arriba a la derecha) &rarr; <strong>"Ver todos los ajustes"</strong></li>
+        <li>Ir a la pestana <strong>"Reenvio y correo POP/IMAP"</strong></li>
+        <li>En la seccion <strong>"Acceso IMAP"</strong>, seleccionar: <strong>"Habilitar IMAP"</strong></li>
+        <li>Hacer clic en <strong>"Guardar cambios"</strong> (boton al final de la pagina)</li>
+    </ol>
+</div>
+
+<!-- PASO 4 -->
+<div class="step">
+    <span class="step-number">4</span>
+    <span class="step-title">Enviarnos la contrasena generada</span>
+
+    <ol>
+        <li>Enviar la contrasena de aplicacion de 16 caracteres (del Paso 2) de forma segura:
+            <ul>
+                <li><strong>Opcion A:</strong> Por WhatsApp o mensaje directo</li>
+                <li><strong>Opcion B:</strong> Por llamada telefonica</li>
+            </ul>
+        </li>
+        <li><strong>No enviar la contrasena por email.</strong></li>
+    </ol>
+
+    <div class="info-box" style="margin-top: 15px;">
+        <strong>Que haremos nosotros con esta contrasena?</strong><br>
+        La configuraremos como variable de entorno segura en el servidor. La aplicacion la usara unicamente para:
+        <ul style="margin-top: 5px;">
+            <li>Leer los emails de notificaciones de coches.net</li>
+            <li>Marcarlos como leidos una vez procesados</li>
+            <li>Crear automaticamente un lead en el sistema con los datos del contacto</li>
+        </ul>
+        No se envian emails, no se borran, no se accede a ningun otro dato.
+    </div>
+</div>
+
+<h2>Checklist de verificacion</h2>
+<ul class="checklist">
+    <li>Verificacion en 2 pasos activada en la cuenta Google</li>
+    <li>Contrasena de aplicacion creada (16 caracteres)</li>
+    <li>IMAP habilitado en Gmail</li>
+    <li>Contrasena enviada de forma segura al equipo tecnico</li>
+</ul>
+
+<h2>Preguntas frecuentes</h2>
+
+<h3>Es seguro?</h3>
+<p>Si. La contrasena de aplicacion solo da acceso a leer correos via IMAP. No permite cambiar la contrasena de la cuenta, acceder a Drive, Calendar ni ningun otro servicio de Google. Se puede revocar en cualquier momento desde la configuracion de la cuenta.</p>
+
+<h3>Que pasa si quiero revocar el acceso?</h3>
+<p>Ir a <code>myaccount.google.com/apppasswords</code> y eliminar la contrasena "Cars Control". El acceso se corta inmediatamente.</p>
+
+<h3>Afecta al uso normal del correo?</h3>
+<p>No. El correo sigue funcionando exactamente igual. La unica diferencia es que los emails de coches.net apareceran como "leidos" automaticamente despues de ser procesados.</p>
+
+<h3>No me aparece la opcion de Contrasenas de aplicacion</h3>
+<p>Verificar que la Verificacion en 2 pasos esta correctamente activada (Paso 1). La opcion de contrasenas de aplicacion solo aparece cuando la verificacion en 2 pasos esta activa.</p>
+
+<div class="footer">
+    <strong>Cars Control</strong> - CodinaCars<br>
+    Documento generado en Marzo 2026<br>
+    Para dudas contactar al equipo de desarrollo
+</div>
+
+</body>
+</html>

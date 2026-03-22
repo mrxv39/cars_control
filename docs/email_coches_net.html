@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Borrador Email - Consulta Coches.net</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #222;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 50px;
+            line-height: 1.7;
+            font-size: 14px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #ff6600;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 { font-size: 22px; color: #ff6600; }
+        .header .subtitle { font-size: 13px; color: #666; margin-top: 5px; }
+        .email-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .email-header {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .email-header div { margin-bottom: 5px; }
+        .email-header .label { font-weight: bold; color: #555; display: inline-block; width: 80px; }
+        .email-body {
+            padding: 25px 20px;
+            background: white;
+        }
+        .email-body p { margin-bottom: 15px; }
+        .note {
+            background: #fff3e0;
+            border-left: 4px solid #ff6600;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .note strong { color: #e65100; }
+        .alt-version {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .alt-version h3 { color: #333; margin-bottom: 10px; font-size: 15px; }
+        .footer {
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 2px solid #ff6600;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        @media print {
+            body { padding: 20px 30px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Borrador de Email para Coches.net</h1>
+    <div class="subtitle">Consulta sobre integracion y opciones de interaccion con la plataforma</div>
+</div>
+
+<div class="note">
+    <strong>Instrucciones:</strong> Este es un borrador para enviar a vuestro contacto en coches.net. Revisar y adaptar el tono segun la relacion que tengais con la persona. He preparado dos versiones: una mas formal y una mas directa.
+</div>
+
+<!-- VERSION FORMAL -->
+<h2 style="color: #ff6600; margin-top: 30px;">Version 1: Formal</h2>
+
+<div class="email-container">
+    <div class="email-header">
+        <div><span class="label">De:</span> codinacars@gmail.com</div>
+        <div><span class="label">Para:</span> [contacto en coches.net]</div>
+        <div><span class="label">Asunto:</span> Consulta sobre opciones de integracion y gestion de leads - CodinaCars</div>
+    </div>
+    <div class="email-body">
+        <p>Hola [nombre del contacto],</p>
+
+        <p>Soy Ricard de CodinaCars. Espero que estes bien.</p>
+
+        <p>Te escribo porque estamos mejorando nuestro sistema interno de gestion y nos gustaria optimizar la forma en que gestionamos los leads que recibimos a traves de coches.net.</p>
+
+        <p>Actualmente recibimos las notificaciones por email y las procesamos manualmente, pero nos gustaria saber si coches.net ofrece alguna de estas opciones:</p>
+
+        <p><strong>1. API o feed de datos:</strong> Disponeis de alguna API, webhook o feed que permita a los concesionarios recibir los leads de forma estructurada (JSON, XML...) en lugar de por email? Esto nos permitiria integrarlos directamente en nuestro CRM interno.</p>
+
+        <p><strong>2. Integracion con CRM:</strong> Teneis algun programa de integracion con sistemas de gestion de concesionarios? He visto que algunos portales ofrecen conectores para DMS o CRM. Existe algo similar en coches.net?</p>
+
+        <p><strong>3. Exportacion de datos:</strong> Existe alguna opcion dentro del panel profesional para exportar los leads recibidos (por ejemplo en CSV o Excel)?</p>
+
+        <p><strong>4. Respuesta automatizada:</strong> Es posible configurar respuestas automaticas a los leads dentro de la plataforma? O hay alguna forma aprobada de responder de manera programatica sin afectar a nuestra puntuacion o posicionamiento?</p>
+
+        <p>Nuestro objetivo es mejorar la velocidad de respuesta a los clientes potenciales y no perder ningun lead. Queremos hacerlo de forma que sea compatible con las politicas de coches.net y que no afecte negativamente a nuestro perfil en la plataforma.</p>
+
+        <p>Cualquier informacion o documentacion que puedas compartir nos seria de gran ayuda.</p>
+
+        <p>Muchas gracias de antemano.</p>
+
+        <p>
+            Un saludo,<br>
+            <strong>Ricard</strong><br>
+            CodinaCars<br>
+            codinacars@gmail.com
+        </p>
+    </div>
+</div>
+
+<!-- VERSION DIRECTA -->
+<h2 style="color: #ff6600; margin-top: 30px;">Version 2: Mas directa / informal</h2>
+
+<div class="email-container">
+    <div class="email-header">
+        <div><span class="label">De:</span> codinacars@gmail.com</div>
+        <div><span class="label">Para:</span> [contacto en coches.net]</div>
+        <div><span class="label">Asunto:</span> Opciones de integracion para gestionar leads - CodinaCars</div>
+    </div>
+    <div class="email-body">
+        <p>Hola [nombre],</p>
+
+        <p>Que tal? Soy Ricard de CodinaCars.</p>
+
+        <p>Te queria preguntar algo: estamos montando un sistema para gestionar mejor los leads que nos llegan por coches.net y queria saber que opciones tenemos que sean "oficiales" y no nos causen ningun problema.</p>
+
+        <p>En concreto me interesa saber:</p>
+
+        <p>
+            - Teneis alguna <strong>API o webhook</strong> para recibir leads directamente en nuestro sistema en vez de por email?<br>
+            - Hay alguna forma de <strong>responder a los leads de forma automatica</strong> (tipo auto-reply rapido) sin que nos penalice en puntuacion?<br>
+            - Dentro del panel pro, se pueden <strong>exportar los leads</strong> de alguna forma?<br>
+            - Teneis algun tipo de <strong>integracion o conector</strong> que nos pueda servir?
+        </p>
+
+        <p>La idea es responder mas rapido a los clientes y tener todo centralizado. Queremos hacerlo bien y respetando las normas de la plataforma, por eso pregunto primero.</p>
+
+        <p>Si hay alguna documentacion o alguien del equipo tecnico con quien hablar, perfecto tambien.</p>
+
+        <p>Gracias!</p>
+
+        <p>
+            Ricard<br>
+            CodinaCars
+        </p>
+    </div>
+</div>
+
+<!-- PUNTOS CLAVE -->
+<h2 style="color: #ff6600; margin-top: 30px;">Puntos clave a tener en cuenta</h2>
+
+<div class="alt-version">
+    <h3>Que buscamos saber</h3>
+    <ul style="margin-left: 20px;">
+        <li><strong>API de leads:</strong> Si tienen una API REST o webhooks para recibir leads en tiempo real. Muchos portales como AutoScout24 o Milanuncios PRO ofrecen esto para concesionarios.</li>
+        <li><strong>Respuesta automatica:</strong> Si podemos enviar un mensaje automatico al lead cuando llega (ej: "Gracias por tu interes, te contactamos en breve") sin que nos penalice.</li>
+        <li><strong>Scraping / acceso web:</strong> Evitar preguntar directamente sobre scraping, ya que esto suele estar prohibido en los ToS. Preguntar por las vias oficiales.</li>
+        <li><strong>Puntuacion:</strong> Es importante saber como afecta la velocidad de respuesta a nuestro ranking en la plataforma, para justificar la automatizacion.</li>
+    </ul>
+</div>
+
+<div class="alt-version">
+    <h3>Posibles respuestas y como actuar</h3>
+    <ul style="margin-left: 20px;">
+        <li><strong>Si tienen API:</strong> Pedirles documentacion y credenciales. Podriamos reemplazar el sistema IMAP por integracion directa.</li>
+        <li><strong>Si tienen integracion CRM:</strong> Evaluar si podemos conectar nuestro sistema como si fuera un CRM partner.</li>
+        <li><strong>Si no tienen nada:</strong> Nuestro sistema actual (lectura de emails via IMAP) es la mejor opcion. No viola ninguna politica ya que simplemente leemos nuestro propio correo.</li>
+        <li><strong>Si ofrecen un plan superior:</strong> Evaluar coste/beneficio de un plan con mas funcionalidades de integracion.</li>
+    </ul>
+</div>
+
+<div class="note">
+    <strong>Nota sobre nuestra solucion actual:</strong> Leer nuestro propio correo via IMAP para procesar notificaciones NO viola ninguna politica de coches.net. Estamos leyendo emails que nos envian a nuestra cuenta, no accedemos a su plataforma de forma no autorizada. Es equivalente a usar cualquier cliente de correo. Esto es importante tenerlo claro por si preguntan que estamos haciendo actualmente.
+</div>
+
+<div class="footer">
+    <strong>Cars Control</strong> - CodinaCars<br>
+    Documento generado en Marzo 2026
+</div>
+
+</body>
+</html>

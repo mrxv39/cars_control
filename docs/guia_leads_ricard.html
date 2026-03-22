@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guía - Activar importación automática de leads</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7fa;
+      color: #1a1a2e;
+      line-height: 1.7;
+      padding: 24px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white;
+      padding: 40px 32px;
+      border-radius: 16px;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+    header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+    header p {
+      opacity: 0.85;
+      font-size: 1rem;
+    }
+    .time-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+
+    .part {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .part-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    .part-number {
+      background: #1a1a2e;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .part-header h2 {
+      font-size: 1.3rem;
+      color: #1a1a2e;
+    }
+    .part-header .part-time {
+      margin-left: auto;
+      background: #e8f4e8;
+      color: #2d6a2d;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .step {
+      margin-bottom: 28px;
+    }
+    .step h3 {
+      color: #16213e;
+      font-size: 1.05rem;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .step h3 .step-icon {
+      font-size: 1.2rem;
+    }
+    .step ol, .step ul {
+      padding-left: 24px;
+    }
+    .step li {
+      margin-bottom: 8px;
+    }
+
+    .highlight {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 12px 0;
+      font-size: 0.95rem;
+    }
+    .highlight strong {
+      color: #856404;
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 12px 0;
+      font-size: 0.95rem;
+    }
+
+    .success-box {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 12px 0;
+      font-size: 0.95rem;
+    }
+
+    .danger-box {
+      background: #fce4ec;
+      border-left: 4px solid #e53935;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 12px 0;
+      font-size: 0.95rem;
+    }
+
+    code {
+      background: #f0f0f0;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.9em;
+      color: #c7254e;
+    }
+    pre {
+      background: #1a1a2e;
+      color: #a8d8a8;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+    }
+
+    .secret-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+    }
+    .secret-table th {
+      background: #1a1a2e;
+      color: white;
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+    .secret-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid #eee;
+      font-size: 0.9rem;
+    }
+    .secret-table tr:nth-child(even) td {
+      background: #f9f9f9;
+    }
+
+    .btn-link {
+      display: inline-block;
+      background: #1a73e8;
+      color: white;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      margin: 8px 4px 8px 0;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .btn-link:hover {
+      background: #1557b0;
+    }
+
+    .faq {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .faq h2 {
+      margin-bottom: 20px;
+      font-size: 1.3rem;
+    }
+    .faq-item {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .faq-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .faq-item strong {
+      color: #1a1a2e;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .faq-item p {
+      color: #555;
+      font-size: 0.95rem;
+    }
+
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+    .checklist li {
+      padding: 8px 0 8px 32px;
+      position: relative;
+    }
+    .checklist li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+    }
+
+    footer {
+      text-align: center;
+      color: #999;
+      font-size: 0.85rem;
+      padding: 20px 0;
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .part, .faq { box-shadow: none; border: 1px solid #ddd; }
+      .btn-link { border: 1px solid #1a73e8; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <h1>Activar importaci&oacute;n autom&aacute;tica de leads</h1>
+      <p>Gu&iacute;a paso a paso para configurar la sincronizaci&oacute;n de leads desde coches.net</p>
+      <div class="time-badge">&#128337; Tiempo estimado: 15-20 minutos &middot; Solo hay que hacerlo una vez</div>
+    </header>
+
+    <div class="info-box">
+      <strong>&#127919; &iquest;Qu&eacute; vamos a conseguir?</strong><br>
+      Que los leads de coches.net lleguen autom&aacute;ticamente a la app cada 5 minutos,
+      sin necesidad de tener ning&uacute;n ordenador encendido. Todo funciona en el servidor.
+    </div>
+
+    <!-- ═══════════════ PARTE 1 ═══════════════ -->
+    <div class="part">
+      <div class="part-header">
+        <div class="part-number">1</div>
+        <h2>Crear las credenciales de Google</h2>
+        <span class="part-time">~10 min</span>
+      </div>
+
+      <p style="margin-bottom:20px; color:#555;">
+        Necesitamos que Google nos deje leer los emails de codinacars@gmail.com
+        desde el servidor. Para eso hay que crear unas &ldquo;llaves&rdquo; en Google Cloud.
+      </p>
+
+      <!-- Paso 1.1 -->
+      <div class="step">
+        <h3><span class="step-icon">&#128273;</span> Paso 1.1 &mdash; Entrar en Google Cloud Console</h3>
+        <ol>
+          <li>Abre el navegador y haz clic en este bot&oacute;n:
+            <br><a class="btn-link" href="https://console.cloud.google.com/" target="_blank">Abrir Google Cloud Console</a>
+          </li>
+          <li>Inicia sesi&oacute;n con la cuenta <code>codinacars@gmail.com</code></li>
+          <li>Si es la primera vez, acepta los t&eacute;rminos de servicio</li>
+        </ol>
+      </div>
+
+      <!-- Paso 1.2 -->
+      <div class="step">
+        <h3><span class="step-icon">&#128193;</span> Paso 1.2 &mdash; Crear un proyecto</h3>
+        <ol>
+          <li>Arriba a la izquierda, al lado del logo de Google Cloud, ver&aacute;s un desplegable con el nombre del proyecto (o &ldquo;Select a project&rdquo;)</li>
+          <li>Haz clic ah&iacute; y luego en <strong>&ldquo;New Project&rdquo;</strong> (arriba a la derecha del popup)</li>
+          <li>Ponle de nombre: <code>CodinaCars</code></li>
+          <li>Haz clic en <strong>&ldquo;Create&rdquo;</strong></li>
+          <li>Espera unos segundos y aseg&uacute;rate de que el proyecto &ldquo;CodinaCars&rdquo; est&aacute; seleccionado en el desplegable de arriba</li>
+        </ol>
+      </div>
+
+      <!-- Paso 1.3 -->
+      <div class="step">
+        <h3><span class="step-icon">&#9889;</span> Paso 1.3 &mdash; Activar la Gmail API</h3>
+        <ol>
+          <li>En el men&uacute; de la izquierda, ve a <strong>&ldquo;APIs &amp; Services&rdquo;</strong> &gt; <strong>&ldquo;Library&rdquo;</strong></li>
+          <li>En el buscador, escribe: <code>Gmail API</code></li>
+          <li>Haz clic en el resultado <strong>&ldquo;Gmail API&rdquo;</strong> (el de Google)</li>
+          <li>Haz clic en el bot&oacute;n azul <strong>&ldquo;ENABLE&rdquo;</strong></li>
+          <li>Espera a que se active</li>
+        </ol>
+      </div>
+
+      <!-- Paso 1.4 -->
+      <div class="step">
+        <h3><span class="step-icon">&#128196;</span> Paso 1.4 &mdash; Configurar la pantalla de consentimiento</h3>
+        <p style="margin-bottom:10px; color:#666;">Antes de crear credenciales, Google pide configurar una pantalla de consentimiento:</p>
+        <ol>
+          <li>En el men&uacute; de la izquierda, ve a <strong>&ldquo;APIs &amp; Services&rdquo;</strong> &gt; <strong>&ldquo;OAuth consent screen&rdquo;</strong></li>
+          <li>Selecciona <strong>&ldquo;External&rdquo;</strong> y haz clic en <strong>&ldquo;Create&rdquo;</strong></li>
+          <li>Rellena solo lo obligatorio:
+            <ul>
+              <li><strong>App name</strong>: <code>CodinaCars Leads</code></li>
+              <li><strong>User support email</strong>: <code>codinacars@gmail.com</code></li>
+              <li><strong>Developer contact email</strong> (abajo del todo): <code>codinacars@gmail.com</code></li>
+            </ul>
+          </li>
+          <li>Haz clic en <strong>&ldquo;Save and Continue&rdquo;</strong></li>
+          <li>En la pantalla de &ldquo;Scopes&rdquo;: haz clic en <strong>&ldquo;Save and Continue&rdquo;</strong> (no toques nada)</li>
+          <li>En la pantalla de &ldquo;Test users&rdquo;:
+            <ul>
+              <li>Haz clic en <strong>&ldquo;+ Add Users&rdquo;</strong></li>
+              <li>Escribe: <code>codinacars@gmail.com</code></li>
+              <li>Haz clic en <strong>&ldquo;Add&rdquo;</strong></li>
+              <li>Haz clic en <strong>&ldquo;Save and Continue&rdquo;</strong></li>
+            </ul>
+          </li>
+          <li>Haz clic en <strong>&ldquo;Back to Dashboard&rdquo;</strong></li>
+        </ol>
+      </div>
+
+      <!-- Paso 1.5 -->
+      <div class="step">
+        <h3><span class="step-icon">&#128272;</span> Paso 1.5 &mdash; Crear las credenciales OAuth</h3>
+        <ol>
+          <li>En el men&uacute; de la izquierda, ve a <strong>&ldquo;APIs &amp; Services&rdquo;</strong> &gt; <strong>&ldquo;Credentials&rdquo;</strong></li>
+          <li>Arriba, haz clic en <strong>&ldquo;+ CREATE CREDENTIALS&rdquo;</strong> &gt; <strong>&ldquo;OAuth client ID&rdquo;</strong></li>
+          <li>En &ldquo;Application type&rdquo;, selecciona: <strong>Desktop app</strong></li>
+          <li>En &ldquo;Name&rdquo;, pon: <code>CodinaCars Leads Sync</code></li>
+          <li>Haz clic en <strong>&ldquo;Create&rdquo;</strong></li>
+          <li>Te aparecer&aacute; un popup con dos datos importantes:</li>
+        </ol>
+
+        <div class="danger-box">
+          <strong>&#9888;&#65039; IMPORTANTE &mdash; Apunta estos dos valores!</strong><br>
+          <pre><code>Client ID:     xxxxxxxx.apps.googleusercontent.com
+Client Secret: GOCSPx-xxxxxxxxxxxxxxxx</code></pre>
+          Los necesitar&aacute;s en los siguientes pasos. Tambi&eacute;n puedes hacer clic en &ldquo;Download JSON&rdquo; para guardarlos.
+        </div>
+
+        <ol start="7">
+          <li>Haz clic en <strong>&ldquo;OK&rdquo;</strong></li>
+        </ol>
+      </div>
+
+      <div class="success-box">
+        <strong>&#9989; Parte 1 completada!</strong> Ya tienes el Client ID y el Client Secret.
+      </div>
+    </div>
+
+    <!-- ═══════════════ PARTE 2 ═══════════════ -->
+    <div class="part">
+      <div class="part-header">
+        <div class="part-number">2</div>
+        <h2>Obtener el Refresh Token</h2>
+        <span class="part-time">~5 min</span>
+      </div>
+
+      <p style="margin-bottom:20px; color:#555;">
+        Ahora necesitamos un &ldquo;token&rdquo; que permita acceder al email de forma permanente.
+      </p>
+
+      <!-- Paso 2.1 -->
+      <div class="step">
+        <h3><span class="step-icon">&#127918;</span> Paso 2.1 &mdash; Abrir el OAuth Playground</h3>
+        <ol>
+          <li>Haz clic en este bot&oacute;n:
+            <br><a class="btn-link" href="https://developers.google.com/oauthplayground/" target="_blank">Abrir OAuth Playground</a>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Paso 2.2 -->
+      <div class="step">
+        <h3><span class="step-icon">&#9881;&#65039;</span> Paso 2.2 &mdash; Configurar tus credenciales</h3>
+        <ol>
+          <li>Arriba a la derecha de la p&aacute;gina, haz clic en el icono de <strong>engranaje</strong> (&#9881;&#65039;)</li>
+          <li>En el panel que se abre:
+            <ul>
+              <li>Marca la casilla <strong>&ldquo;Use your own OAuth credentials&rdquo;</strong></li>
+              <li>En <strong>&ldquo;OAuth Client ID&rdquo;</strong>: pega el Client ID del paso 1.5</li>
+              <li>En <strong>&ldquo;OAuth Client secret&rdquo;</strong>: pega el Client Secret del paso 1.5</li>
+            </ul>
+          </li>
+          <li>Cierra el panel del engranaje</li>
+        </ol>
+      </div>
+
+      <!-- Paso 2.3 -->
+      <div class="step">
+        <h3><span class="step-icon">&#128274;</span> Paso 2.3 &mdash; Autorizar el acceso a Gmail</h3>
+        <ol>
+          <li>En la columna de la izquierda, busca y despliega <strong>&ldquo;Gmail API v1&rdquo;</strong></li>
+          <li>Marca la casilla: <code>https://www.googleapis.com/auth/gmail.modify</code></li>
+          <li>Haz clic en el bot&oacute;n azul <strong>&ldquo;Authorize APIs&rdquo;</strong></li>
+          <li>Se abrir&aacute; una ventana de Google para iniciar sesi&oacute;n</li>
+          <li>Inicia sesi&oacute;n con <code>codinacars@gmail.com</code></li>
+          <li>Te dir&aacute; que la app no est&aacute; verificada:
+            <br>Haz clic en <strong>&ldquo;Continue&rdquo;</strong> (o &ldquo;Avanzado&rdquo; &gt; &ldquo;Ir a CodinaCars Leads&rdquo;)
+          </li>
+          <li>Concede los permisos y haz clic en <strong>&ldquo;Continue&rdquo;</strong></li>
+          <li>Te redirigir&aacute; de vuelta al OAuth Playground</li>
+        </ol>
+      </div>
+
+      <!-- Paso 2.4 -->
+      <div class="step">
+        <h3><span class="step-icon">&#127381;</span> Paso 2.4 &mdash; Obtener el Refresh Token</h3>
+        <ol>
+          <li>Ahora ver&aacute;s que est&aacute;s en el <strong>&ldquo;Step 2&rdquo;</strong> del Playground</li>
+          <li>Haz clic en el bot&oacute;n <strong>&ldquo;Exchange authorization code for tokens&rdquo;</strong></li>
+          <li>En el panel de la derecha aparecer&aacute; un JSON. Busca esta l&iacute;nea:</li>
+        </ol>
+        <pre><code>"refresh_token": "1//0xxxxxxxxxxxxxxxxxx..."</code></pre>
+
+        <div class="danger-box">
+          <strong>&#9888;&#65039; IMPORTANTE &mdash; Copia el refresh_token!</strong><br>
+          Copia el valor completo del refresh_token (sin las comillas).
+          Gu&aacute;rdalo en un sitio seguro.
+        </div>
+      </div>
+
+      <div class="success-box">
+        <strong>&#9989; Parte 2 completada!</strong> Ya tienes los 3 valores que necesitas:
+        Client ID, Client Secret y Refresh Token.
+      </div>
+    </div>
+
+    <!-- ═══════════════ PARTE 3 ═══════════════ -->
+    <div class="part">
+      <div class="part-header">
+        <div class="part-number">3</div>
+        <h2>Configurar Supabase</h2>
+        <span class="part-time">~5 min</span>
+      </div>
+
+      <!-- Paso 3.1 -->
+      <div class="step">
+        <h3><span class="step-icon">&#128640;</span> Paso 3.1 &mdash; Abrir el Dashboard de Supabase</h3>
+        <ol>
+          <li>Haz clic en este bot&oacute;n:
+            <br><a class="btn-link" href="https://supabase.com/dashboard" target="_blank">Abrir Supabase Dashboard</a>
+          </li>
+          <li>Inicia sesi&oacute;n y entra en el proyecto de <strong>CodinaCars</strong></li>
+        </ol>
+      </div>
+
+      <!-- Paso 3.2 -->
+      <div class="step">
+        <h3><span class="step-icon">&#128477;&#65039;</span> Paso 3.2 &mdash; Guardar los secrets</h3>
+        <ol>
+          <li>En el men&uacute; de la izquierda, busca <strong>&ldquo;Edge Functions&rdquo;</strong></li>
+          <li>Haz clic en <strong>&ldquo;Manage Secrets&rdquo;</strong></li>
+          <li>Haz clic en <strong>&ldquo;Add new secret&rdquo;</strong> y crea estos 3 secrets <strong>uno por uno</strong>:</li>
+        </ol>
+
+        <table class="secret-table">
+          <thead>
+            <tr>
+              <th>Name (copiar exacto)</th>
+              <th>Value (pegar el tuyo)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>GMAIL_CLIENT_ID</code></td>
+              <td>El Client ID del paso 1.5</td>
+            </tr>
+            <tr>
+              <td><code>GMAIL_CLIENT_SECRET</code></td>
+              <td>El Client Secret del paso 1.5</td>
+            </tr>
+            <tr>
+              <td><code>GMAIL_REFRESH_TOKEN</code></td>
+              <td>El Refresh Token del paso 2.4</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="highlight">
+          <strong>&#128161; Tip:</strong> Los nombres de los secrets tienen que ser exactamente como aparecen
+          en la tabla (todo may&uacute;sculas, con guiones bajos). Copia y pega los nombres para evitar errores.
+        </div>
+      </div>
+
+      <!-- Paso 3.3 -->
+      <div class="step">
+        <h3><span class="step-icon">&#128172;</span> Paso 3.3 &mdash; Avisarme</h3>
+        <div class="success-box">
+          <strong>&#127881; Ya has terminado tu parte!</strong><br><br>
+          Una vez tengas los 3 secrets guardados en Supabase, env&iacute;ame un mensaje
+          confirm&aacute;ndomelo y yo me encargo del resto:
+          <ul style="margin-top:8px;">
+            <li>Desplegar la funci&oacute;n en el servidor</li>
+            <li>Configurar que se ejecute cada 5 minutos</li>
+            <li>Verificar que funciona correctamente</li>
+            <li>Eliminar la tarea del ordenador local</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ CHECKLIST ═══════════════ -->
+    <div class="part">
+      <h2 style="margin-bottom:16px;">&#9745;&#65039; Checklist r&aacute;pido</h2>
+      <p style="color:#666; margin-bottom:12px;">Marca cada paso cuando lo completes:</p>
+      <ul class="checklist">
+        <li>Proyecto &ldquo;CodinaCars&rdquo; creado en Google Cloud</li>
+        <li>Gmail API activada</li>
+        <li>Pantalla de consentimiento configurada</li>
+        <li>Credenciales OAuth creadas (Client ID + Client Secret apuntados)</li>
+        <li>Refresh Token obtenido del OAuth Playground</li>
+        <li>GMAIL_CLIENT_ID guardado en Supabase</li>
+        <li>GMAIL_CLIENT_SECRET guardado en Supabase</li>
+        <li>GMAIL_REFRESH_TOKEN guardado en Supabase</li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════ FAQ ═══════════════ -->
+    <div class="faq">
+      <h2>&#10067; Preguntas frecuentes</h2>
+
+      <div class="faq-item">
+        <strong>&iquest;Esto cuesta dinero?</strong>
+        <p>No. Tanto Google Cloud (Gmail API) como Supabase tienen un tier gratuito m&aacute;s que suficiente para este uso.</p>
+      </div>
+
+      <div class="faq-item">
+        <strong>&iquest;El refresh token caduca?</strong>
+        <p>No caduca mientras la app est&eacute; en modo &ldquo;Testing&rdquo; y se use al menos cada 6 meses.
+        Si alg&uacute;n d&iacute;a deja de funcionar, solo hay que repetir la Parte 2 para obtener uno nuevo.</p>
+      </div>
+
+      <div class="faq-item">
+        <strong>&iquest;Y si cambio la contrase&ntilde;a de Gmail?</strong>
+        <p>El refresh token seguir&aacute; funcionando. Solo se invalida si revocas el acceso manualmente desde la cuenta de Google.</p>
+      </div>
+
+      <div class="faq-item">
+        <strong>&iquest;Puedo ver si est&aacute; funcionando?</strong>
+        <p>S&iacute;. En el Dashboard de Supabase &gt; Edge Functions &gt; sync-leads puedes ver los logs.
+        Tambi&eacute;n ver&aacute;s los leads nuevos apareciendo en la app autom&aacute;ticamente.</p>
+      </div>
+    </div>
+
+    <footer>
+      CodinaCars &middot; Gu&iacute;a generada el 22 de marzo de 2026
+    </footer>
+
+  </div>
+</body>
+</html>
