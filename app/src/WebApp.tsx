@@ -1,9 +1,10 @@
 import React, { useState, useMemo, FormEvent } from "react";
 import * as api from "./lib/api";
+import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
 import "./App.css";
 
-type ViewKey = "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers";
+type ViewKey = "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision";
 
 function WebApp() {
   const [page, setPage] = useState<"catalog" | "login" | "admin">(() => {
@@ -335,6 +336,7 @@ const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
   { key: "suppliers", label: "Proveedores" },
   { key: "leads", label: "Leads" },
   { key: "clients", label: "Clientes" },
+  { key: "revision", label: "Revision" },
 ];
 
 function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; onLogout: () => void }) {
@@ -419,7 +421,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
       </aside>
       <section className="content">
         {currentView === "stock" && !selectedVehicle && (
-          <StockList vehicles={vehicles} allVehicles={allVehicles} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
+          <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
         )}
         {currentView === "stock" && selectedVehicle && (
           <VehicleDetail vehicle={selectedVehicle} suppliers={suppliers} leads={leads} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
@@ -429,6 +431,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
         {currentView === "sales" && <SalesList records={salesRecords} vehicles={vehicles} clients={clients} companyId={companyId} onReload={loadAll} />}
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}
         {currentView === "suppliers" && <SuppliersList suppliers={suppliers} companyId={companyId} onReload={loadAll} />}
+        {currentView === "revision" && <RevisionSheet vehicles={allVehicles} companyId={companyId} />}
       </section>
 
       <FeedbackButton
@@ -446,7 +449,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
 // ============================================================
 // Stock List
 // ============================================================
-function StockList({ vehicles, allVehicles, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
+function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
@@ -460,13 +463,34 @@ function StockList({ vehicles, allVehicles, companyId, onSelect, onReload }: { v
   const [adding, setAdding] = useState(false);
 
   const filtered = useMemo(() => {
+    let list = vehicles;
     const q = search.toLowerCase().trim();
-    if (!q) return vehicles;
-    return vehicles.filter((v) =>
-      [v.name, v.estado, v.fuel, String(v.anio || ""), String(v.precio_venta || "")]
-        .some((field) => field.toLowerCase().includes(q))
-    );
-  }, [vehicles, search]);
+    if (q) {
+      list = list.filter((v) =>
+        [v.name, v.estado, v.fuel, String(v.anio || ""), String(v.precio_venta || "")]
+          .some((field) => field.toLowerCase().includes(q))
+      );
+    }
+    // Sort: 1) leads sin respuesta, 2) más leads, 3) más antiguos
+    const unanswered = new Map<number, number>();
+    const totalLeads = new Map<number, number>();
+    for (const l of leads) {
+      if (!l.vehicle_id) continue;
+      totalLeads.set(l.vehicle_id, (totalLeads.get(l.vehicle_id) || 0) + 1);
+      if (l.estado === "nuevo" || !l.estado) {
+        unanswered.set(l.vehicle_id, (unanswered.get(l.vehicle_id) || 0) + 1);
+      }
+    }
+    return [...list].sort((a, b) => {
+      const ua = unanswered.get(a.id) || 0;
+      const ub = unanswered.get(b.id) || 0;
+      if (ua !== ub) return ub - ua;
+      const la = totalLeads.get(a.id) || 0;
+      const lb = totalLeads.get(b.id) || 0;
+      if (la !== lb) return lb - la;
+      return a.id - b.id;
+    });
+  }, [vehicles, leads, search]);
 
   const suggestions = useMemo(() => {
     const q = newName.toLowerCase().trim();
@@ -1324,6 +1348,280 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
         </div>
       </section>
     </>
+  );
+}
+
+// ============================================================
+// Revision Sheet (Vehicle Inspection)
+// ============================================================
+
+const INSPECTION_SECTIONS: Array<{ title: string; items: Array<{ key: string; label: string }> }> = [
+  {
+    title: "Exterior",
+    items: [
+      { key: "ext_pintura", label: "Pintura (estado general)" },
+      { key: "ext_carroceria", label: "Carroceria (golpes, abolladuras)" },
+      { key: "ext_cristales", label: "Cristales (parabrisas, ventanillas)" },
+      { key: "ext_faros", label: "Faros y pilotos" },
+      { key: "ext_espejos", label: "Espejos retrovisores" },
+      { key: "ext_limpiaparabrisas", label: "Limpiaparabrisas" },
+      { key: "ext_matricula", label: "Matricula y adhesivos" },
+    ],
+  },
+  {
+    title: "Interior",
+    items: [
+      { key: "int_tapiceria", label: "Tapiceria (asientos, techo)" },
+      { key: "int_salpicadero", label: "Salpicadero y consola" },
+      { key: "int_volante", label: "Volante y mandos" },
+      { key: "int_cinturones", label: "Cinturones de seguridad" },
+      { key: "int_aire", label: "Aire acondicionado / climatizador" },
+      { key: "int_audio", label: "Sistema de audio / pantalla" },
+      { key: "int_guantera", label: "Guantera y compartimentos" },
+    ],
+  },
+  {
+    title: "Motor y mecanica",
+    items: [
+      { key: "mot_arranque", label: "Arranque del motor" },
+      { key: "mot_ruidos", label: "Ruidos anomalos" },
+      { key: "mot_aceite", label: "Nivel de aceite" },
+      { key: "mot_refrigerante", label: "Liquido refrigerante" },
+      { key: "mot_frenos_liq", label: "Liquido de frenos" },
+      { key: "mot_distribucion", label: "Correa de distribucion (estado/km)" },
+      { key: "mot_escape", label: "Escape (humos, ruidos)" },
+    ],
+  },
+  {
+    title: "Transmision y direccion",
+    items: [
+      { key: "trans_embrague", label: "Embrague (si manual)" },
+      { key: "trans_marchas", label: "Cambio de marchas" },
+      { key: "trans_dir_asistida", label: "Direccion asistida" },
+      { key: "trans_holguras", label: "Holguras en la direccion" },
+    ],
+  },
+  {
+    title: "Frenos y suspension",
+    items: [
+      { key: "fren_eficacia", label: "Frenado (eficacia)" },
+      { key: "fren_discos", label: "Discos y pastillas" },
+      { key: "fren_amortiguadores", label: "Amortiguadores" },
+      { key: "fren_neumaticos", label: "Estado de los neumaticos (4)" },
+      { key: "fren_dibujo", label: "Profundidad del dibujo" },
+    ],
+  },
+  {
+    title: "Electrica",
+    items: [
+      { key: "elec_bateria", label: "Bateria" },
+      { key: "elec_luces", label: "Luces (cortas, largas, antiniebla)" },
+      { key: "elec_intermitentes", label: "Intermitentes y warning" },
+      { key: "elec_elevalunas", label: "Elevalunas electricos" },
+      { key: "elec_cierre", label: "Cierre centralizado" },
+      { key: "elec_testigos", label: "Testigos en cuadro de instrumentos" },
+    ],
+  },
+  {
+    title: "Documentacion",
+    items: [
+      { key: "doc_itv", label: "ITV en vigor" },
+      { key: "doc_permiso", label: "Permiso de circulacion" },
+      { key: "doc_ficha", label: "Ficha tecnica" },
+      { key: "doc_historial", label: "Historial de mantenimiento" },
+    ],
+  },
+];
+
+type ItemStatus = "ok" | "no" | null;
+
+interface InspectionItemState {
+  status: ItemStatus;
+  notes: string;
+}
+
+function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; companyId: number }) {
+  const [selectedVehicleId, setSelectedVehicleId] = useState<number | "">("");
+  const [inspectorName, setInspectorName] = useState("");
+  const [items, setItems] = useState<Record<string, InspectionItemState>>(() => {
+    const init: Record<string, InspectionItemState> = {};
+    for (const section of INSPECTION_SECTIONS) {
+      for (const item of section.items) {
+        init[item.key] = { status: null, notes: "" };
+      }
+    }
+    return init;
+  });
+  const [resultadoGeneral, setResultadoGeneral] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  function setItemStatus(key: string, status: ItemStatus) {
+    setItems((prev) => ({ ...prev, [key]: { ...prev[key], status: prev[key].status === status ? null : status } }));
+  }
+
+  function setItemNotes(key: string, notes: string) {
+    setItems((prev) => ({ ...prev, [key]: { ...prev[key], notes } }));
+  }
+
+  function resetForm() {
+    const init: Record<string, InspectionItemState> = {};
+    for (const section of INSPECTION_SECTIONS) {
+      for (const item of section.items) {
+        init[item.key] = { status: null, notes: "" };
+      }
+    }
+    setItems(init);
+    setResultadoGeneral("");
+    setSelectedVehicleId("");
+    setInspectorName("");
+  }
+
+  async function handleSave() {
+    if (!selectedVehicleId) { setSaveMsg("Selecciona un vehiculo."); return; }
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const payload = {
+        vehicle_id: selectedVehicleId,
+        company_id: companyId,
+        inspector_name: inspectorName || null,
+        items,
+        resultado_general: resultadoGeneral || null,
+        created_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from("vehicle_inspections").insert(payload);
+      if (error) throw error;
+      setSaveMsg("Revision guardada correctamente.");
+      resetForm();
+    } catch (err) {
+      setSaveMsg("Error al guardar: " + String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const toggleBtnBase: React.CSSProperties = {
+    padding: "0.15rem 0.5rem",
+    fontSize: "0.7rem",
+    fontWeight: 600,
+    border: "1px solid #cbd5e1",
+    borderRadius: "4px",
+    cursor: "pointer",
+    lineHeight: 1.4,
+  };
+
+  return (
+    <div style={{ maxWidth: 900 }}>
+      <p className="eyebrow">Inspeccion de vehiculo</p>
+      <h2 style={{ margin: "0.3rem 0 1rem" }}>Hoja de revision</h2>
+
+      {/* Vehicle selector */}
+      <section className="panel" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>
+        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div style={{ flex: "1 1 300px" }}>
+            <label className="field-label">Vehiculo</label>
+            <select
+              value={selectedVehicleId}
+              onChange={(e) => setSelectedVehicleId(e.target.value ? Number(e.target.value) : "")}
+              style={{ width: "100%" }}
+            >
+              <option value="">-- Seleccionar vehiculo --</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name} {v.anio ? `(${v.anio})` : ""} {(v as any).matricula ? `- ${(v as any).matricula}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: "1 1 200px" }}>
+            <label className="field-label">Inspector</label>
+            <input
+              type="text"
+              value={inspectorName}
+              onChange={(e) => setInspectorName(e.target.value)}
+              placeholder="Nombre del inspector"
+              style={{ width: "100%" }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Inspection sections */}
+      {INSPECTION_SECTIONS.map((section) => (
+        <section key={section.title} className="panel" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>
+          <p className="eyebrow">{section.title}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1.5rem", marginTop: "0.5rem" }}>
+            {section.items.map((item) => {
+              const state = items[item.key];
+              return (
+                <div key={item.key} style={{ display: "flex", flexDirection: "column", gap: "0.25rem", padding: "0.4rem 0", borderBottom: "1px solid #f1f5f9" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "space-between" }}>
+                    <span className="field-label" style={{ margin: 0, fontSize: "0.8rem" }}>{item.label}</span>
+                    <div style={{ display: "flex", gap: "0.25rem", flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        style={{
+                          ...toggleBtnBase,
+                          background: state.status === "ok" ? "#16a34a" : "#fff",
+                          color: state.status === "ok" ? "#fff" : "#64748b",
+                          borderColor: state.status === "ok" ? "#16a34a" : "#cbd5e1",
+                        }}
+                        onClick={() => setItemStatus(item.key, "ok")}
+                      >
+                        OK
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          ...toggleBtnBase,
+                          background: state.status === "no" ? "#dc2626" : "#fff",
+                          color: state.status === "no" ? "#fff" : "#64748b",
+                          borderColor: state.status === "no" ? "#dc2626" : "#cbd5e1",
+                        }}
+                        onClick={() => setItemStatus(item.key, "no")}
+                      >
+                        NO
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Notas..."
+                    value={state.notes}
+                    onChange={(e) => setItemNotes(item.key, e.target.value)}
+                    style={{ fontSize: "0.75rem", padding: "0.2rem 0.4rem" }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+
+      {/* General result + save */}
+      <section className="panel" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>
+        <p className="eyebrow">Resultado general</p>
+        <textarea
+          value={resultadoGeneral}
+          onChange={(e) => setResultadoGeneral(e.target.value)}
+          placeholder="Observaciones generales de la revision..."
+          rows={4}
+          style={{ width: "100%", marginTop: "0.5rem", fontSize: "0.85rem" }}
+        />
+        <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+          <button
+            type="button"
+            className="button primary"
+            disabled={saving || !selectedVehicleId}
+            onClick={() => void handleSave()}
+          >
+            {saving ? "Guardando..." : "Guardar revision"}
+          </button>
+          {saveMsg && <span style={{ fontSize: "0.85rem", color: saveMsg.startsWith("Error") ? "#dc2626" : "#16a34a" }}>{saveMsg}</span>}
+        </div>
+      </section>
+    </div>
   );
 }
 
