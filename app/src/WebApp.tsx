@@ -6,8 +6,27 @@ import "./App.css";
 type ViewKey = "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers";
 
 function WebApp() {
-  const [page, setPage] = useState<"catalog" | "login" | "admin">("catalog");
-  const [session, setSession] = useState<api.LoginResult | null>(null);
+  const [page, setPage] = useState<"catalog" | "login" | "admin">(() => {
+    try {
+      const saved = localStorage.getItem("cc_session");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.user?.id && parsed?.company?.id) return "admin";
+      }
+    } catch { /* ignore */ }
+    localStorage.removeItem("cc_session");
+    return "catalog";
+  });
+  const [session, setSession] = useState<api.LoginResult | null>(() => {
+    try {
+      const saved = localStorage.getItem("cc_session");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.user?.id && parsed?.company?.id) return parsed;
+      }
+    } catch { /* ignore */ }
+    return null;
+  });
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -19,6 +38,7 @@ function WebApp() {
     setLoginSubmitting(true);
     try {
       const result = await api.login(loginUsername, loginPassword);
+      localStorage.setItem("cc_session", JSON.stringify(result));
       setSession(result);
       setPage("admin");
     } catch (err) {
@@ -60,7 +80,7 @@ function WebApp() {
 
   // Admin panel
   if (page === "admin" && session) {
-    return <AuthenticatedWebApp session={session} onLogout={() => { setSession(null); setPage("catalog"); }} />;
+    return <AuthenticatedWebApp session={session} onLogout={() => { localStorage.removeItem("cc_session"); setSession(null); setPage("catalog"); }} />;
   }
 
   // Public catalog (default)
@@ -326,6 +346,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
   const [clients, setClients] = useState<api.Client[]>([]);
   const [salesRecords, setSalesRecords] = useState<api.SalesRecord[]>([]);
   const [purchaseRecords, setPurchaseRecords] = useState<api.PurchaseRecord[]>([]);
+  const [suppliers, setSuppliers] = useState<api.Supplier[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<api.Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -336,13 +357,14 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
   async function loadAll() {
     setLoading(true);
     try {
-      const [v, allV, l, c, s, p] = await Promise.all([
+      const [v, allV, l, c, s, p, sup] = await Promise.all([
         api.listVehicles(companyId),
         api.listAllVehicles(companyId),
         api.listLeads(companyId),
         api.listClients(companyId),
         api.listSalesRecords(companyId),
         api.listPurchaseRecords(companyId),
+        api.listSuppliers(companyId),
       ]);
       setVehicles(v);
       setAllVehicles(allV);
@@ -350,6 +372,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
       setClients(c);
       setSalesRecords(s);
       setPurchaseRecords(p);
+      setSuppliers(sup);
     } catch (err) {
       console.error("Error loading data:", err);
     } finally {
@@ -399,13 +422,13 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
           <StockList vehicles={vehicles} allVehicles={allVehicles} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
         )}
         {currentView === "stock" && selectedVehicle && (
-          <VehicleDetail vehicle={selectedVehicle} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
+          <VehicleDetail vehicle={selectedVehicle} suppliers={suppliers} leads={leads} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
         )}
         {currentView === "leads" && <LeadsList leads={leads} vehicles={vehicles} companyId={companyId} onReload={loadAll} />}
         {currentView === "clients" && <ClientsList clients={clients} companyId={companyId} onReload={loadAll} />}
         {currentView === "sales" && <SalesList records={salesRecords} vehicles={vehicles} clients={clients} companyId={companyId} onReload={loadAll} />}
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}
-        {currentView === "suppliers" && <SuppliersList records={purchaseRecords} />}
+        {currentView === "suppliers" && <SuppliersList suppliers={suppliers} companyId={companyId} onReload={loadAll} />}
       </section>
 
       <FeedbackButton
@@ -614,53 +637,73 @@ function VehicleThumb({ vehicleId }: { vehicleId: number }) {
 }
 
 // ============================================================
-// Vehicle Detail
+// Vehicle Detail — wrapper with layout selector
 // ============================================================
-function VehicleDetail({ vehicle, onBack, onReload: _onReload }: { vehicle: api.Vehicle; onBack: () => void; onReload: () => void }) {
+type VehicleLayout = "A" | "B" | "C";
+type VDProps = { vehicle: api.Vehicle; suppliers: api.Supplier[]; leads: api.Lead[]; onBack: () => void; onReload: () => void };
+
+function VehicleDetail(props: VDProps) {
+  const [layout, setLayout] = useState<VehicleLayout>(() => {
+    return (localStorage.getItem("cc_vehicle_layout") as VehicleLayout) || "A";
+  });
+  function switchLayout(l: VehicleLayout) { setLayout(l); localStorage.setItem("cc_vehicle_layout", l); }
+  const btnStyle = (l: VehicleLayout): React.CSSProperties => ({
+    padding: "0.3rem 0.7rem", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
+    border: layout === l ? "2px solid #1d4ed8" : "2px solid #cbd5e1",
+    borderRadius: 6, background: layout === l ? "#1d4ed8" : "transparent",
+    color: layout === l ? "#fff" : "#475569",
+  });
+  return (
+    <>
+      <div style={{ display: "flex", gap: "0.35rem", marginBottom: "0.75rem" }}>
+        <span style={{ fontSize: "0.75rem", color: "#64748b", alignSelf: "center", marginRight: "0.25rem" }}>Vista:</span>
+        <button type="button" style={btnStyle("A")} onClick={() => switchLayout("A")}>Sidebar</button>
+        <button type="button" style={btnStyle("B")} onClick={() => switchLayout("B")}>Tabs</button>
+        <button type="button" style={btnStyle("C")} onClick={() => switchLayout("C")}>Dashboard</button>
+      </div>
+      {layout === "A" && <VehicleDetailA {...props} />}
+      {layout === "B" && <VehicleDetailB {...props} />}
+      {layout === "C" && <VehicleDetailC {...props} />}
+    </>
+  );
+}
+
+// Shared hooks for all vehicle detail layouts
+function useVehicleDetail(vehicle: api.Vehicle) {
   const [form, setForm] = useState(vehicle);
   const [photos, setPhotos] = useState<api.VehiclePhoto[]>([]);
+  const [docs, setDocs] = useState<api.VehicleDocument[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
   const [success, setSuccess] = useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const docFileRef = React.useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => { void loadPhotos(); }, [vehicle.id]);
+  React.useEffect(() => { void loadPhotos(); void loadDocs(); }, [vehicle.id]);
 
-  async function loadPhotos() {
-    const p = await api.listVehiclePhotos(vehicle.id);
-    setPhotos(p);
-  }
+  async function loadPhotos() { setPhotos(await api.listVehiclePhotos(vehicle.id)); }
+  async function loadDocs() { setDocs(await api.listVehicleDocuments(vehicle.id)); }
 
   async function handleSave(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
+    e.preventDefault(); setSaving(true);
     try {
       await api.updateVehicle(vehicle.id, {
         name: form.name, anio: form.anio, km: form.km,
         precio_compra: form.precio_compra, precio_venta: form.precio_venta,
         ad_url: form.ad_url, estado: form.estado, fuel: form.fuel, color: form.color, notes: form.notes,
+        supplier_id: form.supplier_id,
       });
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 2000);
-    } finally {
-      setSaving(false);
-    }
+      setSuccess(true); setTimeout(() => setSuccess(false), 2000);
+    } finally { setSaving(false); }
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files) return;
+    const files = e.target.files; if (!files) return;
     setUploading(true);
-    try {
-      for (let i = 0; i < files.length; i++) {
-        await api.uploadVehiclePhoto(vehicle.id, files[i]);
-      }
-      await loadPhotos();
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
+    try { for (let i = 0; i < files.length; i++) await api.uploadVehiclePhoto(vehicle.id, files[i]); await loadPhotos(); }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
   async function handleDeletePhoto(photo: api.VehiclePhoto) {
@@ -669,116 +712,315 @@ function VehicleDetail({ vehicle, onBack, onReload: _onReload }: { vehicle: api.
     setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
   }
 
-  const mainPhoto = selectedPhoto != null ? photos.find((p) => p.id === selectedPhoto)?.url : photos[0]?.url;
+  async function handleUploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploadingDoc(true);
+    try { await api.uploadVehicleDocument(vehicle.id, file, "factura"); await loadDocs(); }
+    finally { setUploadingDoc(false); if (docFileRef.current) docFileRef.current.value = ""; }
+  }
 
+  async function handleDeleteDoc(doc: api.VehicleDocument) {
+    if (!confirm(`Eliminar ${doc.file_name}?`)) return;
+    await api.deleteVehicleDocument(doc);
+    setDocs((prev) => prev.filter((x) => x.id !== doc.id));
+  }
+
+  const mainPhoto = selectedPhoto != null ? photos.find((p) => p.id === selectedPhoto)?.url : photos[0]?.url;
+  const margin = (form.precio_compra && form.precio_venta) ? form.precio_venta - form.precio_compra : null;
+  const facturas = docs.filter((d) => d.doc_type === "factura");
+
+  return { form, setForm, photos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadingDoc, success,
+    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, loadPhotos };
+}
+
+// Shared: Hero header
+function VDHero({ vehicle, onBack }: { vehicle: api.Vehicle; onBack: () => void }) {
+  return (
+    <header className="hero">
+      <div>
+        <p className="eyebrow">Stock</p>
+        <h2>{vehicle.name}</h2>
+        <p className="muted">{[vehicle.anio, vehicle.km ? `${vehicle.km.toLocaleString()} km` : null, vehicle.estado].filter(Boolean).join(" · ")}</p>
+      </div>
+      <div className="hero-actions">
+        <button type="button" className="button secondary" onClick={onBack}>Volver al stock</button>
+        <button type="button" className="button danger" onClick={async () => { if (!confirm(`Eliminar ${vehicle.name}?`)) return; await api.deleteVehicle(vehicle.id); onBack(); }}>Eliminar</button>
+      </div>
+    </header>
+  );
+}
+
+// Shared: Photos gallery
+function VDPhotos({ photos, fileRef, uploading, handleUpload, handleDeletePhoto, setSelectedPhoto }: { photos: api.VehiclePhoto[]; fileRef: React.RefObject<HTMLInputElement | null>; uploading: boolean; handleUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; handleDeletePhoto: (p: api.VehiclePhoto) => void; setSelectedPhoto: (id: number) => void }) {
+  return (
+    <section className="panel" style={{ padding: "1.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <div><p className="eyebrow">Fotografias</p><p className="muted" style={{ margin: 0 }}>{photos.length} foto{photos.length !== 1 ? "s" : ""}</p></div>
+        <div>
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => void handleUpload(e)} style={{ display: "none" }} />
+          <button type="button" className="button primary" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? "Subiendo..." : "Subir fotos"}</button>
+        </div>
+      </div>
+      {photos.length > 0 ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "0.75rem" }}>
+          {photos.map((p) => (
+            <div key={p.id} style={{ position: "relative" }}>
+              <img src={p.url} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12, cursor: "pointer" }} onClick={() => setSelectedPhoto(p.id)} />
+              <button type="button" onClick={() => void handleDeletePhoto(p)} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 8, padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}>X</button>
+            </div>
+          ))}
+        </div>
+      ) : <p className="muted">Sin fotos. Pulsa "Subir fotos" para anadir imagenes.</p>}
+    </section>
+  );
+}
+
+// Shared: Factura section
+function VDFactura({ facturas, docFileRef, uploadingDoc, handleUploadDoc, handleDeleteDoc }: { facturas: api.VehicleDocument[]; docFileRef: React.RefObject<HTMLInputElement | null>; uploadingDoc: boolean; handleUploadDoc: (e: React.ChangeEvent<HTMLInputElement>) => void; handleDeleteDoc: (d: api.VehicleDocument) => void }) {
   return (
     <>
-      <header className="hero">
-        <div>
-          <p className="eyebrow">Stock</p>
-          <h2>{vehicle.name}</h2>
-          <p className="muted">{[vehicle.anio, vehicle.km ? `${vehicle.km.toLocaleString()} km` : null, vehicle.estado].filter(Boolean).join(" · ")}</p>
+      <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Factura de compra</p>
+      {facturas.map((d) => (
+        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem", background: "#f8fafc", borderRadius: 8, marginBottom: "0.35rem" }}>
+          <span style={{ flex: 1, fontSize: "0.85rem" }}>{d.file_name}</span>
+          <a href={d.url} target="_blank" rel="noopener noreferrer" className="button secondary" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}>Ver</a>
+          <button type="button" className="button danger" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }} onClick={() => void handleDeleteDoc(d)}>Eliminar</button>
         </div>
-        <div className="hero-actions">
-          <button type="button" className="button secondary" onClick={onBack}>Volver al stock</button>
-          <button type="button" className="button danger" onClick={async () => {
-            if (!confirm(`Eliminar ${vehicle.name}?`)) return;
-            await api.deleteVehicle(vehicle.id);
-            onBack();
-          }}>Eliminar</button>
-        </div>
-      </header>
+      ))}
+      {facturas.length === 0 && <p className="muted" style={{ margin: "0 0 0.35rem", fontSize: "0.85rem" }}>No hay factura adjunta.</p>}
+      <input ref={docFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: "none" }} onChange={(e) => void handleUploadDoc(e)} />
+      <button type="button" className="button secondary" onClick={() => docFileRef.current?.click()} disabled={uploadingDoc} style={{ fontSize: "0.8rem" }}>{uploadingDoc ? "Subiendo..." : "Adjuntar factura"}</button>
+    </>
+  );
+}
 
-      <div style={{ display: "grid", gridTemplateColumns: mainPhoto ? "1fr 1fr" : "1fr", gap: "1.25rem" }}>
-        {mainPhoto && (
-          <div>
-            <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
-              <img src={mainPhoto} alt={vehicle.name} style={{ width: "100%", display: "block", borderRadius: 24 }} />
-            </section>
-            {photos.length > 1 && (
-              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem", overflowX: "auto" }}>
-                {photos.map((p) => (
-                  <img key={p.id} src={p.url} onClick={() => setSelectedPhoto(p.id)}
-                    style={{ width: 72, height: 54, objectFit: "cover", borderRadius: 8, cursor: "pointer",
-                      border: (selectedPhoto === p.id || (!selectedPhoto && p === photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
-                ))}
+// Shared: Leads sidebar/section
+function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
+  if (vehicleLeads.length === 0) return <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Sin leads para este vehiculo.</p>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+      {vehicleLeads.map((l) => (
+        <div key={l.id} style={{ padding: "0.65rem 0.75rem", background: "#f8fafc", borderRadius: 10, border: "1px solid rgba(0,0,0,0.06)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{l.name}</span>
+            <span className="muted" style={{ fontSize: "0.7rem" }}>{l.canal} · {l.estado}</span>
+          </div>
+          {l.phone && <p style={{ margin: "0.15rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>Tel: {l.phone}</p>}
+          {l.email && <p style={{ margin: "0.1rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>{l.email}</p>}
+          {l.notes && <p style={{ margin: "0.2rem 0 0", fontSize: "0.82rem", color: "#475569" }}>{l.notes}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── PROPOSAL A: Sidebar layout ──
+function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
+  const h = useVehicleDetail(vehicle);
+  const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
+  return (
+    <>
+      <VDHero vehicle={vehicle} onBack={onBack} />
+      {h.photos.length > 0 && (
+        <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", padding: "0.25rem 0" }}>
+          {h.photos.map((p) => (
+            <img key={p.id} src={p.url} onClick={() => h.setSelectedPhoto(p.id)}
+              style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 10, cursor: "pointer", flexShrink: 0,
+                border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
+          ))}
+        </div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "1.25rem", alignItems: "start" }}>
+        <section className="panel" style={{ padding: "1.25rem" }}>
+          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehiculo</p>
+          <form onSubmit={(e) => void h.handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+            <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.65rem" }}>
+              <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
+              <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
+              <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem" }}>
+              <div><label className="field-label">Precio compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
+              <div><label className="field-label">Precio venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
+            </div>
+            <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+            <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} /></div>
+            {h.success && <p className="success-banner">Guardado</p>}
+            <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar"}</button>
+          </form>
+        </section>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {h.margin !== null && (
+            <div className="panel" style={{ padding: "1rem 1.25rem" }}>
+              <p className="eyebrow" style={{ marginBottom: "0.35rem" }}>Margen estimado</p>
+              <p style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: h.margin >= 0 ? "#166534" : "#991b1b" }}>{h.margin.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
+            </div>
+          )}
+          <section className="panel" style={{ padding: "1.25rem" }}>
+            <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Leads ({vehicleLeads.length})</p>
+            <VDLeads vehicleLeads={vehicleLeads} />
+          </section>
+          <section className="panel" style={{ padding: "1.25rem" }}>
+            <VDFactura facturas={h.facturas} docFileRef={h.docFileRef} uploadingDoc={h.uploadingDoc} handleUploadDoc={h.handleUploadDoc} handleDeleteDoc={h.handleDeleteDoc} />
+          </section>
+        </div>
+      </div>
+      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} setSelectedPhoto={h.setSelectedPhoto} />
+    </>
+  );
+}
+
+// ── PROPOSAL B: Tabs layout ──
+function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
+  const h = useVehicleDetail(vehicle);
+  const [activeTab, setActiveTab] = useState<"datos" | "leads" | "documentos">("datos");
+  const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
+  const tabStyle = (tab: typeof activeTab): React.CSSProperties => ({
+    flex: "none", padding: "0.65rem 1.25rem", border: "none", background: "none", fontSize: "0.88rem", fontWeight: 600,
+    color: activeTab === tab ? "#1d4ed8" : "#64748b", cursor: "pointer",
+    borderBottom: activeTab === tab ? "2px solid #1d4ed8" : "2px solid transparent", marginBottom: -2,
+  });
+  return (
+    <>
+      <VDHero vehicle={vehicle} onBack={onBack} />
+      {h.mainPhoto && (
+        <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
+          <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
+            <img src={h.mainPhoto} alt={vehicle.name} style={{ width: "100%", display: "block", borderRadius: 24, maxHeight: 360, objectFit: "cover" }} />
+          </section>
+          {h.photos.length > 1 && (
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem", overflowX: "auto" }}>
+              {h.photos.map((p) => (
+                <img key={p.id} src={p.url} onClick={() => h.setSelectedPhoto(p.id)}
+                  style={{ width: 72, height: 54, objectFit: "cover", borderRadius: 8, cursor: "pointer",
+                    border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <section className="panel" style={{ maxWidth: 800, margin: "0 auto", width: "100%", overflow: "hidden" }}>
+        <div style={{ display: "flex", gap: 0, borderBottom: "2px solid rgba(0,0,0,0.06)", padding: "0 1.5rem" }}>
+          <button type="button" style={tabStyle("datos")} onClick={() => setActiveTab("datos")}>Datos</button>
+          <button type="button" style={tabStyle("leads")} onClick={() => setActiveTab("leads")}>Leads{vehicleLeads.length > 0 && <span style={{ marginLeft: 6, background: "#dc2626", color: "#fff", fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: 8 }}>{vehicleLeads.length}</span>}</button>
+          <button type="button" style={tabStyle("documentos")} onClick={() => setActiveTab("documentos")}>Documentos</button>
+        </div>
+        {activeTab === "datos" && (
+          <div style={{ padding: "1.5rem" }}>
+            <form onSubmit={(e) => void h.handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+                <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
+                <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+                <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
+                <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+                <div><label className="field-label">Precio compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
+                <div><label className="field-label">Precio venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
+              </div>
+              <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} /></div>
+              {h.success && <p className="success-banner">Guardado</p>}
+              <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar"}</button>
+            </form>
+          </div>
+        )}
+        {activeTab === "leads" && (
+          <div style={{ padding: "1.5rem" }}>
+            {vehicleLeads.length > 0 ? <VDLeads vehicleLeads={vehicleLeads} /> : (
+              <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
+                <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#475569", margin: "0 0 0.5rem" }}>Sin leads para este vehiculo</p>
+                <p className="muted" style={{ margin: 0 }}>Cuando un cliente contacte interesado en este coche, aparecera aqui.</p>
               </div>
             )}
           </div>
         )}
-
-        <section className="panel" style={{ padding: "1.5rem" }}>
-          <p className="eyebrow" style={{ marginBottom: "1rem" }}>Datos del vehiculo</p>
-          <form onSubmit={(e) => void handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <div>
-              <label className="field-label">Marca y modelo</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div>
-                <label className="field-label">Año</label>
-                <input type="number" value={form.anio || ""} onChange={(e) => setForm({ ...form, anio: e.target.value ? parseInt(e.target.value) : null })} />
-              </div>
-              <div>
-                <label className="field-label">Kilometros</label>
-                <input type="number" value={form.km || ""} onChange={(e) => setForm({ ...form, km: e.target.value ? parseInt(e.target.value) : null })} />
-              </div>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div>
-                <label className="field-label">Precio compra</label>
-                <input type="number" step="100" value={form.precio_compra || ""} onChange={(e) => setForm({ ...form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} />
-              </div>
-              <div>
-                <label className="field-label">Precio venta</label>
-                <input type="number" step="100" value={form.precio_venta || ""} onChange={(e) => setForm({ ...form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} />
-              </div>
-            </div>
-            <div>
-              <label className="field-label">Estado</label>
-              <select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
-                <option value="disponible">Disponible</option>
-                <option value="reservado">Reservado</option>
-                <option value="vendido">Vendido</option>
-              </select>
-            </div>
-            <div>
-              <label className="field-label">Notas</label>
-              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />
-            </div>
-            {success && <p className="success-banner">Guardado</p>}
-            <button type="submit" className="button primary" disabled={saving}>{saving ? "Guardando..." : "Guardar"}</button>
-          </form>
-        </section>
-      </div>
-
-      <section className="panel" style={{ padding: "1.5rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <div>
-            <p className="eyebrow">Fotografias</p>
-            <p className="muted" style={{ margin: 0 }}>{photos.length} foto{photos.length !== 1 ? "s" : ""}</p>
+        {activeTab === "documentos" && (
+          <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "2rem" }}>
+            <div><VDFactura facturas={h.facturas} docFileRef={h.docFileRef} uploadingDoc={h.uploadingDoc} handleUploadDoc={h.handleUploadDoc} handleDeleteDoc={h.handleDeleteDoc} /></div>
+            <div><VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} setSelectedPhoto={h.setSelectedPhoto} /></div>
           </div>
-          <div>
-            <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => void handleUpload(e)} style={{ display: "none" }} />
-            <button type="button" className="button primary" onClick={() => fileRef.current?.click()} disabled={uploading}>
-              {uploading ? "Subiendo..." : "Subir fotos"}
-            </button>
-          </div>
-        </div>
-        {photos.length > 0 ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-            {photos.map((p) => (
-              <div key={p.id} style={{ position: "relative" }}>
-                <img src={p.url} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12, cursor: "pointer" }} onClick={() => setSelectedPhoto(p.id)} />
-                <button type="button" onClick={() => void handleDeletePhoto(p)}
-                  style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 8, padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}>X</button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">Sin fotos. Pulsa "Subir fotos" para añadir imagenes.</p>
         )}
       </section>
+    </>
+  );
+}
+
+// ── PROPOSAL C: Dashboard layout ──
+function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
+  const h = useVehicleDetail(vehicle);
+  const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
+  return (
+    <>
+      <VDHero vehicle={vehicle} onBack={onBack} />
+      <div style={{ display: "grid", gridTemplateColumns: "35% 35% 30%", gap: "1.25rem" }}>
+        {/* Col 1: Photo */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
+            {h.mainPhoto ? (
+              <img src={h.mainPhoto} alt={vehicle.name} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block", borderRadius: 24 }} />
+            ) : (
+              <div style={{ width: "100%", aspectRatio: "4/3", display: "grid", placeItems: "center", background: "#e8ecf2", borderRadius: 24, color: "#64748b", textAlign: "center" }}>
+                <div><p style={{ margin: 0, fontWeight: 600 }}>Sin foto</p><p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem" }}>Sube fotos desde la galeria</p></div>
+              </div>
+            )}
+          </section>
+          {h.photos.length > 1 && (
+            <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto" }}>
+              {h.photos.map((p) => (
+                <img key={p.id} src={p.url} onClick={() => h.setSelectedPhoto(p.id)}
+                  style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 8, cursor: "pointer", flexShrink: 0,
+                    border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Col 2: Form */}
+        <section className="panel" style={{ padding: "1.25rem" }}>
+          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehiculo</p>
+          <form onSubmit={(e) => void h.handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+              <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
+              <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+              <div><label className="field-label">P. Compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
+              <div><label className="field-label">P. Venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+              <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
+              <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+            </div>
+            <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={2} /></div>
+            {h.success && <p className="success-banner">Guardado</p>}
+            <button type="submit" className="button primary" disabled={h.saving}>{h.saving ? "Guardando..." : "Guardar"}</button>
+          </form>
+        </section>
+        {/* Col 3: Info */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <section className="panel" style={{ padding: "1.15rem" }}>
+            <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Margen</p>
+            {h.margin !== null ? (
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
+                <span style={{ fontSize: "1.6rem", fontWeight: 800, color: h.margin >= 0 ? "#166534" : "#991b1b" }}>{h.margin >= 0 ? "+" : ""}{h.margin.toLocaleString("es-ES")} &euro;</span>
+                {h.form.precio_compra ? <span style={{ fontSize: "0.82rem", color: "#64748b" }}>({Math.round((h.margin / h.form.precio_compra) * 100)}%)</span> : null}
+              </div>
+            ) : <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Introduce precios para ver el margen</p>}
+          </section>
+          <section className="panel" style={{ padding: "1.15rem" }}>
+            <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Leads ({vehicleLeads.length})</p>
+            <VDLeads vehicleLeads={vehicleLeads} />
+          </section>
+          <section className="panel" style={{ padding: "1.15rem" }}>
+            <VDFactura facturas={h.facturas} docFileRef={h.docFileRef} uploadingDoc={h.uploadingDoc} handleUploadDoc={h.handleUploadDoc} handleDeleteDoc={h.handleDeleteDoc} />
+          </section>
+        </div>
+      </div>
+      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} setSelectedPhoto={h.setSelectedPhoto} />
     </>
   );
 }
@@ -960,17 +1202,42 @@ function PurchasesList({ records, companyId: _companyId, onReload: _onReload }: 
 // ============================================================
 // Suppliers List
 // ============================================================
-function SuppliersList({ records }: { records: api.PurchaseRecord[] }) {
-  const suppliers = useMemo(() => {
-    const map = new Map<string, { name: string; total: number; count: number }>();
-    for (const r of records) {
-      const key = r.supplier_name || "Desconocido";
-      const existing = map.get(key);
-      if (existing) { existing.total += r.purchase_price; existing.count++; }
-      else map.set(key, { name: key, total: r.purchase_price, count: 1 });
+function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supplier[]; companyId: number; onReload: () => void }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCif, setNewCif] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newContactPerson, setNewContactPerson] = useState("");
+  const [newNotes, setNewNotes] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  async function handleAdd(e: FormEvent) {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    setAdding(true);
+    try {
+      await api.createSupplier(companyId, {
+        name: newName.trim(),
+        cif: newCif.trim(),
+        phone: newPhone.trim(),
+        email: newEmail.trim(),
+        contact_person: newContactPerson.trim(),
+        notes: newNotes.trim(),
+      });
+      setNewName(""); setNewCif(""); setNewPhone(""); setNewEmail(""); setNewContactPerson(""); setNewNotes("");
+      setShowAdd(false);
+      onReload();
+    } finally {
+      setAdding(false);
     }
-    return [...map.values()].sort((a, b) => b.total - a.total);
-  }, [records]);
+  }
+
+  async function handleDelete(id: number, name: string) {
+    if (!confirm(`Eliminar proveedor "${name}"?`)) return;
+    await api.deleteSupplier(id);
+    onReload();
+  }
 
   return (
     <>
@@ -980,23 +1247,75 @@ function SuppliersList({ records }: { records: api.PurchaseRecord[] }) {
           <h2>Directorio de proveedores</h2>
           <p className="muted">{suppliers.length} proveedor{suppliers.length !== 1 ? "es" : ""}</p>
         </div>
+        <div className="hero-actions">
+          <button type="button" className="button primary" onClick={() => setShowAdd(!showAdd)}>
+            {showAdd ? "Cancelar" : "Nuevo proveedor"}
+          </button>
+        </div>
       </header>
+
+      {showAdd && (
+        <section className="panel" style={{ padding: "1.5rem", maxWidth: "400px", marginBottom: "1rem" }}>
+          <p className="eyebrow" style={{ marginBottom: "1rem" }}>Nuevo proveedor</p>
+          <form onSubmit={(e) => void handleAdd(e)} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div>
+              <label className="field-label">Nombre proveedor *</label>
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ej: Taller Perez" autoFocus required />
+            </div>
+            <div>
+              <label className="field-label">CIF / NIF</label>
+              <input value={newCif} onChange={(e) => setNewCif(e.target.value)} placeholder="B12345678" />
+            </div>
+            <div>
+              <label className="field-label">Persona de contacto</label>
+              <input value={newContactPerson} onChange={(e) => setNewContactPerson(e.target.value)} placeholder="Juan Garcia" />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div>
+                <label className="field-label">Telefono</label>
+                <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="612 345 678" />
+              </div>
+              <div>
+                <label className="field-label">Email</label>
+                <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="info@taller.com" />
+              </div>
+            </div>
+            <div>
+              <label className="field-label">Notas</label>
+              <textarea value={newNotes} onChange={(e) => setNewNotes(e.target.value)} rows={2} placeholder="Observaciones..." />
+            </div>
+            <button type="submit" className="button primary" disabled={adding || !newName.trim()}>
+              {adding ? "Guardando..." : "Guardar proveedor"}
+            </button>
+          </form>
+        </section>
+      )}
+
       <section className="panel sales-records-panel">
         <div className="sales-table-scroll">
           <table className="sales-table">
             <thead><tr>
               <th className="sales-th">Proveedor</th>
-              <th className="sales-th sales-th-right">Facturas</th>
-              <th className="sales-th sales-th-right">Total</th>
+              <th className="sales-th">CIF</th>
+              <th className="sales-th">Contacto</th>
+              <th className="sales-th">Telefono</th>
+              <th className="sales-th"></th>
             </tr></thead>
             <tbody>
               {suppliers.map((s) => (
-                <tr key={s.name} className="sales-row">
+                <tr key={s.id} className="sales-row">
                   <td className="sales-td"><span className="sales-vehicle-name">{s.name}</span></td>
-                  <td className="sales-td sales-td-right">{s.count}</td>
-                  <td className="sales-td sales-td-right"><span className="sales-price">{s.total.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
+                  <td className="sales-td">{s.cif || "-"}</td>
+                  <td className="sales-td">{s.contact_person || "-"}</td>
+                  <td className="sales-td">{s.phone || "-"}</td>
+                  <td className="sales-td">
+                    <button type="button" className="button danger" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }} onClick={() => void handleDelete(s.id, s.name)}>Eliminar</button>
+                  </td>
                 </tr>
               ))}
+              {suppliers.length === 0 && (
+                <tr><td className="sales-td" colSpan={5} style={{ textAlign: "center", color: "#64748b" }}>No hay proveedores. Pulsa "Nuevo proveedor" para añadir uno.</td></tr>
+              )}
             </tbody>
           </table>
         </div>

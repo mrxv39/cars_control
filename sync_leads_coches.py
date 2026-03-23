@@ -80,7 +80,10 @@ def get_email_body(msg):
 
 
 def parse_coches_net_lead(subject, body):
-    """Parse a coches.net notification email to extract lead info."""
+    """Parse a coches.net notification email to extract lead info.
+
+    Only extracts: name, phone, email, message, and vehicle brand+model.
+    """
     lead = {
         'name': '',
         'phone': '',
@@ -90,40 +93,52 @@ def parse_coches_net_lead(subject, body):
         'canal': 'coches.net',
     }
 
-    # Try to extract vehicle from subject
-    # Typical subject: "Consulta sobre SEAT Ibiza 1.0 MPI Style"
-    # or "Un usuario está interesado en tu MAZDA CX-3"
-    m = re.search(r'(?:sobre|en tu|interesado en)\s+(.+?)(?:\s*[-|]|$)', subject, re.I)
+    # --- Extract name ---
+    # Pattern: name appears alone on a line after "Tienes un nuevo contacto"
+    m = re.search(r'nuevo contacto\s*\*+\s*\n\s*(.+)', body, re.I)
     if m:
-        lead['vehicle_interest'] = m.group(1).strip()
+        candidate = m.group(1).strip()
+        # Make sure it's not an email or phone
+        if '@' not in candidate and not re.match(r'^[\d\s+()-]+$', candidate):
+            lead['name'] = candidate
 
-    # Extract name
-    m = re.search(r'(?:nombre|name|de parte de|contacto)\s*:?\s*([A-Z][a-záéíóúñ]+(?:\s+[A-Z][a-záéíóúñ]+)*)', body, re.I)
-    if m:
-        lead['name'] = m.group(1).strip()
-
-    # Extract phone
-    phones = re.findall(r'\b(\+?34?\s*)?(\d{3}[\s.-]?\d{3}[\s.-]?\d{3})\b', body)
+    # --- Extract phone ---
+    phones = re.findall(r'\b(\d{3}[\s.-]?\d{3}[\s.-]?\d{3})\b', body)
     if phones:
-        lead['phone'] = ''.join(phones[0]).replace(' ', '').replace('.', '').replace('-', '')
+        lead['phone'] = phones[0].replace(' ', '').replace('.', '').replace('-', '')
 
-    # Extract email
+    # --- Extract email ---
     emails = re.findall(r'[\w.+-]+@[\w-]+\.[\w.]+', body)
-    # Filter out coches.net/adevinta emails
     contact_emails = [e for e in emails if not any(s in e.lower() for s in ['coches.net', 'adevinta', 'noreply'])]
     if contact_emails:
         lead['email_contact'] = contact_emails[0]
 
-    # If no name found, try from email
-    if not lead['name'] and lead['email_contact']:
-        lead['name'] = lead['email_contact'].split('@')[0].replace('.', ' ').title()
+    # --- Extract message ---
+    # The user message appears after the date/time line, before "Responde a este email"
+    m = re.search(r'\d{1,2}\s+\w+,\s+\d{1,2}:\d{2}\s*\n\s*(.+?)\s*\n\s*Responde', body, re.I | re.DOTALL)
+    if m:
+        msg = m.group(1).strip()
+        if msg:
+            lead['notes'] = msg
 
-    # If still no name, use subject
+    # --- Extract vehicle brand + model ---
+    # Pattern: "Contactado desde\n\nBRAND\n\nModel details\n\nPrice"
+    m = re.search(r'Contactado desde\s*\n\s*\n?\s*([A-Z][A-Z\s]+?)\s*\n\s*\n?\s*(.+?)(?:\n\s*\n|\n.*?€)', body)
+    if m:
+        brand = m.group(1).strip()
+        model = m.group(2).strip()
+        lead['vehicle_interest'] = f"{brand} {model}"
+    else:
+        # Fallback: try from subject
+        m = re.search(r'(?:anuncio|interesado en tu)\s+(.+?)(?:\s*$)', subject, re.I)
+        if m:
+            lead['vehicle_interest'] = m.group(1).strip()
+
+    # --- Fallback name ---
+    if not lead['name'] and lead['email_contact']:
+        lead['name'] = lead['email_contact'].split('@')[0].replace('.', ' ').replace('_', ' ').title()
     if not lead['name']:
         lead['name'] = f"Lead coches.net ({datetime.now().strftime('%d/%m %H:%M')})"
-
-    # Build notes with full email content for reference
-    lead['notes'] = f"[coches.net] {subject}\n\nResponder en coches.net para mantener puntuacion.\n\n---\n{body[:500]}"
 
     return lead
 
@@ -186,25 +201,27 @@ def main():
                 print(f"  SKIP: lead with phone {lead['phone']} already exists")
                 continue
 
-        # Try to match vehicle in database
+        # Try to match vehicle in stock
         vehicle_id = None
         if lead['vehicle_interest']:
-            # Search by name containing the vehicle interest text
-            words = lead['vehicle_interest'].split()
-            # Try matching with brand + model (first two words usually)
             query = sb.table('vehicles').select('id, name').eq('company_id', COMPANY_ID).eq('estado', 'disponible')
             vehicles = query.execute()
             if vehicles.data:
-                interest_lower = lead['vehicle_interest'].lower()
+                interest_words = lead['vehicle_interest'].lower().split()
+                best_match = None
+                best_score = 0
                 for v in vehicles.data:
-                    v_name_lower = v['name'].lower()
-                    # Check if brand and model from interest match the vehicle name
-                    if all(w.lower() in v_name_lower for w in words[:2]):
-                        vehicle_id = v['id']
-                        print(f"  MATCHED vehicle: {v['name']} (id={vehicle_id})")
-                        break
+                    v_lower = v['name'].lower()
+                    # Count how many words from the interest match the vehicle name
+                    score = sum(1 for w in interest_words if w in v_lower)
+                    if score > best_score and score >= min(2, len(interest_words)):
+                        best_score = score
+                        best_match = v
+                if best_match:
+                    vehicle_id = best_match['id']
+                    print(f"  MATCHED vehicle: {best_match['name']} (id={vehicle_id})")
 
-        # Create lead in Supabase
+        # Create lead in Supabase — only: name, email, phone, message, vehicle
         lead_data = {
             'company_id': COMPANY_ID,
             'name': lead['name'],
@@ -212,12 +229,11 @@ def main():
             'email': lead.get('email_contact', ''),
             'notes': lead['notes'],
             'vehicle_interest': lead['vehicle_interest'],
+            'vehicle_id': vehicle_id,
             'estado': 'nuevo',
             'canal': 'coches.net',
             'fecha_contacto': datetime.now().isoformat(),
         }
-        if vehicle_id:
-            lead_data['vehicle_id'] = vehicle_id
 
         sb.table('leads').insert(lead_data).execute()
 

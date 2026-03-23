@@ -54,6 +54,17 @@ export interface Vehicle {
   transmission: string;
   color: string;
   notes: string;
+  supplier_id: number | null;
+}
+
+export interface VehicleDocument {
+  id: number;
+  vehicle_id: number;
+  doc_type: string;
+  file_name: string;
+  storage_path: string;
+  notes: string;
+  url: string;
 }
 
 export interface Lead {
@@ -108,6 +119,19 @@ export interface PurchaseRecord {
   payment_method: string;
   notes: string;
   source_file: string;
+}
+
+export interface Supplier {
+  id: number;
+  company_id: number;
+  name: string;
+  cif: string;
+  address: string;
+  phone: string;
+  email: string;
+  contact_person: string;
+  notes: string;
+  created_at: string;
 }
 
 export interface VehiclePhoto {
@@ -385,4 +409,64 @@ export async function addPurchaseRecord(companyId: number, input: Partial<Purcha
 export async function deletePurchaseRecord(id: number): Promise<void> {
   const { error } = await supabase.from("purchase_records").delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+// ============================================================
+// Suppliers
+// ============================================================
+
+export async function listSuppliers(companyId: number): Promise<Supplier[]> {
+  const { data, error } = await supabase.from("suppliers").select("*").eq("company_id", companyId).order("name");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function createSupplier(companyId: number, input: Partial<Supplier>): Promise<Supplier> {
+  const { data, error } = await supabase.from("suppliers").insert({ ...input, company_id: companyId }).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateSupplier(id: number, input: Partial<Supplier>): Promise<Supplier> {
+  const { data, error } = await supabase.from("suppliers").update(input).eq("id", id).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteSupplier(id: number): Promise<void> {
+  const { error } = await supabase.from("suppliers").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// ============================================================
+// Vehicle Documents
+// ============================================================
+
+export async function listVehicleDocuments(vehicleId: number): Promise<VehicleDocument[]> {
+  const { data, error } = await supabase.from("vehicle_documents").select("*").eq("vehicle_id", vehicleId).order("created_at");
+  if (error) throw new Error(error.message);
+  return (data || []).map((d) => ({
+    ...d,
+    url: supabase.storage.from("vehicle-docs").getPublicUrl(d.storage_path).data.publicUrl,
+  }));
+}
+
+export async function uploadVehicleDocument(vehicleId: number, file: File, docType: string): Promise<VehicleDocument> {
+  const storagePath = `${vehicleId}/${docType}/${file.name}`;
+  const { error: uploadErr } = await supabase.storage.from("vehicle-docs").upload(storagePath, file, { upsert: true });
+  if (uploadErr) throw new Error(uploadErr.message);
+
+  const { data, error } = await supabase.from("vehicle_documents")
+    .insert({ vehicle_id: vehicleId, file_name: file.name, storage_path: storagePath, doc_type: docType })
+    .select().single();
+  if (error) throw new Error(error.message);
+  return { ...data, url: supabase.storage.from("vehicle-docs").getPublicUrl(storagePath).data.publicUrl };
+}
+
+export async function deleteVehicleDocument(doc: VehicleDocument): Promise<void> {
+  const { data: row } = await supabase.from("vehicle_documents").select("storage_path").eq("id", doc.id).single();
+  if (row) {
+    await supabase.storage.from("vehicle-docs").remove([row.storage_path]);
+  }
+  await supabase.from("vehicle_documents").delete().eq("id", doc.id);
 }

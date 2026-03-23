@@ -139,37 +139,25 @@ export function StockDetailView({ vehicle, thumbnail, submitting, onSave, onDele
         </div>
       </header>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-        {/* Left: photo viewer */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
-            {mainPhoto ? (
-              <img src={mainPhoto} alt={vehicle.name} style={{ width: "100%", display: "block", borderRadius: 24 }} />
-            ) : (
-              <div style={{ padding: "3rem", textAlign: "center", color: "#64748b" }}>Sin fotos</div>
-            )}
-          </section>
-
-          {/* Thumbnails strip */}
-          {photos.length > 1 && (
-            <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
-              {photos.map((p) => (
-                <img
-                  key={p.file_name}
-                  src={p.data_url}
-                  alt={p.file_name}
-                  onClick={() => setSelectedPhoto(p.file_name)}
-                  style={{
-                    width: 72, height: 54, objectFit: "cover", borderRadius: 8, cursor: "pointer",
-                    border: (selectedPhoto === p.file_name || (!selectedPhoto && p === photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent",
-                  }}
-                />
-              ))}
-            </div>
-          )}
+      {/* Thumbnails strip */}
+      {photos.length > 0 && (
+        <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+          {photos.map((p) => (
+            <img
+              key={p.file_name}
+              src={p.data_url}
+              alt={p.file_name}
+              onClick={() => setSelectedPhoto(p.file_name)}
+              style={{
+                width: 56, height: 42, objectFit: "cover", borderRadius: 6, cursor: "pointer",
+                border: (selectedPhoto === p.file_name || (!selectedPhoto && p === photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent",
+              }}
+            />
+          ))}
         </div>
+      )}
 
-        {/* Right: form */}
+      <div>
         <section className="panel" style={{ padding: "1.5rem" }}>
           <p className="eyebrow" style={{ marginBottom: "1rem" }}>Datos del vehiculo</p>
           <form onSubmit={(e) => void handleSubmit(e)} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
