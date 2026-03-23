@@ -508,6 +508,9 @@ function StockList({ vehicles, allVehicles, companyId, onSelect, onReload }: { v
           <p className="muted">{vehicles.length} vehiculo{vehicles.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="hero-actions">
+          <button type="button" className="button secondary" onClick={() => window.open("https://www.coches.net/concesionario/codinacars/", "_blank")}>
+            Update stock
+          </button>
           <button type="button" className="button primary" onClick={() => setShowAdd(!showAdd)}>
             {showAdd ? "Cancelar" : "Añadir vehiculo"}
           </button>
