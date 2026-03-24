@@ -48,8 +48,10 @@ export function StockDetailView({ vehicle, thumbnail, submitting, onSave, onDele
     try {
       const result = await invoke<VehiclePhoto[]>("list_vehicle_photos", { folderPath: vehicle.folder_path });
       setPhotos(result);
-    } catch {
+    } catch (err) {
+      console.error("Error cargando fotos:", err);
       setPhotos([]);
+      setError("No se pudieron cargar las fotos del vehículo.");
     } finally {
       setLoadingPhotos(false);
     }
