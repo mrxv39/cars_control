@@ -6,6 +6,8 @@ export function generateSalesReportPDF(
   stock: StockVehicle[],
   title: string = "Reporte de Ventas"
 ) {
+  if (records.length === 0) return;
+
   const doc = new jsPDF();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 10;
@@ -112,22 +114,31 @@ export function generateSalesReportPDF(
   doc.text("Codina Cars - Gestión de Ventas", margin, yPosition);
 
   // Guardar
-  const filename = `Reporte_Ventas_${new Date().toISOString().split("T")[0]}.pdf`;
-  doc.save(filename);
+  try {
+    const filename = `Reporte_Ventas_${new Date().toISOString().split("T")[0]}.pdf`;
+    doc.save(filename);
+  } catch (err) {
+    console.error("Error guardando PDF:", err);
+    throw new Error("No se pudo generar el PDF. Inténtelo de nuevo.");
+  }
 }
 
+/**
+ * Genera PDF de ventas filtrado por mes.
+ * @param month — 1-indexed (1=Enero, 12=Diciembre), se convierte internamente a 0-indexed para Date.
+ */
 export function generateMonthlyReportPDF(
   records: SalesRecord[],
   stock: StockVehicle[],
   month: number,
   year: number
 ) {
-  // Filtrar ventas del mes específico
+  const monthIndex = month - 1;
   const monthRecords = records.filter((r) => {
     const date = new Date(r.date);
-    return date.getMonth() === month && date.getFullYear() === year;
+    return date.getMonth() === monthIndex && date.getFullYear() === year;
   });
 
-  const monthName = new Date(year, month).toLocaleString("es-ES", { month: "long", year: "numeric" });
+  const monthName = new Date(year, monthIndex).toLocaleString("es-ES", { month: "long", year: "numeric" });
   generateSalesReportPDF(monthRecords, stock, `Reporte de Ventas - ${monthName}`);
 }
