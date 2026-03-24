@@ -159,10 +159,11 @@ export async function login(username: string, password: string): Promise<LoginRe
     .from("users")
     .select("id, company_id, full_name, username, password_hash, role, active")
     .eq("username", username)
+    .eq("password_hash", hash)
+    .eq("active", true)
     .single();
 
   if (userErr || !user) throw new Error("Usuario o contrasena incorrectos.");
-  if (user.password_hash !== hash || !user.active) throw new Error("Usuario o contrasena incorrectos.");
 
   const { data: company, error: compErr } = await supabase
     .from("companies")
