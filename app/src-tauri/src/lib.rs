@@ -1560,6 +1560,20 @@ fn save_vehicle_photo(folder_path: String, photo_data: String, file_name: String
         return Err("La carpeta del vehiculo no existe.".to_string());
     }
 
+    // Validate file_name to prevent path traversal
+    if file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
+        return Err("Nombre de archivo no válido.".to_string());
+    }
+
+    // Validate file extension
+    let allowed_extensions = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
+    let has_valid_ext = file_name.rsplit('.').next()
+        .map(|ext| allowed_extensions.contains(&ext.to_lowercase().as_str()))
+        .unwrap_or(false);
+    if !has_valid_ext {
+        return Err("Extensión de archivo no permitida. Use: jpg, jpeg, png, webp, gif, bmp.".to_string());
+    }
+
     // photo_data is base64 with data URI prefix
     let base64_data = photo_data
         .split(',')
@@ -1568,6 +1582,11 @@ fn save_vehicle_photo(folder_path: String, photo_data: String, file_name: String
 
     let bytes = STANDARD.decode(base64_data)
         .map_err(|e| format!("No se pudo decodificar la imagen: {e}"))?;
+
+    // Limit file size to 10MB
+    if bytes.len() > 10 * 1024 * 1024 {
+        return Err("La imagen excede el tamaño máximo de 10MB.".to_string());
+    }
 
     let dest = folder.join(&file_name);
     fs::write(&dest, &bytes)
@@ -1578,6 +1597,11 @@ fn save_vehicle_photo(folder_path: String, photo_data: String, file_name: String
 
 #[tauri::command]
 fn delete_vehicle_photo(folder_path: String, file_name: String) -> Result<(), String> {
+    // Validate file_name to prevent path traversal
+    if file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
+        return Err("Nombre de archivo no válido.".to_string());
+    }
+
     let path = PathBuf::from(&folder_path).join(&file_name);
     if path.exists() {
         fs::remove_file(&path)

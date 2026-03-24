@@ -630,16 +630,6 @@ pub fn add_sales_transaction(
     })
 }
 
-/// Get the next available ID for a table
-pub fn get_next_id(conn: &Connection, table: &str) -> SqlResult<u64> {
-    let query = format!("SELECT MAX(id) FROM {}", table);
-    let max_id: Option<u64> = conn
-        .query_row(&query, [], |row| row.get(0))
-        .optional()?
-        .flatten();
-    Ok(max_id.unwrap_or(0) + 1)
-}
-
 /// Migrate from JSON files to SQLite database
 pub fn migrate_from_json(
     conn: &mut Connection,
