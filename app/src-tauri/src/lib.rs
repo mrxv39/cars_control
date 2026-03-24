@@ -1376,11 +1376,8 @@ fn open_external(target: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn get_vehicle_thumbnail(folder_path: String) -> Result<Option<String>, String> {
-    let folder = PathBuf::from(&folder_path);
-    if !folder.exists() || !folder.is_dir() {
-        return Err("La carpeta del vehículo no existe.".to_string());
-    }
+fn get_vehicle_thumbnail(app: AppHandle, folder_path: String) -> Result<Option<String>, String> {
+    let folder = validate_vehicle_folder(&app, &folder_path)?;
 
     let Some(image_path) = first_jpeg_in_dir(&folder)? else {
         return Ok(None);
@@ -1514,11 +1511,8 @@ struct VehiclePhoto {
 }
 
 #[tauri::command]
-fn list_vehicle_photos(folder_path: String) -> Result<Vec<VehiclePhoto>, String> {
-    let folder = PathBuf::from(&folder_path);
-    if !folder.exists() || !folder.is_dir() {
-        return Err("La carpeta del vehiculo no existe.".to_string());
-    }
+fn list_vehicle_photos(app: AppHandle, folder_path: String) -> Result<Vec<VehiclePhoto>, String> {
+    let folder = validate_vehicle_folder(&app, &folder_path)?;
 
     let mut photos = Vec::new();
     let entries = fs::read_dir(&folder)
@@ -1554,11 +1548,8 @@ fn list_vehicle_photos(folder_path: String) -> Result<Vec<VehiclePhoto>, String>
 }
 
 #[tauri::command]
-fn save_vehicle_photo(folder_path: String, photo_data: String, file_name: String) -> Result<(), String> {
-    let folder = PathBuf::from(&folder_path);
-    if !folder.exists() || !folder.is_dir() {
-        return Err("La carpeta del vehiculo no existe.".to_string());
-    }
+fn save_vehicle_photo(app: AppHandle, folder_path: String, photo_data: String, file_name: String) -> Result<(), String> {
+    let folder = validate_vehicle_folder(&app, &folder_path)?;
 
     // Validate file_name to prevent path traversal
     if file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
@@ -1596,13 +1587,14 @@ fn save_vehicle_photo(folder_path: String, photo_data: String, file_name: String
 }
 
 #[tauri::command]
-fn delete_vehicle_photo(folder_path: String, file_name: String) -> Result<(), String> {
+fn delete_vehicle_photo(app: AppHandle, folder_path: String, file_name: String) -> Result<(), String> {
     // Validate file_name to prevent path traversal
     if file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
         return Err("Nombre de archivo no válido.".to_string());
     }
 
-    let path = PathBuf::from(&folder_path).join(&file_name);
+    let folder = validate_vehicle_folder(&app, &folder_path)?;
+    let path = folder.join(&file_name);
     if path.exists() {
         fs::remove_file(&path)
             .map_err(|e| format!("No se pudo eliminar la foto: {e}"))?;
