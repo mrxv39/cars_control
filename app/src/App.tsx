@@ -1,4 +1,4 @@
-import React, { FormEvent, useMemo, useState } from "react";
+import React, { FormEvent, useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   ViewKey,
@@ -18,6 +18,8 @@ import {
   EMPTY_CLIENT_FORM,
   EMPTY_STOCK_VEHICLE_FORM,
 } from "./types";
+import { useRecords } from "./hooks/useRecords";
+import { useSearchFilter } from "./hooks/useSearchFilter";
 import { useAppState } from "./hooks/useAppState";
 import { DashboardView } from "./components/DashboardView";
 import { StockView } from "./components/StockView";
@@ -48,10 +50,6 @@ const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
   { key: "reminders", label: "Recordatorios" },
   { key: "sales", label: "Ventas Legacy" },
 ];
-
-function normalizeSearchValue(value: string | null | undefined) {
-  return (value ?? "").toLocaleLowerCase();
-}
 
 function App() {
   const [session, setSession] = useState<LoginResult | null>(null);
@@ -134,30 +132,8 @@ function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogou
   const [selectedLeadVehicle, setSelectedLeadVehicle] = useState("");
   const [selectedClientVehicle, setSelectedClientVehicle] = useState("");
   const [stockVehicleForm, setStockVehicleForm] = useState<StockVehicleForm>(EMPTY_STOCK_VEHICLE_FORM);
-  const [leadSearch, setLeadSearch] = useState("");
-  const [clientSearch, setClientSearch] = useState("");
-  const [salesRecords, setSalesRecords] = useState<SalesRecord[]>([]);
-  const [purchaseRecords, setPurchaseRecords] = useState<PurchaseRecord[]>([]);
-
-  // Load sales records and purchase records
-  React.useEffect(() => {
-    void (async () => {
-      try {
-        const records = await invoke<SalesRecord[]>("get_sales_records");
-        setSalesRecords(records);
-      } catch (err) {
-        console.error("Error loading sales records:", err);
-      }
-    })();
-    void (async () => {
-      try {
-        const records = await invoke<PurchaseRecord[]>("get_purchase_records");
-        setPurchaseRecords(records);
-      } catch (err) {
-        console.error("Error loading purchase records:", err);
-      }
-    })();
-  }, []);
+  const { records: salesRecords, setRecords: setSalesRecords, reload: reloadSales } = useRecords<SalesRecord>("get_sales_records");
+  const { records: purchaseRecords, setRecords: setPurchaseRecords, reload: reloadPurchases } = useRecords<PurchaseRecord>("get_purchase_records");
 
   // Load thumbnails when stock changes
   React.useEffect(() => {
@@ -185,34 +161,23 @@ function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogou
     };
   }, [appState?.stock, thumbnails]);
 
-  const filteredLeads = useMemo(() => {
-    if (!appState) return [];
-    const query = normalizeSearchValue(leadSearch.trim());
-    if (!query) return appState.leads;
-    const vehicleNames = new Map(appState.stock.map((vehicle) => [vehicle.folder_path, normalizeSearchValue(vehicle.name)]));
-    return appState.leads.filter((lead) =>
-      [
-        lead.name,
-        lead.phone,
-        lead.vehicle_interest,
-        lead.vehicle_folder_path ? vehicleNames.get(lead.vehicle_folder_path) ?? "" : "",
-      ].some((value) => normalizeSearchValue(value).includes(query)),
-    );
-  }, [appState, leadSearch]);
+  const getLeadFields = useCallback((lead: Lead, vehicleNames: Map<string, string>) => [
+    lead.name, lead.phone, lead.vehicle_interest,
+    lead.vehicle_folder_path ? vehicleNames.get(lead.vehicle_folder_path) ?? "" : "",
+  ], []);
 
-  const filteredClients = useMemo(() => {
-    if (!appState) return [];
-    const query = normalizeSearchValue(clientSearch.trim());
-    if (!query) return appState.clients;
-    const vehicleNames = new Map(appState.stock.map((vehicle) => [vehicle.folder_path, normalizeSearchValue(vehicle.name)]));
-    return appState.clients.filter((client) =>
-      [
-        client.name,
-        client.phone,
-        client.vehicle_folder_path ? vehicleNames.get(client.vehicle_folder_path) ?? "" : "",
-      ].some((value) => normalizeSearchValue(value).includes(query)),
-    );
-  }, [appState, clientSearch]);
+  const getClientFields = useCallback((client: Client, vehicleNames: Map<string, string>) => [
+    client.name, client.phone,
+    client.vehicle_folder_path ? vehicleNames.get(client.vehicle_folder_path) ?? "" : "",
+  ], []);
+
+  const { search: leadSearch, setSearch: setLeadSearch, filtered: filteredLeads } = useSearchFilter(
+    appState?.leads ?? [], appState?.stock ?? [], getLeadFields,
+  );
+
+  const { search: clientSearch, setSearch: setClientSearch, filtered: filteredClients } = useSearchFilter(
+    appState?.clients ?? [], appState?.stock ?? [], getClientFields,
+  );
 
   function closeAllModals() {
     setStockModal(null);
@@ -558,14 +523,7 @@ function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogou
             records={salesRecords}
             stock={appState.stock}
             clients={appState.clients}
-            onReload={() => {
-              void loadState();
-              setSalesRecords([]);
-              void (async () => {
-                const records = await invoke<SalesRecord[]>("get_sales_records");
-                setSalesRecords(records);
-              })();
-            }}
+            onReload={() => { void loadState(); void reloadSales(); }}
             onAddRecord={async (vehicleFolderPath, clientId, priceFinal, notes) => {
               const record = await invoke<SalesRecord>("add_sales_record", {
                 vehicleFolderPath,
@@ -585,14 +543,7 @@ function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogou
           <PurchasesView
             records={purchaseRecords}
             stock={appState.stock}
-            onReload={() => {
-              void loadState();
-              setPurchaseRecords([]);
-              void (async () => {
-                const records = await invoke<PurchaseRecord[]>("get_purchase_records");
-                setPurchaseRecords(records);
-              })();
-            }}
+            onReload={() => { void loadState(); void reloadPurchases(); }}
             onAddRecord={async (expenseType, vehicleFolderPath, vehicleName, plate, supplierName, purchaseDate, purchasePrice, invoiceNumber, paymentMethod, notes, sourceFile) => {
               const record = await invoke<PurchaseRecord>("add_purchase_record", {
                 expenseType,
@@ -617,14 +568,7 @@ function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogou
         {currentView === "suppliers" && (
           <SuppliersView
             records={purchaseRecords}
-            onReload={() => {
-              void loadState();
-              setPurchaseRecords([]);
-              void (async () => {
-                const records = await invoke<PurchaseRecord[]>("get_purchase_records");
-                setPurchaseRecords(records);
-              })();
-            }}
+            onReload={() => { void loadState(); void reloadPurchases(); }}
           />
         )}
 
