@@ -7,6 +7,7 @@ import { PlatformLayout } from "./components/platform/PlatformLayout";
 import { RegistrationPage } from "./components/platform/RegistrationPage";
 import * as platformApi from "./lib/platform-api";
 import { exportToCSV } from "./lib/csv-export";
+import { usePagination } from "./hooks/usePagination";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./App.css";
 
@@ -440,6 +441,24 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
         Enviar consulta
       </button>
     </form>
+  );
+}
+
+// ── Pagination Controls ──
+function PaginationControls({ page, totalPages, setPage }: { page: number; totalPages: number; setPage: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", alignItems: "center", padding: "1rem 0" }}>
+      <button type="button" className="button secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }} disabled={page === 0} onClick={() => setPage(page - 1)}>
+        Anterior
+      </button>
+      <span className="muted" style={{ fontSize: "0.85rem" }}>
+        Pagina {page + 1} de {totalPages}
+      </span>
+      <button type="button" className="button secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }} disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+        Siguiente
+      </button>
+    </div>
   );
 }
 
@@ -1495,6 +1514,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
     const q = search.toLowerCase();
     return leads.filter((l) => [l.name, l.phone, l.vehicle_interest].some((v) => v.toLowerCase().includes(q)));
   }, [leads, search]);
+  const { paged: pagedLeads, page: leadsPage, totalPages: leadsTotalPages, setPage: setLeadsPage } = usePagination(filtered);
 
   function startEdit(lead: api.Lead) {
     setEditingId(lead.id);
@@ -1547,8 +1567,9 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar lead..." />
         </section>
       )}
+      <PaginationControls page={leadsPage} totalPages={leadsTotalPages} setPage={setLeadsPage} />
       <section className="record-grid">
-        {filtered.map((lead) => (
+        {pagedLeads.map((lead) => (
           <article key={lead.id} className="record-card panel">
             {editingId === lead.id ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -1600,6 +1621,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
           </article>
         ))}
       </section>
+      <PaginationControls page={leadsPage} totalPages={leadsTotalPages} setPage={setLeadsPage} />
     </>
   );
 }
@@ -1691,6 +1713,7 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
   const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
   const clientMap = new Map(clients.map((c) => [c.id, c]));
   const total = records.reduce((s, r) => s + r.price_final, 0);
+  const { paged: pagedSales, page: salesPage, totalPages: salesTotalPages, setPage: setSalesPage } = usePagination(records);
 
   async function handleDeleteSale(id: number, vehicleName: string) {
     if (!confirm(`¿Eliminar registro de venta de "${vehicleName}"? Esta acción no se puede deshacer.`)) return;
@@ -1726,7 +1749,7 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
                 <th className="sales-th" style={{ width: "4rem" }}></th>
               </tr></thead>
               <tbody>
-                {records.map((r) => {
+                {pagedSales.map((r) => {
                   const vName = r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "Venta" : "Venta";
                   return (
                     <tr key={r.id} className="sales-row">
@@ -1741,6 +1764,7 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
               </tbody>
             </table>
           </div>
+          <PaginationControls page={salesPage} totalPages={salesTotalPages} setPage={setSalesPage} />
         </section>
       )}
     </>
@@ -1752,6 +1776,7 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
 // ============================================================
 function PurchasesList({ records, companyId: _companyId, onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
   const total = records.reduce((s, r) => s + r.purchase_price, 0);
+  const { paged: pagedPurchases, page: purchasesPage, totalPages: purchasesTotalPages, setPage: setPurchasesPage } = usePagination(records);
 
   async function handleDeletePurchase(id: number, supplierName: string) {
     if (!confirm(`¿Eliminar registro de compra de "${supplierName}"? Esta acción no se puede deshacer.`)) return;
@@ -1788,7 +1813,7 @@ function PurchasesList({ records, companyId: _companyId, onReload }: { records: 
                 <th className="sales-th" style={{ width: "4rem" }}></th>
               </tr></thead>
               <tbody>
-                {records.map((r) => (
+                {pagedPurchases.map((r) => (
                   <tr key={r.id} className="sales-row">
                     <td className="sales-td"><span className="badge">{r.expense_type}</span></td>
                     <td className="sales-td">{r.supplier_name}</td>
@@ -1801,6 +1826,7 @@ function PurchasesList({ records, companyId: _companyId, onReload }: { records: 
               </tbody>
             </table>
           </div>
+          <PaginationControls page={purchasesPage} totalPages={purchasesTotalPages} setPage={setPurchasesPage} />
         </section>
       )}
     </>
