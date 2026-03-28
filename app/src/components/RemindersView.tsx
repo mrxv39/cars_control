@@ -36,7 +36,7 @@ export function RemindersView({ leads, stock, onEditLead, onReload, daysThreshol
         <div>
           <p className="eyebrow">Recordatorios</p>
           <h2>Leads que necesitan seguimiento</h2>
-          <p className="muted">{leadsSinSeguimiento.length} lead{leadsSinSeguimiento.length !== 1 ? "s" : ""} requieren atención</p>
+          <p className="muted" role="status">{leadsSinSeguimiento.length} lead{leadsSinSeguimiento.length !== 1 ? "s" : ""} requieren atención</p>
         </div>
         <div className="hero-actions">
           <button type="button" className="button primary" onClick={onReload}>
@@ -60,7 +60,7 @@ export function RemindersView({ leads, stock, onEditLead, onReload, daysThreshol
                 <h3>🆕 Leads nuevos sin primer contacto ({leadsNuevosSinContacto.length})</h3>
                 <p className="muted">Estos leads acaban de llegar. Es hora de hacer el primer contacto.</p>
               </div>
-              <div className="reminder-list">
+              <div className="reminder-list" aria-live="polite">
                 {leadsNuevosSinContacto.map((lead) => (
                   <div key={lead.id} className="reminder-item new">
                     <div className="reminder-content">
@@ -84,7 +84,7 @@ export function RemindersView({ leads, stock, onEditLead, onReload, daysThreshol
                 <h3>⏰ Leads sin contacto hace {daysThreshold}+ días ({leadsAntiguosSinSeguimiento.length})</h3>
                 <p className="muted">Es momento de hacer seguimiento a estos leads.</p>
               </div>
-              <div className="reminder-list">
+              <div className="reminder-list" aria-live="polite">
                 {leadsAntiguosSinSeguimiento.map((lead) => {
                   const diasSinContacto = Math.floor(
                     (hoy.getTime() - new Date(lead.fecha_contacto || "").getTime()) / (1000 * 60 * 60 * 24)
