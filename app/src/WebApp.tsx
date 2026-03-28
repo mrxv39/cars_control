@@ -9,7 +9,7 @@ import * as platformApi from "./lib/platform-api";
 import { exportToCSV } from "./lib/csv-export";
 import "./App.css";
 
-type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision";
+type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "reminders" | "revision";
 
 function WebApp() {
   const [page, setPage] = useState<"catalog" | "login" | "register" | "admin" | "platform">(() => {
@@ -439,6 +439,89 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
   );
 }
 
+// ── Reminders ──
+function WebReminders({ leads, onReload }: { leads: api.Lead[]; onReload: () => void }) {
+  const hoy = new Date();
+  const hace7Dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const leadsSinSeguimiento = leads.filter((l) => {
+    if (["cerrado", "perdido", "vendido", "descartado"].includes(l.estado || "")) return false;
+    if (!l.fecha_contacto) return true;
+    return new Date(l.fecha_contacto) < hace7Dias;
+  });
+
+  const sinContactoInicial = leadsSinSeguimiento.filter((l) => !l.fecha_contacto);
+  const contactoAntiguo = leadsSinSeguimiento.filter((l) => l.fecha_contacto);
+
+  async function marcarContactado(leadId: number) {
+    await api.updateLead(leadId, { fecha_contacto: hoy.toISOString().slice(0, 10) } as Partial<api.Lead>);
+    onReload();
+  }
+
+  return (
+    <>
+      <header className="hero">
+        <div>
+          <p className="eyebrow">Recordatorios</p>
+          <h2>Leads que necesitan seguimiento</h2>
+          <p className="muted">{leadsSinSeguimiento.length} lead{leadsSinSeguimiento.length !== 1 ? "s" : ""} requieren atencion</p>
+        </div>
+        <div className="hero-actions">
+          <button type="button" className="button primary" onClick={onReload}>Recargar</button>
+        </div>
+      </header>
+
+      {leadsSinSeguimiento.length === 0 ? (
+        <section className="panel setup-panel">
+          <h2>Todos los leads estan al dia</h2>
+          <p className="muted">No hay leads sin seguimiento hace mas de 7 dias.</p>
+        </section>
+      ) : (
+        <>
+          {sinContactoInicial.length > 0 && (
+            <section className="panel" style={{ padding: "1.25rem" }}>
+              <h3 style={{ margin: "0 0 1rem" }}>Leads nuevos sin primer contacto ({sinContactoInicial.length})</h3>
+              <div className="record-grid">
+                {sinContactoInicial.map((l) => (
+                  <article key={l.id} className="record-card panel" style={{ borderLeft: "3px solid var(--color-primary, #1d4ed8)" }}>
+                    <p className="record-title">{l.name}</p>
+                    <p className="muted">{l.phone || "Sin telefono"}</p>
+                    {l.canal && <span className="badge">{l.canal}</span>}
+                    <button type="button" className="button primary" style={{ marginTop: "0.5rem", fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => marcarContactado(l.id)}>
+                      Marcar como contactado
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {contactoAntiguo.length > 0 && (
+            <section className="panel" style={{ padding: "1.25rem" }}>
+              <h3 style={{ margin: "0 0 1rem" }}>Leads sin contacto hace 7+ dias ({contactoAntiguo.length})</h3>
+              <div className="record-grid">
+                {contactoAntiguo.map((l) => {
+                  const dias = Math.floor((hoy.getTime() - new Date(l.fecha_contacto || "").getTime()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <article key={l.id} className="record-card panel" style={{ borderLeft: "3px solid var(--color-warning, #f59e0b)" }}>
+                      <p className="record-title">{l.name}</p>
+                      <p className="muted">{l.phone || "Sin telefono"}</p>
+                      <p className="muted" style={{ fontWeight: 600, color: "var(--color-warning, #f59e0b)" }}>Sin contacto: {dias} dias</p>
+                      <button type="button" className="button secondary" style={{ marginTop: "0.5rem", fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => marcarContactado(l.id)}>
+                        Marcar como contactado
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
 // ── Global Search Results ──
 function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
   query: string;
@@ -637,6 +720,7 @@ const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
   { key: "suppliers", label: "Proveedores" },
   { key: "leads", label: "Leads" },
   { key: "clients", label: "Clientes" },
+  { key: "reminders", label: "Recordatorios" },
   { key: "revision", label: "Revision" },
 ];
 
@@ -770,6 +854,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         {currentView === "sales" && <SalesList records={salesRecords} vehicles={vehicles} clients={clients} companyId={companyId} onReload={loadAll} />}
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}
         {currentView === "suppliers" && <SuppliersList suppliers={suppliers} companyId={companyId} onReload={loadAll} />}
+        {currentView === "reminders" && <WebReminders leads={leads} onReload={loadAll} />}
         {currentView === "revision" && <RevisionSheet vehicles={allVehicles} companyId={companyId} />}
       </section>
 
