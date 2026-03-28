@@ -6,6 +6,7 @@ import { isSuperAdmin } from "./lib/platform-types";
 import { PlatformLayout } from "./components/platform/PlatformLayout";
 import { RegistrationPage } from "./components/platform/RegistrationPage";
 import * as platformApi from "./lib/platform-api";
+import { exportToCSV } from "./lib/csv-export";
 import "./App.css";
 
 type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision";
@@ -780,6 +781,9 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
           <p className="muted">{vehicles.length} vehiculo{vehicles.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="hero-actions">
+          <button type="button" className="button secondary" onClick={() => exportToCSV(vehicles.map(v => ({ Nombre: v.name, Año: v.anio, Km: v.km, Precio_compra: v.precio_compra, Precio_venta: v.precio_venta, Estado: v.estado, Combustible: v.fuel, Color: v.color })), "stock")}>
+            Exportar CSV
+          </button>
           <button type="button" className="button secondary" onClick={() => window.open("https://www.coches.net/concesionario/codinacars/", "_blank")}>
             Update stock
           </button>
@@ -1325,6 +1329,13 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
           <h2>Contactos</h2>
           <p className="muted">{leads.length} lead{leads.length !== 1 ? "s" : ""}</p>
         </div>
+        {leads.length > 0 && (
+          <div className="hero-actions">
+            <button type="button" className="button secondary" onClick={() => exportToCSV(leads.map(l => ({ Nombre: l.name, Telefono: l.phone, Email: l.email, Estado: l.estado, Canal: l.canal, Interes: l.vehicle_interest, Fecha_contacto: l.fecha_contacto, Notas: l.notes })), "leads")}>
+              Exportar CSV
+            </button>
+          </div>
+        )}
       </header>
       {leads.length > 0 && (
         <section className="panel filter-panel">
@@ -1378,6 +1389,13 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
           <h2>Clientes registrados</h2>
           <p className="muted">{clients.length} cliente{clients.length !== 1 ? "s" : ""}</p>
         </div>
+        {clients.length > 0 && (
+          <div className="hero-actions">
+            <button type="button" className="button secondary" onClick={() => exportToCSV(clients.map(c => ({ Nombre: c.name, Telefono: c.phone, Email: c.email, DNI: c.dni, Notas: c.notes })), "clientes")}>
+              Exportar CSV
+            </button>
+          </div>
+        )}
       </header>
       <section className="record-grid">
         {clients.map((c) => (
@@ -1423,6 +1441,13 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
           <h2>Registro de ventas</h2>
           <p className="muted">{records.length} venta{records.length !== 1 ? "s" : ""} · {total.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
         </div>
+        {records.length > 0 && (
+          <div className="hero-actions">
+            <button type="button" className="button secondary" onClick={() => exportToCSV(records.map(r => ({ Vehiculo: r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "" : "", Cliente: r.client_id ? clientMap.get(r.client_id)?.name || "" : "", Fecha: r.date, Precio: r.price_final, Notas: r.notes })), "ventas")}>
+              Exportar CSV
+            </button>
+          </div>
+        )}
       </header>
       {records.length > 0 && (
         <section className="panel sales-records-panel">
@@ -1477,6 +1502,13 @@ function PurchasesList({ records, companyId: _companyId, onReload }: { records: 
           <h2>Registro de compras</h2>
           <p className="muted">{records.length} registro{records.length !== 1 ? "s" : ""} · {total.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
         </div>
+        {records.length > 0 && (
+          <div className="hero-actions">
+            <button type="button" className="button secondary" onClick={() => exportToCSV(records.map(r => ({ Tipo: r.expense_type, Vehiculo: r.vehicle_name, Matricula: r.plate, Proveedor: r.supplier_name, Fecha: r.purchase_date, Importe: r.purchase_price, Factura: r.invoice_number, Pago: r.payment_method, Notas: r.notes })), "compras")}>
+              Exportar CSV
+            </button>
+          </div>
+        )}
       </header>
       {records.length > 0 && (
         <section className="panel sales-records-panel">
@@ -1559,6 +1591,11 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
           <p className="muted">{suppliers.length} proveedor{suppliers.length !== 1 ? "es" : ""}</p>
         </div>
         <div className="hero-actions">
+          {suppliers.length > 0 && (
+            <button type="button" className="button secondary" onClick={() => exportToCSV(suppliers.map(s => ({ Nombre: s.name, CIF: s.cif, Telefono: s.phone, Email: s.email, Contacto: s.contact_person, Notas: s.notes })), "proveedores")}>
+              Exportar CSV
+            </button>
+          )}
           <button type="button" className="button primary" onClick={() => setShowAdd(!showAdd)}>
             {showAdd ? "Cancelar" : "Nuevo proveedor"}
           </button>
