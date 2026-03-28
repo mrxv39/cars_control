@@ -925,8 +925,11 @@ pub fn delete_purchase_record(conn: &Connection, record_id: u64) -> SqlResult<()
 
 /// Authenticate a user by username and password.
 /// Soporta PBKDF2 (nuevo) y SHA-256 legacy con migración gradual automática.
+/// Usa una transacción para garantizar atomicidad de la migración de hash.
 pub fn authenticate_user(conn: &Connection, username: &str, password: &str) -> SqlResult<Option<LoginResult>> {
-    let user_row = conn.query_row(
+    let tx = conn.unchecked_transaction()?;
+
+    let user_row = tx.query_row(
         "SELECT id, company_id, full_name, username, password_hash, role, active, created_at
          FROM users WHERE username = ?",
         [username],
@@ -960,17 +963,18 @@ pub fn authenticate_user(conn: &Connection, username: &str, password: &str) -> S
 
     // Si el hash era legacy SHA-256, migrar silenciosamente a PBKDF2
     if let Some(upgraded_hash) = new_hash {
-        let _ = conn.execute(
+        let _ = tx.execute(
             "UPDATE users SET password_hash = ? WHERE id = ?",
             rusqlite::params![upgraded_hash, id],
         );
-        // No bloquear login si la actualización falla
     }
 
-    let company = get_company(conn, company_id)?;
+    let company = get_company(&tx, company_id)?;
     let Some(company) = company else {
         return Ok(None);
     };
+
+    tx.commit()?;
 
     Ok(Some(LoginResult {
         user: User { id, company_id, full_name, username: uname, role, active, created_at },
