@@ -788,6 +788,75 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseReco
         );
       })()}
 
+      {/* Monthly Sales vs Expenses Report */}
+      {(() => {
+        const months: { key: string; label: string; ventas: number; gastos: number; nVentas: number }[] = [];
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(anioActual, mesActual - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
+          const ventasMes = salesRecords.filter((s) => s.date.startsWith(key));
+          const gastosMes = purchaseRecords.filter((p) => p.purchase_date.startsWith(key));
+          months.push({
+            key,
+            label,
+            ventas: ventasMes.reduce((s, r) => s + r.price_final, 0),
+            gastos: gastosMes.reduce((s, r) => s + r.purchase_price, 0),
+            nVentas: ventasMes.length,
+          });
+        }
+
+        const maxValue = Math.max(...months.map((m) => Math.max(m.ventas, m.gastos)), 1);
+        const hasData = months.some((m) => m.ventas > 0 || m.gastos > 0);
+        if (!hasData) return null;
+
+        return (
+          <section className="panel" style={{ padding: "1.25rem" }}>
+            <p className="eyebrow">Evolucion mensual</p>
+            <h3 style={{ margin: "0.3rem 0 0.75rem" }}>Ventas vs Gastos (12 meses)</h3>
+            <div style={{ display: "flex", gap: "0.25rem", alignItems: "flex-end", height: 180, marginBottom: "0.5rem" }}>
+              {months.map((m) => (
+                <div key={m.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.15rem", height: "100%", justifyContent: "flex-end" }}>
+                  <div style={{ display: "flex", gap: 1, alignItems: "flex-end", width: "100%", justifyContent: "center", flex: 1 }}>
+                    <div style={{ width: "40%", background: "var(--color-success, #16a34a)", borderRadius: "3px 3px 0 0", height: `${Math.max((m.ventas / maxValue) * 100, m.ventas > 0 ? 4 : 0)}%`, minHeight: m.ventas > 0 ? 3 : 0 }} title={`Ventas: ${m.ventas.toLocaleString("es-ES")} €`} />
+                    <div style={{ width: "40%", background: "var(--color-danger, #dc2626)", borderRadius: "3px 3px 0 0", height: `${Math.max((m.gastos / maxValue) * 100, m.gastos > 0 ? 4 : 0)}%`, minHeight: m.gastos > 0 ? 3 : 0 }} title={`Gastos: ${m.gastos.toLocaleString("es-ES")} €`} />
+                  </div>
+                  <span style={{ fontSize: "0.6rem", color: "var(--color-text-muted, #64748b)", whiteSpace: "nowrap" }}>{m.label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: "1.5rem", fontSize: "0.78rem" }}>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "var(--color-success, #16a34a)", marginRight: 4 }}></span>Ventas</span>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "var(--color-danger, #dc2626)", marginRight: 4 }}></span>Gastos</span>
+            </div>
+            <div className="sales-table-scroll" style={{ marginTop: "1rem" }}>
+              <table className="sales-table">
+                <thead><tr>
+                  <th className="sales-th">Mes</th>
+                  <th className="sales-th sales-th-right">N. Ventas</th>
+                  <th className="sales-th sales-th-right">Ingresos</th>
+                  <th className="sales-th sales-th-right">Gastos</th>
+                  <th className="sales-th sales-th-right">Balance</th>
+                </tr></thead>
+                <tbody>
+                  {[...months].reverse().filter((m) => m.ventas > 0 || m.gastos > 0).map((m) => (
+                    <tr key={m.key} className="sales-row">
+                      <td className="sales-td"><span className="sales-vehicle-name">{m.label}</span></td>
+                      <td className="sales-td sales-td-right">{m.nVentas}</td>
+                      <td className="sales-td sales-td-right sales-price">{m.ventas.toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right">{m.gastos.toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right" style={{ fontWeight: 700, color: m.ventas - m.gastos >= 0 ? "var(--color-success-dark, #166534)" : "var(--color-danger-dark, #991b1b)" }}>
+                        {(m.ventas - m.gastos).toLocaleString("es-ES")} &euro;
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      })()}
+
       {allVehicles.length === 0 && leads.length === 0 && (
         <section className="panel setup-panel">
           <p className="eyebrow">Sin datos</p>
