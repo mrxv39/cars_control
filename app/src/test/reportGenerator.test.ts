@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, vi } from 'vitest'
 
 // Mock jsPDF since it uses canvas which doesn't exist in jsdom
 vi.mock('jspdf', () => {

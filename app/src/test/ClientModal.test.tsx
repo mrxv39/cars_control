@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ClientModal } from '../components/ClientModal'
-import type { ClientForm, StockVehicle } from '../types'
+import type { StockVehicle } from '../types'
 import { EMPTY_CLIENT_FORM } from '../types'
 
 describe('ClientModal', () => {

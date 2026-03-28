@@ -16,7 +16,7 @@ interface Props {
   onBack: () => void;
 }
 
-export function StockDetailView({ vehicle, thumbnail, submitting, onSave, onDelete, onBack }: Props) {
+export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, onSave, onDelete, onBack }: Props) {
   const [name, setName] = useState(vehicle.name);
   const [form, setForm] = useState<StockVehicleForm>({
     url: vehicle.ad_info?.url ?? "",
@@ -116,10 +116,6 @@ export function StockDetailView({ vehicle, thumbnail, submitting, onSave, onDele
       setSaving(false);
     }
   }
-
-  const mainPhoto = selectedPhoto
-    ? photos.find((p) => p.file_name === selectedPhoto)?.data_url
-    : photos[0]?.data_url ?? thumbnail;
 
   return (
     <>
