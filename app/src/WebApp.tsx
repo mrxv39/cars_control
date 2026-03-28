@@ -613,11 +613,12 @@ function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
 }
 
 // ── Dashboard ──
-function WebDashboard({ vehicles, allVehicles, leads, salesRecords, onReload, onNavigate }: {
+function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseRecords, onReload, onNavigate }: {
   vehicles: api.Vehicle[];
   allVehicles: api.Vehicle[];
   leads: api.Lead[];
   salesRecords: api.SalesRecord[];
+  purchaseRecords: api.PurchaseRecord[];
   onReload: () => void;
   onNavigate: (view: string) => void;
 }) {
@@ -723,6 +724,69 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, onReload, on
           )}
         </section>
       </div>
+
+      {/* Margin Report - Sold vehicles */}
+      {(() => {
+        const soldVehicles = allVehicles.filter((v) => v.estado === "vendido" && v.precio_compra && v.precio_venta);
+        if (soldVehicles.length === 0) return null;
+
+        const purchasesByVehicle = new Map<number, number>();
+        for (const p of purchaseRecords) {
+          if (p.vehicle_id) {
+            purchasesByVehicle.set(p.vehicle_id, (purchasesByVehicle.get(p.vehicle_id) || 0) + p.purchase_price);
+          }
+        }
+
+        const margins = soldVehicles.map((v) => {
+          const gastos = purchasesByVehicle.get(v.id) || 0;
+          const margen = (v.precio_venta || 0) - (v.precio_compra || 0) - gastos;
+          return { vehicle: v, margen, gastos };
+        }).sort((a, b) => b.margen - a.margen);
+
+        const margenTotal = margins.reduce((s, m) => s + m.margen, 0);
+        const margenMedio = margins.length > 0 ? Math.round(margenTotal / margins.length) : 0;
+
+        return (
+          <section className="panel" style={{ padding: "1.25rem" }}>
+            <p className="eyebrow">Informe de margen</p>
+            <h3 style={{ margin: "0.3rem 0 0.75rem" }}>Margen por vehiculo vendido</h3>
+            <div className="sales-stats-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: "1rem" }}>
+              <div className="panel sales-stat-card">
+                <p className="sales-stat-label">Margen total</p>
+                <p className="sales-stat-value sales-stat-success">{margenTotal.toLocaleString("es-ES")} &euro;</p>
+              </div>
+              <div className="panel sales-stat-card">
+                <p className="sales-stat-label">Margen medio</p>
+                <p className="sales-stat-value">{margenMedio.toLocaleString("es-ES")} &euro;</p>
+              </div>
+            </div>
+            <div className="sales-table-scroll">
+              <table className="sales-table">
+                <thead><tr>
+                  <th className="sales-th">Vehiculo</th>
+                  <th className="sales-th sales-th-right">P. Compra</th>
+                  <th className="sales-th sales-th-right">P. Venta</th>
+                  <th className="sales-th sales-th-right">Gastos</th>
+                  <th className="sales-th sales-th-right">Margen</th>
+                </tr></thead>
+                <tbody>
+                  {margins.slice(0, 10).map((m) => (
+                    <tr key={m.vehicle.id} className="sales-row">
+                      <td className="sales-td"><span className="sales-vehicle-name">{m.vehicle.name}</span></td>
+                      <td className="sales-td sales-td-right">{(m.vehicle.precio_compra || 0).toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right">{(m.vehicle.precio_venta || 0).toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right">{m.gastos.toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right" style={{ fontWeight: 700, color: m.margen >= 0 ? "var(--color-success-dark, #166534)" : "var(--color-danger-dark, #991b1b)" }}>
+                        {m.margen >= 0 ? "+" : ""}{m.margen.toLocaleString("es-ES")} &euro;
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      })()}
 
       {allVehicles.length === 0 && leads.length === 0 && (
         <section className="panel setup-panel">
@@ -872,6 +936,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
             allVehicles={allVehicles}
             leads={leads}
             salesRecords={salesRecords}
+            purchaseRecords={purchaseRecords}
             onReload={loadAll}
             onNavigate={(view) => { setCurrentView(view as ViewKey); }}
           />
