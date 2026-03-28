@@ -322,7 +322,7 @@ function CatalogThumb({ vehicleId }: { vehicleId: number }) {
 
   return (
     <div className="catalog-card-img">
-      {url ? <img src={url} alt="" /> : <div className="catalog-card-noimg">Sin foto</div>}
+      {url ? <img src={url} alt="" loading="lazy" /> : <div className="catalog-card-noimg">Sin foto</div>}
     </div>
   );
 }
@@ -348,7 +348,7 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
         <div className="catalog-detail-gallery">
           {mainPhoto && (
             <div className="catalog-detail-main-img">
-              <img src={mainPhoto} alt={vehicle.name} />
+              <img src={mainPhoto} alt={vehicle.name} loading="lazy" />
             </div>
           )}
           {photos.length > 1 && (
@@ -1089,7 +1089,7 @@ function VehicleThumb({ vehicleId }: { vehicleId: number }) {
   if (!url) return null;
   return (
     <div className="thumb-frame">
-      <img src={url} className="thumb-image" alt="" />
+      <img src={url} className="thumb-image" alt="" loading="lazy" />
     </div>
   );
 }
@@ -1223,7 +1223,7 @@ function VDPhotos({ photos, fileRef, uploading, handleUpload, handleDeletePhoto,
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "0.75rem" }}>
           {photos.map((p) => (
             <div key={p.id} style={{ position: "relative" }}>
-              <img src={p.url} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12, cursor: "pointer" }} onClick={() => setSelectedPhoto(p.id)} />
+              <img src={p.url} loading="lazy" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12, cursor: "pointer" }} onClick={() => setSelectedPhoto(p.id)} />
               <button type="button" onClick={() => void handleDeletePhoto(p)} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 8, padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}>X</button>
             </div>
           ))}
@@ -1282,7 +1282,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
       {h.photos.length > 0 && (
         <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", padding: "0.25rem 0" }}>
           {h.photos.map((p) => (
-            <img key={p.id} src={p.url} onClick={() => h.setSelectedPhoto(p.id)}
+            <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
               style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 10, cursor: "pointer", flexShrink: 0,
                 border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
           ))}
@@ -1345,12 +1345,12 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
       {h.mainPhoto && (
         <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
           <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
-            <img src={h.mainPhoto} alt={vehicle.name} style={{ width: "100%", display: "block", borderRadius: 24, maxHeight: 360, objectFit: "cover" }} />
+            <img src={h.mainPhoto} alt={vehicle.name} loading="lazy" style={{ width: "100%", display: "block", borderRadius: 24, maxHeight: 360, objectFit: "cover" }} />
           </section>
           {h.photos.length > 1 && (
             <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem", overflowX: "auto" }}>
               {h.photos.map((p) => (
-                <img key={p.id} src={p.url} onClick={() => h.setSelectedPhoto(p.id)}
+                <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
                   style={{ width: 72, height: 54, objectFit: "cover", borderRadius: 8, cursor: "pointer",
                     border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
               ))}
@@ -1419,7 +1419,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
             {h.mainPhoto ? (
-              <img src={h.mainPhoto} alt={vehicle.name} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block", borderRadius: 24 }} />
+              <img src={h.mainPhoto} alt={vehicle.name} loading="lazy" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block", borderRadius: 24 }} />
             ) : (
               <div style={{ width: "100%", aspectRatio: "4/3", display: "grid", placeItems: "center", background: "#e8ecf2", borderRadius: 24, color: "#64748b", textAlign: "center" }}>
                 <div><p style={{ margin: 0, fontWeight: 600 }}>Sin foto</p><p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem" }}>Sube fotos desde la galeria</p></div>
@@ -1429,7 +1429,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
           {h.photos.length > 1 && (
             <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto" }}>
               {h.photos.map((p) => (
-                <img key={p.id} src={p.url} onClick={() => h.setSelectedPhoto(p.id)}
+                <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
                   style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 8, cursor: "pointer", flexShrink: 0,
                     border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
               ))}
