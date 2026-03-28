@@ -1,17 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock supabase before importing api
-const mockSelect = vi.fn()
-const mockInsert = vi.fn()
-const mockUpdate = vi.fn()
-const mockDelete = vi.fn()
-const mockEq = vi.fn()
-const mockNeq = vi.fn()
-const mockOrder = vi.fn()
-const mockSingle = vi.fn()
-const mockFrom = vi.fn()
-const mockRemove = vi.fn()
-
 function chainMock(overrides: Record<string, any> = {}) {
   const chain: any = {
     select: vi.fn(() => chain),

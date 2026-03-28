@@ -8,7 +8,6 @@ import {
 import type {
   LeadForm,
   ClientForm,
-  StockVehicleForm,
   VehicleBase,
   LeadBase,
   ClientBase,

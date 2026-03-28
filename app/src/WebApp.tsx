@@ -1,13 +1,17 @@
-import React, { useState, useMemo, FormEvent } from "react";
+import React, { useState, useEffect, useMemo, FormEvent } from "react";
 import * as api from "./lib/api";
 import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
+import { isSuperAdmin } from "./lib/platform-types";
+import { PlatformLayout } from "./components/platform/PlatformLayout";
+import { RegistrationPage } from "./components/platform/RegistrationPage";
+import * as platformApi from "./lib/platform-api";
 import "./App.css";
 
-type ViewKey = "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision";
+type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision";
 
 function WebApp() {
-  const [page, setPage] = useState<"catalog" | "login" | "admin">(() => {
+  const [page, setPage] = useState<"catalog" | "login" | "register" | "admin" | "platform">(() => {
     try {
       const saved = localStorage.getItem("cc_session");
       if (saved) {
@@ -32,6 +36,48 @@ function WebApp() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
+
+  // Detectar callback de Google OAuth al cargar la página
+  useEffect(() => {
+    if (session) return; // Ya tiene sesión
+    const hash = window.location.hash;
+    if (!hash.includes("access_token")) return; // No es un callback OAuth
+
+    setOauthLoading(true);
+    void (async () => {
+      try {
+        const result = await platformApi.linkOAuthSession();
+        if (result) {
+          const loginResult: api.LoginResult = { user: result.user as any, company: result.company as any };
+          localStorage.setItem("cc_session", JSON.stringify(loginResult));
+          setSession(loginResult);
+          // Si es super_admin, ir al panel de plataforma directamente
+          setPage(isSuperAdmin(result.user.role) ? "platform" : "admin");
+        } else {
+          setLoginError("Tu email no tiene una cuenta en Cars Control. Contacta con el administrador o registra tu empresa.");
+          setPage("login");
+        }
+      } catch (err) {
+        setLoginError("Error al vincular cuenta Google: " + String(err));
+        setPage("login");
+      } finally {
+        setOauthLoading(false);
+        // Limpiar el hash de la URL
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+    })();
+  }, []);
+
+  async function handleGoogleLogin() {
+    setLoginError(null);
+    try {
+      await platformApi.signInWithGoogle();
+      // El navegador redirige a Google, no llegamos aquí hasta el callback
+    } catch (err) {
+      setLoginError("Error al conectar con Google: " + String(err));
+    }
+  }
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
@@ -49,6 +95,35 @@ function WebApp() {
     }
   }
 
+  // Registration page (public)
+  if (page === "register") {
+    return <RegistrationPage onBackToLogin={() => setPage("login")} />;
+  }
+
+  // Platform super-admin panel
+  if (page === "platform" && session && isSuperAdmin(session.user.role)) {
+    return (
+      <PlatformLayout
+        userId={session.user.id}
+        userName={session.user.full_name}
+        onBackToCompany={() => setPage("admin")}
+      />
+    );
+  }
+
+  // OAuth loading splash
+  if (oauthLoading) {
+    return (
+      <main className="shell" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <section className="panel" style={{ padding: "2rem", textAlign: "center" }}>
+          <p className="eyebrow">Cars Control</p>
+          <h2>Verificando cuenta Google...</h2>
+          <p className="muted">Un momento, estamos vinculando tu cuenta.</p>
+        </section>
+      </main>
+    );
+  }
+
   // Login page
   if (page === "login" && !session) {
     return (
@@ -59,6 +134,35 @@ function WebApp() {
             <p className="eyebrow">Acceso usuarios</p>
             <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesion</h2>
             <p className="muted" style={{ marginBottom: "1.5rem" }}>Panel de gestion para usuarios autorizados.</p>
+
+            {/* Google OAuth */}
+            <button
+              type="button"
+              onClick={() => void handleGoogleLogin()}
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                marginBottom: "1.5rem",
+                border: "1px solid #ddd",
+                borderRadius: "6px",
+                background: "white",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+                fontSize: "0.95rem",
+                fontWeight: 500,
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 010-9.18l-7.98-6.19a24.07 24.07 0 000 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+              Entrar con Google
+            </button>
+
+            <div style={{ textAlign: "center", marginBottom: "1.5rem", color: "#999", fontSize: "0.85rem" }}>
+              o con usuario y contrasena
+            </div>
+
             <form onSubmit={(e) => void handleLogin(e)}>
               <div style={{ marginBottom: "1rem" }}>
                 <label className="field-label" htmlFor="login-user">Usuario</label>
@@ -73,6 +177,11 @@ function WebApp() {
                 {loginSubmitting ? "Entrando..." : "Entrar"}
               </button>
             </form>
+            <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <button type="button" className="button secondary" onClick={() => setPage("register")} style={{ fontSize: "0.85rem" }}>
+                ¿No tienes cuenta? Registra tu empresa
+              </button>
+            </div>
           </section>
         </main>
       </div>
@@ -81,7 +190,7 @@ function WebApp() {
 
   // Admin panel
   if (page === "admin" && session) {
-    return <AuthenticatedWebApp session={session} onLogout={() => { localStorage.removeItem("cc_session"); setSession(null); setPage("catalog"); }} />;
+    return <AuthenticatedWebApp session={session} onLogout={() => { void platformApi.signOutOAuth(); localStorage.removeItem("cc_session"); setSession(null); setPage("catalog"); }} onOpenPlatform={() => setPage("platform")} />;
   }
 
   // Public catalog (default)
@@ -329,7 +438,131 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
   );
 }
 
+// ── Dashboard ──
+function WebDashboard({ vehicles, allVehicles, leads, salesRecords, onReload, onNavigate }: {
+  vehicles: api.Vehicle[];
+  allVehicles: api.Vehicle[];
+  leads: api.Lead[];
+  salesRecords: api.SalesRecord[];
+  onReload: () => void;
+  onNavigate: (view: string) => void;
+}) {
+  const stockDisponible = vehicles.filter((v) => v.estado !== "reservado" && v.estado !== "vendido").length;
+  const stockReservado = vehicles.filter((v) => v.estado === "reservado").length;
+  const stockVendido = allVehicles.filter((v) => v.estado === "vendido").length;
+
+  const leadsNuevos = leads.filter((l) => l.estado === "nuevo" || !l.estado).length;
+  const leadsContactados = leads.filter((l) => l.estado === "contactado").length;
+  const leadsNegociando = leads.filter((l) => l.estado === "negociando").length;
+  const leadsCerrados = leads.filter((l) => l.estado === "cerrado").length;
+  const leadsPerdidos = leads.filter((l) => l.estado === "perdido").length;
+
+  const beneficioTotal = vehicles.reduce((sum, v) => {
+    if (v.precio_compra && v.precio_venta) return sum + (v.precio_venta - v.precio_compra);
+    return sum;
+  }, 0);
+
+  const now = new Date();
+  const mesActual = now.getMonth();
+  const anioActual = now.getFullYear();
+  const ventasMes = salesRecords.filter((s) => {
+    const d = new Date(s.date);
+    return d.getMonth() === mesActual && d.getFullYear() === anioActual;
+  });
+  const totalFacturadoMes = ventasMes.reduce((sum, s) => sum + (s.price_final || 0), 0);
+
+  const hace7Dias = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const estadosFinales = ["cerrado", "perdido", "vendido", "descartado"];
+  const leadsSinSeguimiento = leads.filter((l) => {
+    if (estadosFinales.includes(l.estado || "")) return false;
+    if (!l.fecha_contacto) return true;
+    return new Date(l.fecha_contacto) < hace7Dias;
+  });
+
+  return (
+    <>
+      <header className="hero">
+        <div>
+          <p className="eyebrow">Dashboard</p>
+          <h2>Estado del negocio</h2>
+        </div>
+        <div className="hero-actions">
+          <button type="button" className="button primary" onClick={onReload}>Recargar</button>
+        </div>
+      </header>
+
+      <div className="sales-stats-grid">
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Stock disponible</p>
+          <p className="sales-stat-value sales-stat-primary">{stockDisponible}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Reservados</p>
+          <p className="sales-stat-value">{stockReservado}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Vendidos</p>
+          <p className="sales-stat-value sales-stat-success">{stockVendido}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Margen potencial</p>
+          <p className="sales-stat-value sales-stat-success">{beneficioTotal.toLocaleString("es-ES")} &euro;</p>
+        </section>
+      </div>
+
+      <div className="sales-stats-grid">
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Leads nuevos</p>
+          <p className="sales-stat-value">{leadsNuevos}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Contactados</p>
+          <p className="sales-stat-value">{leadsContactados}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Negociando</p>
+          <p className="sales-stat-value">{leadsNegociando}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Cerrados / Perdidos</p>
+          <p className="sales-stat-value">{leadsCerrados} / {leadsPerdidos}</p>
+        </section>
+      </div>
+
+      <div className="sales-stats-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Ventas este mes</p>
+          <p className="sales-stat-value sales-stat-primary">{ventasMes.length}</p>
+          <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+            Total facturado: {totalFacturadoMes.toLocaleString("es-ES")} &euro;
+          </p>
+        </section>
+        <section className="panel sales-stat-card" style={leadsSinSeguimiento.length > 0 ? { borderLeft: "3px solid var(--color-danger, #dc2626)" } : undefined}>
+          <p className="sales-stat-label">Leads sin contactar &gt;7 dias</p>
+          <p className="sales-stat-value" style={leadsSinSeguimiento.length > 0 ? { color: "var(--color-danger, #dc2626)" } : undefined}>
+            {leadsSinSeguimiento.length}
+          </p>
+          {leadsSinSeguimiento.length > 0 && (
+            <button type="button" className="button danger" style={{ marginTop: "0.5rem", fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => onNavigate("leads")}>
+              Ver leads pendientes
+            </button>
+          )}
+        </section>
+      </div>
+
+      {allVehicles.length === 0 && leads.length === 0 && (
+        <section className="panel setup-panel">
+          <p className="eyebrow">Sin datos</p>
+          <h2>Dashboard vacio</h2>
+          <p className="muted">Comienza por anadir vehiculos al stock y registrar los primeros leads.</p>
+        </section>
+      )}
+    </>
+  );
+}
+
 const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
+  { key: "dashboard", label: "Dashboard" },
   { key: "stock", label: "Stock" },
   { key: "sales", label: "Ventas" },
   { key: "purchases", label: "Compras" },
@@ -339,9 +572,9 @@ const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
   { key: "revision", label: "Revision" },
 ];
 
-function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; onLogout: () => void }) {
+function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: api.LoginResult; onLogout: () => void; onOpenPlatform?: () => void }) {
   const companyId = session.company.id;
-  const [currentView, setCurrentView] = useState<ViewKey>("stock");
+  const [currentView, setCurrentView] = useState<ViewKey>("dashboard");
   const [vehicles, setVehicles] = useState<api.Vehicle[]>([]);
   const [allVehicles, setAllVehicles] = useState<api.Vehicle[]>([]);
   const [leads, setLeads] = useState<api.Lead[]>([]);
@@ -414,12 +647,27 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
           ))}
         </nav>
         <div className="sidebar-tools panel">
+          {onOpenPlatform && isSuperAdmin(session.user.role) && (
+            <button type="button" className="button secondary" onClick={onOpenPlatform} style={{ width: "100%", marginBottom: "0.5rem" }}>
+              Panel plataforma
+            </button>
+          )}
           <button type="button" className="button danger" onClick={onLogout} style={{ width: "100%" }}>
             Cerrar sesion
           </button>
         </div>
       </aside>
       <section className="content">
+        {currentView === "dashboard" && (
+          <WebDashboard
+            vehicles={vehicles}
+            allVehicles={allVehicles}
+            leads={leads}
+            salesRecords={salesRecords}
+            onReload={loadAll}
+            onNavigate={(view) => { setCurrentView(view as ViewKey); }}
+          />
+        )}
         {currentView === "stock" && !selectedVehicle && (
           <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
         )}
@@ -1055,13 +1303,19 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
 // ============================================================
 // Leads List
 // ============================================================
-function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload: _onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
+function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
   const [search, setSearch] = useState("");
   const filtered = useMemo(() => {
     if (!search.trim()) return leads;
     const q = search.toLowerCase();
     return leads.filter((l) => [l.name, l.phone, l.vehicle_interest].some((v) => v.toLowerCase().includes(q)));
   }, [leads, search]);
+
+  async function handleDeleteLead(id: number, name: string) {
+    if (!confirm(`¿Eliminar lead "${name}"? Esta acción no se puede deshacer.`)) return;
+    await api.deleteLead(id);
+    onReload();
+  }
 
   return (
     <>
@@ -1085,9 +1339,10 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
                 <p className="record-title">{lead.name}</p>
                 <p className="muted">{lead.phone || "Sin telefono"}</p>
               </div>
-              <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
                 {lead.canal === "coches.net" && <span className="badge badge-coches">coches.net</span>}
                 <span className="badge">{lead.estado}</span>
+                <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteLead(lead.id, lead.name)}>Eliminar</button>
               </div>
             </div>
             {lead.vehicle_interest && <p className="record-line">Interes: {lead.vehicle_interest}</p>}
@@ -1108,7 +1363,13 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
 // ============================================================
 // Clients List
 // ============================================================
-function ClientsList({ clients, companyId: _companyId, onReload: _onReload }: { clients: api.Client[]; companyId: number; onReload: () => void }) {
+function ClientsList({ clients, companyId: _companyId, onReload }: { clients: api.Client[]; companyId: number; onReload: () => void }) {
+  async function handleDeleteClient(id: number, name: string) {
+    if (!confirm(`¿Eliminar cliente "${name}"? Esta acción no se puede deshacer.`)) return;
+    await api.deleteClient(id);
+    onReload();
+  }
+
   return (
     <>
       <header className="hero">
@@ -1126,7 +1387,10 @@ function ClientsList({ clients, companyId: _companyId, onReload: _onReload }: { 
                 <p className="record-title">{c.name}</p>
                 <p className="muted">{c.phone || "Sin telefono"}</p>
               </div>
-              <span className="badge badge-success">Cliente</span>
+              <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                <span className="badge badge-success">Cliente</span>
+                <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteClient(c.id, c.name)}>Eliminar</button>
+              </div>
             </div>
             {c.dni && <p className="record-line">DNI: {c.dni}</p>}
             {c.email && <p className="record-line">{c.email}</p>}
@@ -1140,10 +1404,16 @@ function ClientsList({ clients, companyId: _companyId, onReload: _onReload }: { 
 // ============================================================
 // Sales List
 // ============================================================
-function SalesList({ records, vehicles, clients, companyId: _companyId, onReload: _onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; onReload: () => void }) {
+function SalesList({ records, vehicles, clients, companyId: _companyId, onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; onReload: () => void }) {
   const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
   const clientMap = new Map(clients.map((c) => [c.id, c]));
   const total = records.reduce((s, r) => s + r.price_final, 0);
+
+  async function handleDeleteSale(id: number, vehicleName: string) {
+    if (!confirm(`¿Eliminar registro de venta de "${vehicleName}"? Esta acción no se puede deshacer.`)) return;
+    await api.deleteSalesRecord(id);
+    onReload();
+  }
 
   return (
     <>
@@ -1163,16 +1433,21 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
                 <th className="sales-th">Cliente</th>
                 <th className="sales-th">Fecha</th>
                 <th className="sales-th sales-th-right">Precio</th>
+                <th className="sales-th" style={{ width: "4rem" }}></th>
               </tr></thead>
               <tbody>
-                {records.map((r) => (
-                  <tr key={r.id} className="sales-row">
-                    <td className="sales-td">{r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "—" : "—"}</td>
-                    <td className="sales-td">{r.client_id ? clientMap.get(r.client_id)?.name || "—" : "—"}</td>
-                    <td className="sales-td">{new Date(r.date).toLocaleDateString("es-ES")}</td>
-                    <td className="sales-td sales-td-right"><span className="sales-price">{r.price_final.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
-                  </tr>
-                ))}
+                {records.map((r) => {
+                  const vName = r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "Venta" : "Venta";
+                  return (
+                    <tr key={r.id} className="sales-row">
+                      <td className="sales-td">{r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "—" : "—"}</td>
+                      <td className="sales-td">{r.client_id ? clientMap.get(r.client_id)?.name || "—" : "—"}</td>
+                      <td className="sales-td">{new Date(r.date).toLocaleDateString("es-ES")}</td>
+                      <td className="sales-td sales-td-right"><span className="sales-price">{r.price_final.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
+                      <td className="sales-td"><button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteSale(r.id, vName)}>Eliminar</button></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1185,8 +1460,15 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
 // ============================================================
 // Purchases List
 // ============================================================
-function PurchasesList({ records, companyId: _companyId, onReload: _onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
+function PurchasesList({ records, companyId: _companyId, onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
   const total = records.reduce((s, r) => s + r.purchase_price, 0);
+
+  async function handleDeletePurchase(id: number, supplierName: string) {
+    if (!confirm(`¿Eliminar registro de compra de "${supplierName}"? Esta acción no se puede deshacer.`)) return;
+    await api.deletePurchaseRecord(id);
+    onReload();
+  }
+
   return (
     <>
       <header className="hero">
@@ -1206,6 +1488,7 @@ function PurchasesList({ records, companyId: _companyId, onReload: _onReload }: 
                 <th className="sales-th">Fecha</th>
                 <th className="sales-th sales-th-right">Importe</th>
                 <th className="sales-th">Factura</th>
+                <th className="sales-th" style={{ width: "4rem" }}></th>
               </tr></thead>
               <tbody>
                 {records.map((r) => (
@@ -1215,6 +1498,7 @@ function PurchasesList({ records, companyId: _companyId, onReload: _onReload }: 
                     <td className="sales-td">{r.purchase_date}</td>
                     <td className="sales-td sales-td-right"><span className="sales-price">{r.purchase_price.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
                     <td className="sales-td"><span className="badge badge-info">{r.invoice_number || "—"}</span></td>
+                    <td className="sales-td"><button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeletePurchase(r.id, r.supplier_name)}>Eliminar</button></td>
                   </tr>
                 ))}
               </tbody>
