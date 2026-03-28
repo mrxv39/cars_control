@@ -7,6 +7,7 @@ import { PlatformLayout } from "./components/platform/PlatformLayout";
 import { RegistrationPage } from "./components/platform/RegistrationPage";
 import * as platformApi from "./lib/platform-api";
 import { exportToCSV } from "./lib/csv-export";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./App.css";
 
 type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "reminders" | "revision";
@@ -2207,4 +2208,12 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
   );
 }
 
-export default WebApp;
+function WebAppWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <WebApp />
+    </ErrorBoundary>
+  );
+}
+
+export default WebAppWithBoundary;
