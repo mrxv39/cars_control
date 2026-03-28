@@ -2077,6 +2077,15 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
   const [resultadoGeneral, setResultadoGeneral] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [history, setHistory] = useState<api.VehicleInspection[]>([]);
+
+  useEffect(() => {
+    if (selectedVehicleId) {
+      void api.listVehicleInspections(Number(selectedVehicleId)).then(setHistory);
+    } else {
+      setHistory([]);
+    }
+  }, [selectedVehicleId]);
 
   function setItemStatus(key: string, status: ItemStatus) {
     setItems((prev) => ({ ...prev, [key]: { ...prev[key], status: prev[key].status === status ? null : status } }));
@@ -2115,7 +2124,9 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
       const { error } = await supabase.from("vehicle_inspections").insert(payload);
       if (error) throw error;
       setSaveMsg("Revision guardada correctamente.");
+      const savedVehicleId = selectedVehicleId;
       resetForm();
+      if (savedVehicleId) void api.listVehicleInspections(Number(savedVehicleId)).then(setHistory);
     } catch (err) {
       setSaveMsg("Error al guardar. Intentalo de nuevo.");
     } finally {
@@ -2243,6 +2254,40 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
           {saveMsg && <span style={{ fontSize: "0.85rem", color: saveMsg.startsWith("Error") ? "#dc2626" : "#16a34a" }}>{saveMsg}</span>}
         </div>
       </section>
+
+      {/* Inspection History */}
+      {history.length > 0 && (
+        <section className="panel" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>
+          <p className="eyebrow">Historial de revisiones</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.5rem" }}>
+            {history.map((insp) => {
+              const totalItems = Object.keys(insp.items).length;
+              const okCount = Object.values(insp.items).filter((i) => i.status === "ok").length;
+              const noCount = Object.values(insp.items).filter((i) => i.status === "no").length;
+              return (
+                <div key={insp.id} style={{ padding: "0.75rem", borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.5)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: "0.9rem" }}>
+                        {new Date(insp.created_at).toLocaleDateString("es-ES")}
+                        {insp.inspector_name && <span className="muted"> — {insp.inspector_name}</span>}
+                      </p>
+                      <p className="muted" style={{ margin: "0.2rem 0 0", fontSize: "0.82rem" }}>
+                        {okCount} OK · {noCount} NO · {totalItems - okCount - noCount} sin revisar
+                      </p>
+                    </div>
+                    <button type="button" className="button danger" style={{ padding: "0.25rem 0.6rem", fontSize: "0.72rem" }}
+                      onClick={async () => { await api.deleteVehicleInspection(insp.id); setHistory((h) => h.filter((x) => x.id !== insp.id)); }}>
+                      Eliminar
+                    </button>
+                  </div>
+                  {insp.resultado_general && <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.82rem", fontStyle: "italic" }}>{insp.resultado_general}</p>}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -1,4 +1,10 @@
 import { supabase } from "./supabase";
+import { verifyPassword } from "./hash";
+import type { VehicleBase, LeadBase, ClientBase, SalesRecordBase, PurchaseRecordBase } from "../shared-types";
+
+// Re-exportar tipos compartidos para que WebApp.tsx pueda seguir usando api.Company, api.User, etc.
+export type { Company, User, LoginResult } from "../shared-types";
+import type { LoginResult } from "../shared-types";
 
 // Detect if running inside Tauri
 export function isTauri(): boolean {
@@ -10,35 +16,15 @@ export async function tauriInvoke<T>(command: string, args?: Record<string, unkn
   return invoke<T>(command, args);
 }
 
+// Re-exportar hashPassword para uso en platform-api.ts y otros módulos
+export { hashPassword } from "./hash";
+
 // ============================================================
-// Types (shared between Tauri and Web)
+// Types — extensiones Web/Supabase de los tipos base compartidos
 // ============================================================
 
-export interface Company {
-  id: number;
-  trade_name: string;
-  legal_name: string;
-  cif: string;
-  address: string;
-  phone: string;
-  email: string;
-}
-
-export interface User {
-  id: number;
-  company_id: number;
-  full_name: string;
-  username: string;
-  role: string;
-  active: boolean;
-}
-
-export interface LoginResult {
-  user: User;
-  company: Company;
-}
-
-export interface Vehicle {
+/** Vehículo Web: extiende VehicleBase con id numérico y campos Supabase. */
+export interface Vehicle extends VehicleBase {
   id: number;
   company_id: number;
   name: string;
@@ -67,58 +53,31 @@ export interface VehicleDocument {
   url: string;
 }
 
-export interface Lead {
-  id: number;
+/** Lead Web: extiende LeadBase con company_id y vehicle_id numérico. */
+export interface Lead extends LeadBase {
   company_id: number;
-  name: string;
-  phone: string;
-  email: string;
-  notes: string;
-  vehicle_interest: string;
   vehicle_id: number | null;
-  converted_client_id: number | null;
   estado: string;
   fecha_contacto: string;
   canal: string;
 }
 
-export interface Client {
-  id: number;
+/** Cliente Web: extiende ClientBase con company_id y vehicle_id numérico. */
+export interface Client extends ClientBase {
   company_id: number;
-  name: string;
-  phone: string;
-  email: string;
-  dni: string;
-  notes: string;
   vehicle_id: number | null;
-  source_lead_id: number | null;
 }
 
-export interface SalesRecord {
-  id: number;
+/** Registro de venta Web: extiende SalesRecordBase con company_id y vehicle_id. */
+export interface SalesRecord extends SalesRecordBase {
   company_id: number;
   vehicle_id: number | null;
-  client_id: number | null;
-  lead_id: number | null;
-  price_final: number;
-  date: string;
-  notes: string;
 }
 
-export interface PurchaseRecord {
-  id: number;
+/** Registro de compra Web: extiende PurchaseRecordBase con company_id y vehicle_id. */
+export interface PurchaseRecord extends PurchaseRecordBase {
   company_id: number;
-  expense_type: string;
   vehicle_id: number | null;
-  vehicle_name: string;
-  plate: string;
-  supplier_name: string;
-  purchase_date: string;
-  purchase_price: number;
-  invoice_number: string;
-  payment_method: string;
-  notes: string;
-  source_file: string;
 }
 
 export interface Supplier {
@@ -141,30 +100,35 @@ export interface VehiclePhoto {
   url: string;
 }
 
-// Hash password (same as Rust backend)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`codinacars_salt_${password}`);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 // ============================================================
-// Auth
+// Auth — Login con migración gradual SHA-256 → PBKDF2
 // ============================================================
 
 export async function login(username: string, password: string): Promise<LoginResult> {
-  const hash = await hashPassword(password);
+  // 1. Buscar usuario por username (sin comparar hash en la query)
   const { data: user, error: userErr } = await supabase
     .from("users")
     .select("id, company_id, full_name, username, password_hash, role, active")
     .eq("username", username)
-    .eq("password_hash", hash)
     .eq("active", true)
     .single();
 
   if (userErr || !user) throw new Error("Usuario o contrasena incorrectos.");
 
+  // 2. Verificar password (soporta PBKDF2 nuevo y SHA-256 legacy)
+  const { valid, newHash } = await verifyPassword(password, user.password_hash);
+  if (!valid) throw new Error("Usuario o contrasena incorrectos.");
+
+  // 3. Si el hash era legacy SHA-256, migrar silenciosamente a PBKDF2
+  if (newHash) {
+    await supabase
+      .from("users")
+      .update({ password_hash: newHash })
+      .eq("id", user.id);
+    // No bloquear login si la actualización falla — el usuario ya está autenticado
+  }
+
+  // 4. Obtener empresa
   const { data: company, error: compErr } = await supabase
     .from("companies")
     .select("*")
@@ -470,4 +434,33 @@ export async function deleteVehicleDocument(doc: VehicleDocument): Promise<void>
     await supabase.storage.from("vehicle-docs").remove([row.storage_path]);
   }
   await supabase.from("vehicle_documents").delete().eq("id", doc.id);
+}
+
+// ============================================================
+// Vehicle Inspections
+// ============================================================
+
+export interface VehicleInspection {
+  id: number;
+  vehicle_id: number;
+  company_id: number;
+  inspector_name: string | null;
+  items: Record<string, { status: string | null; notes: string }>;
+  resultado_general: string | null;
+  created_at: string;
+}
+
+export async function listVehicleInspections(vehicleId: number): Promise<VehicleInspection[]> {
+  const { data, error } = await supabase
+    .from("vehicle_inspections")
+    .select("*")
+    .eq("vehicle_id", vehicleId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function deleteVehicleInspection(id: number): Promise<void> {
+  const { error } = await supabase.from("vehicle_inspections").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }
