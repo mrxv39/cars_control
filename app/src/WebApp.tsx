@@ -61,7 +61,7 @@ function WebApp() {
           setPage("login");
         }
       } catch (err) {
-        setLoginError("Error al vincular cuenta Google: " + String(err));
+        setLoginError("Error al vincular cuenta Google. Comprueba tu conexion e intentalo de nuevo.");
         setPage("login");
       } finally {
         setOauthLoading(false);
@@ -77,7 +77,7 @@ function WebApp() {
       await platformApi.signInWithGoogle();
       // El navegador redirige a Google, no llegamos aquí hasta el callback
     } catch (err) {
-      setLoginError("Error al conectar con Google: " + String(err));
+      setLoginError("Error al conectar con Google. Comprueba tu conexion e intentalo de nuevo.");
     }
   }
 
@@ -91,7 +91,10 @@ function WebApp() {
       setSession(result);
       setPage("admin");
     } catch (err) {
-      setLoginError(String(err));
+      const msg = String(err);
+      if (msg.includes("Usuario o contrasena")) setLoginError("Usuario o contraseña incorrectos.");
+      else if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed")) setLoginError("Error de conexion. Comprueba tu internet.");
+      else setLoginError("Error al iniciar sesion. Intentalo de nuevo.");
     } finally {
       setLoginSubmitting(false);
     }
@@ -2078,7 +2081,7 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
       setSaveMsg("Revision guardada correctamente.");
       resetForm();
     } catch (err) {
-      setSaveMsg("Error al guardar: " + String(err));
+      setSaveMsg("Error al guardar. Intentalo de nuevo.");
     } finally {
       setSaving(false);
     }
