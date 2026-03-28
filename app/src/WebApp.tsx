@@ -1482,7 +1482,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
 // ============================================================
 // Leads List
 // ============================================================
-function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
+function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "", estado: "", canal: "" });
@@ -1507,6 +1507,18 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
   async function handleDeleteLead(id: number, name: string) {
     if (!confirm(`¿Eliminar lead "${name}"? Esta acción no se puede deshacer.`)) return;
     await api.deleteLead(id);
+    onReload();
+  }
+
+  async function convertToClient(lead: api.Lead) {
+    if (!confirm(`¿Convertir "${lead.name}" en cliente?`)) return;
+    const client = await api.createClient(companyId, {
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      notes: lead.notes,
+    } as Partial<api.Client>);
+    await api.updateLead(lead.id, { converted_client_id: client.id, estado: "cerrado" } as Partial<api.Lead>);
     onReload();
   }
 
@@ -1565,12 +1577,20 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
                 </div>
                 {lead.vehicle_interest && <p className="record-line">Interes: {lead.vehicle_interest}</p>}
                 {lead.notes && <p className="record-notes">{lead.notes}</p>}
-                {lead.canal === "coches.net" && (
-                  <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
-                    className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
-                    Responder en coches.net
-                  </a>
-                )}
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.25rem" }}>
+                  {!lead.converted_client_id && lead.estado !== "perdido" && (
+                    <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void convertToClient(lead)}>
+                      Convertir a cliente
+                    </button>
+                  )}
+                  {lead.converted_client_id && <span className="badge badge-success">Convertido</span>}
+                  {lead.canal === "coches.net" && (
+                    <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
+                      className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
+                      Responder en coches.net
+                    </a>
+                  )}
+                </div>
               </>
             )}
           </article>
