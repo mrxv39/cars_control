@@ -1484,11 +1484,25 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
 // ============================================================
 function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "", estado: "", canal: "" });
   const filtered = useMemo(() => {
     if (!search.trim()) return leads;
     const q = search.toLowerCase();
     return leads.filter((l) => [l.name, l.phone, l.vehicle_interest].some((v) => v.toLowerCase().includes(q)));
   }, [leads, search]);
+
+  function startEdit(lead: api.Lead) {
+    setEditingId(lead.id);
+    setEditForm({ name: lead.name, phone: lead.phone, email: lead.email, notes: lead.notes, estado: lead.estado, canal: lead.canal });
+  }
+
+  async function saveEdit() {
+    if (editingId == null) return;
+    await api.updateLead(editingId, editForm as Partial<api.Lead>);
+    setEditingId(null);
+    onReload();
+  }
 
   async function handleDeleteLead(id: number, name: string) {
     if (!confirm(`¿Eliminar lead "${name}"? Esta acción no se puede deshacer.`)) return;
@@ -1520,24 +1534,44 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
       <section className="record-grid">
         {filtered.map((lead) => (
           <article key={lead.id} className="record-card panel">
-            <div className="record-header">
-              <div>
-                <p className="record-title">{lead.name}</p>
-                <p className="muted">{lead.phone || "Sin telefono"}</p>
+            {editingId === lead.id ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" />
+                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Telefono" />
+                <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
+                <select value={editForm.estado} onChange={(e) => setEditForm({ ...editForm, estado: e.target.value })}>
+                  <option value="nuevo">Nuevo</option><option value="contactado">Contactado</option><option value="negociando">Negociando</option><option value="cerrado">Cerrado</option><option value="perdido">Perdido</option>
+                </select>
+                <input value={editForm.canal} onChange={(e) => setEditForm({ ...editForm, canal: e.target.value })} placeholder="Canal" />
+                <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notas" rows={2} />
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void saveEdit()}>Guardar</button>
+                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => setEditingId(null)}>Cancelar</button>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
-                {lead.canal === "coches.net" && <span className="badge badge-coches">coches.net</span>}
-                <span className="badge">{lead.estado}</span>
-                <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteLead(lead.id, lead.name)}>Eliminar</button>
-              </div>
-            </div>
-            {lead.vehicle_interest && <p className="record-line">Interes: {lead.vehicle_interest}</p>}
-            {lead.notes && <p className="record-notes">{lead.notes}</p>}
-            {lead.canal === "coches.net" && (
-              <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
-                className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
-                Responder en coches.net
-              </a>
+            ) : (
+              <>
+                <div className="record-header">
+                  <div>
+                    <p className="record-title">{lead.name}</p>
+                    <p className="muted">{lead.phone || "Sin telefono"}</p>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
+                    {lead.canal === "coches.net" && <span className="badge badge-coches">coches.net</span>}
+                    <span className="badge">{lead.estado}</span>
+                    <button type="button" className="button secondary" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => startEdit(lead)}>Editar</button>
+                    <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteLead(lead.id, lead.name)}>Eliminar</button>
+                  </div>
+                </div>
+                {lead.vehicle_interest && <p className="record-line">Interes: {lead.vehicle_interest}</p>}
+                {lead.notes && <p className="record-notes">{lead.notes}</p>}
+                {lead.canal === "coches.net" && (
+                  <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
+                    className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
+                    Responder en coches.net
+                  </a>
+                )}
+              </>
             )}
           </article>
         ))}
@@ -1550,6 +1584,21 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
 // Clients List
 // ============================================================
 function ClientsList({ clients, companyId: _companyId, onReload }: { clients: api.Client[]; companyId: number; onReload: () => void }) {
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", dni: "", notes: "" });
+
+  function startEdit(c: api.Client) {
+    setEditingId(c.id);
+    setEditForm({ name: c.name, phone: c.phone, email: c.email, dni: c.dni, notes: c.notes });
+  }
+
+  async function saveEdit() {
+    if (editingId == null) return;
+    await api.updateClient(editingId, editForm as Partial<api.Client>);
+    setEditingId(null);
+    onReload();
+  }
+
   async function handleDeleteClient(id: number, name: string) {
     if (!confirm(`¿Eliminar cliente "${name}"? Esta acción no se puede deshacer.`)) return;
     await api.deleteClient(id);
@@ -1575,18 +1624,35 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
       <section className="record-grid">
         {clients.map((c) => (
           <article key={c.id} className="record-card panel">
-            <div className="record-header">
-              <div>
-                <p className="record-title">{c.name}</p>
-                <p className="muted">{c.phone || "Sin telefono"}</p>
+            {editingId === c.id ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" />
+                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Telefono" />
+                <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
+                <input value={editForm.dni} onChange={(e) => setEditForm({ ...editForm, dni: e.target.value })} placeholder="DNI" />
+                <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notas" rows={2} />
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void saveEdit()}>Guardar</button>
+                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => setEditingId(null)}>Cancelar</button>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
-                <span className="badge badge-success">Cliente</span>
-                <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteClient(c.id, c.name)}>Eliminar</button>
-              </div>
-            </div>
-            {c.dni && <p className="record-line">DNI: {c.dni}</p>}
-            {c.email && <p className="record-line">{c.email}</p>}
+            ) : (
+              <>
+                <div className="record-header">
+                  <div>
+                    <p className="record-title">{c.name}</p>
+                    <p className="muted">{c.phone || "Sin telefono"}</p>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                    <span className="badge badge-success">Cliente</span>
+                    <button type="button" className="button secondary" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => startEdit(c)}>Editar</button>
+                    <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteClient(c.id, c.name)}>Eliminar</button>
+                  </div>
+                </div>
+                {c.dni && <p className="record-line">DNI: {c.dni}</p>}
+                {c.email && <p className="record-line">{c.email}</p>}
+              </>
+            )}
           </article>
         ))}
       </section>
