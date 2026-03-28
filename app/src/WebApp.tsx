@@ -1904,9 +1904,9 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
 // Sales List
 // ============================================================
 function SalesList({ records, vehicles, clients, companyId: _companyId, onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; onReload: () => void }) {
-  const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
-  const clientMap = new Map(clients.map((c) => [c.id, c]));
-  const total = records.reduce((s, r) => s + r.price_final, 0);
+  const vehicleMap = useMemo(() => new Map(vehicles.map((v) => [v.id, v])), [vehicles]);
+  const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
+  const total = useMemo(() => records.reduce((s, r) => s + r.price_final, 0), [records]);
   const { paged: pagedSales, page: salesPage, totalPages: salesTotalPages, setPage: setSalesPage } = usePagination(records);
 
   async function handleDeleteSale(id: number, vehicleName: string) {
@@ -1969,7 +1969,7 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
 // Purchases List
 // ============================================================
 function PurchasesList({ records, companyId: _companyId, onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
-  const total = records.reduce((s, r) => s + r.purchase_price, 0);
+  const total = useMemo(() => records.reduce((s, r) => s + r.purchase_price, 0), [records]);
   const { paged: pagedPurchases, page: purchasesPage, totalPages: purchasesTotalPages, setPage: setPurchasesPage } = usePagination(records);
 
   async function handleDeletePurchase(id: number, supplierName: string) {
