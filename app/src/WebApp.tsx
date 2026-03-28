@@ -1519,6 +1519,30 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "", estado: "", canal: "" });
+  const [notesLeadId, setNotesLeadId] = useState<number | null>(null);
+  const [leadNotes, setLeadNotes] = useState<api.LeadNote[]>([]);
+  const [newNote, setNewNote] = useState("");
+  const [loadingNotes, setLoadingNotes] = useState(false);
+
+  async function openNotes(leadId: number) {
+    if (notesLeadId === leadId) { setNotesLeadId(null); return; }
+    setNotesLeadId(leadId);
+    setLoadingNotes(true);
+    try { setLeadNotes(await api.listLeadNotes(leadId)); } catch { setLeadNotes([]); }
+    finally { setLoadingNotes(false); }
+  }
+
+  async function addNote() {
+    if (!notesLeadId || !newNote.trim()) return;
+    await api.createLeadNote(notesLeadId, newNote.trim());
+    setNewNote("");
+    setLeadNotes(await api.listLeadNotes(notesLeadId));
+  }
+
+  async function removeNote(noteId: number) {
+    await api.deleteLeadNote(noteId);
+    if (notesLeadId) setLeadNotes(await api.listLeadNotes(notesLeadId));
+  }
   const filtered = useMemo(() => {
     if (!search.trim()) return leads;
     const q = search.toLowerCase();
@@ -1619,6 +1643,9 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
                     </button>
                   )}
                   {lead.converted_client_id && <span className="badge badge-success">Convertido</span>}
+                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void openNotes(lead.id)}>
+                    {notesLeadId === lead.id ? "Cerrar notas" : "Notas"}
+                  </button>
                   {lead.canal === "coches.net" && (
                     <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
                       className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
@@ -1626,6 +1653,29 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
                     </a>
                   )}
                 </div>
+                {notesLeadId === lead.id && (
+                  <div style={{ marginTop: "0.75rem", padding: "0.75rem", borderRadius: 10, background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.06)" }}>
+                    <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                      <input value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Añadir nota..." style={{ flex: 1, fontSize: "0.85rem", padding: "0.5rem 0.75rem" }} />
+                      <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void addNote()} disabled={!newNote.trim()}>Añadir</button>
+                    </div>
+                    {loadingNotes ? <p className="muted" style={{ margin: 0 }}>Cargando...</p> : (
+                      leadNotes.length === 0 ? <p className="muted" style={{ margin: 0, fontSize: "0.82rem" }}>Sin notas</p> : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                          {leadNotes.map((n) => (
+                            <div key={n.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", padding: "0.35rem 0", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+                              <div>
+                                <p style={{ margin: 0, fontSize: "0.82rem" }}>{n.content}</p>
+                                <p className="muted" style={{ margin: "0.1rem 0 0", fontSize: "0.72rem" }}>{new Date(n.timestamp).toLocaleString("es-ES")}</p>
+                              </div>
+                              <button type="button" className="button danger" aria-label="Eliminar nota" style={{ padding: "0.15rem 0.4rem", fontSize: "0.65rem", flexShrink: 0 }} onClick={() => void removeNote(n.id)}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
               </>
             )}
           </article>

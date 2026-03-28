@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 import { verifyPassword } from "./hash";
-import type { VehicleBase, LeadBase, ClientBase, SalesRecordBase, PurchaseRecordBase } from "../shared-types";
+import type { VehicleBase, LeadBase, ClientBase, SalesRecordBase, PurchaseRecordBase, LeadNote } from "../shared-types";
 
 // Re-exportar tipos compartidos para que WebApp.tsx pueda seguir usando api.Company, api.User, etc.
 export type { Company, User, LoginResult } from "../shared-types";
@@ -304,6 +304,37 @@ export async function updateLead(id: number, input: Partial<Lead>): Promise<Lead
 
 export async function deleteLead(id: number): Promise<void> {
   const { error } = await supabase.from("leads").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// ============================================================
+// Lead Notes
+// ============================================================
+
+export type { LeadNote } from "../shared-types";
+
+export async function listLeadNotes(leadId: number): Promise<LeadNote[]> {
+  const { data, error } = await supabase
+    .from("lead_notes")
+    .select("*")
+    .eq("lead_id", leadId)
+    .order("timestamp", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function createLeadNote(leadId: number, content: string): Promise<LeadNote> {
+  const { data, error } = await supabase
+    .from("lead_notes")
+    .insert({ lead_id: leadId, content, timestamp: new Date().toISOString() })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteLeadNote(id: number): Promise<void> {
+  const { error } = await supabase.from("lead_notes").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
 
