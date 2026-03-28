@@ -760,6 +760,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
   const [selectedVehicle, setSelectedVehicle] = useState<api.Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [globalSearch, setGlobalSearch] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   React.useEffect(() => {
     void loadAll();
@@ -804,7 +805,16 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
 
   return (
     <main className="shell">
-      <aside className="sidebar">
+      <button
+        type="button"
+        className="mobile-menu-btn"
+        aria-label="Abrir menu"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+      >
+        {mobileMenuOpen ? "✕" : "☰"}
+      </button>
+      {mobileMenuOpen && <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)} />}
+      <aside className={`sidebar ${mobileMenuOpen ? "sidebar-open" : ""}`}>
         <div>
           <p className="eyebrow">Cars Control</p>
           <h1 className="sidebar-title">{session.company.trade_name}</h1>
@@ -838,7 +848,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
               key={item.key}
               type="button"
               className={currentView === item.key ? "nav-item active" : "nav-item"}
-              onClick={() => { setCurrentView(item.key); setSelectedVehicle(null); }}
+              onClick={() => { setCurrentView(item.key); setSelectedVehicle(null); setMobileMenuOpen(false); }}
             >
               {item.label}
             </button>
