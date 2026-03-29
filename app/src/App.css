@@ -1420,6 +1420,35 @@ select:focus-visible {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+/* ── Form feedback ── */
+
+.field-label.required::after {
+  content: " *";
+  color: #dc2626;
+}
+
+.toast {
+  position: fixed; bottom: var(--space-xl); right: var(--space-xl);
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm); font-weight: var(--font-semibold);
+  box-shadow: var(--shadow-lg);
+  animation: toast-in 0.3s ease;
+  z-index: 200;
+}
+.toast.success { background: #166534; color: white; }
+.toast.error { background: #dc2626; color: white; }
+
+@keyframes toast-in {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.input-error {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
 /* ── Spinner ── */
 
 .spinner {

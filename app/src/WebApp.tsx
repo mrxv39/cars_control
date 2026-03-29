@@ -568,7 +568,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
           <form onSubmit={(e) => void handleAdd(e)}>
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "end" }}>
               <div style={{ flex: 1, position: "relative" }}>
-                <label className="field-label">Marca y modelo</label>
+                <label className="field-label required">Marca y modelo</label>
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Escribe para buscar coincidencias..." autoFocus />
               </div>
             </div>
@@ -1307,7 +1307,7 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
           <p className="eyebrow" style={{ marginBottom: "1rem" }}>Nuevo proveedor</p>
           <form onSubmit={(e) => void handleAdd(e)} className="form-stack">
             <div>
-              <label className="field-label">Nombre proveedor *</label>
+              <label className="field-label required">Nombre proveedor</label>
               <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ej: Taller Perez" autoFocus required />
             </div>
             <div>
