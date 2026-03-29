@@ -1420,6 +1420,52 @@ select:focus-visible {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+/* ── Confirm Dialog ── */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  z-index: 100;
+}
+
+.confirm-card {
+  max-width: 400px;
+  padding: var(--space-xl);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.confirm-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.confirm-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  margin: 0;
+}
+
+.confirm-message {
+  font-size: var(--text-base);
+  color: #64748b;
+  margin: 0;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  margin-top: var(--space-sm);
+}
+
 /* ── Containers & Headers ── */
 
 .page-container { max-width: 1200px; margin: 0 auto; padding: var(--space-xl); }

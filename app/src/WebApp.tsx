@@ -1,8 +1,19 @@
-import React, { useState, useMemo, FormEvent } from "react";
+import React, { useState, useCallback, useMemo, FormEvent } from "react";
 import * as api from "./lib/api";
 import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
+import ConfirmDialog from "./components/web/ConfirmDialog";
 import "./App.css";
+
+function useConfirmDialog() {
+  const [state, setState] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  const requestConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
+    setState({ open: true, title, message, onConfirm });
+  }, []);
+  const cancel = useCallback(() => setState((s) => ({ ...s, open: false })), []);
+  const confirm = useCallback(() => { state.onConfirm(); setState((s) => ({ ...s, open: false })); }, [state.onConfirm]);
+  return { confirmProps: { open: state.open, title: state.title, message: state.message, onConfirm: confirm, onCancel: cancel }, requestConfirm };
+}
 
 type ViewKey = "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision";
 
@@ -707,6 +718,7 @@ function useVehicleDetail(vehicle: api.Vehicle) {
   const [success, setSuccess] = useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const docFileRef = React.useRef<HTMLInputElement>(null);
+  const dialog = useConfirmDialog();
 
   React.useEffect(() => { void loadPhotos(); void loadDocs(); }, [vehicle.id]);
 
@@ -733,10 +745,11 @@ function useVehicleDetail(vehicle: api.Vehicle) {
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
-  async function handleDeletePhoto(photo: api.VehiclePhoto) {
-    if (!confirm(`Eliminar ${photo.file_name}?`)) return;
-    await api.deleteVehiclePhoto(photo);
-    setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+  function handleDeletePhoto(photo: api.VehiclePhoto) {
+    dialog.requestConfirm("Eliminar foto", `Eliminar ${photo.file_name}?`, async () => {
+      await api.deleteVehiclePhoto(photo);
+      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    });
   }
 
   async function handleUploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
@@ -746,10 +759,11 @@ function useVehicleDetail(vehicle: api.Vehicle) {
     finally { setUploadingDoc(false); if (docFileRef.current) docFileRef.current.value = ""; }
   }
 
-  async function handleDeleteDoc(doc: api.VehicleDocument) {
-    if (!confirm(`Eliminar ${doc.file_name}?`)) return;
-    await api.deleteVehicleDocument(doc);
-    setDocs((prev) => prev.filter((x) => x.id !== doc.id));
+  function handleDeleteDoc(doc: api.VehicleDocument) {
+    dialog.requestConfirm("Eliminar documento", `Eliminar ${doc.file_name}?`, async () => {
+      await api.deleteVehicleDocument(doc);
+      setDocs((prev) => prev.filter((x) => x.id !== doc.id));
+    });
   }
 
   const mainPhoto = selectedPhoto != null ? photos.find((p) => p.id === selectedPhoto)?.url : photos[0]?.url;
@@ -757,11 +771,11 @@ function useVehicleDetail(vehicle: api.Vehicle) {
   const facturas = docs.filter((d) => d.doc_type === "factura");
 
   return { form, setForm, photos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadingDoc, success,
-    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, loadPhotos };
+    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, loadPhotos, dialog };
 }
 
 // Shared: Hero header
-function VDHero({ vehicle, onBack }: { vehicle: api.Vehicle; onBack: () => void }) {
+function VDHero({ vehicle, onBack, onDelete }: { vehicle: api.Vehicle; onBack: () => void; onDelete: () => void }) {
   return (
     <header className="hero">
       <div>
@@ -771,7 +785,7 @@ function VDHero({ vehicle, onBack }: { vehicle: api.Vehicle; onBack: () => void 
       </div>
       <div className="hero-actions">
         <button type="button" className="button secondary" onClick={onBack}>Volver al stock</button>
-        <button type="button" className="button danger" onClick={async () => { if (!confirm(`Eliminar ${vehicle.name}?`)) return; await api.deleteVehicle(vehicle.id); onBack(); }}>Eliminar</button>
+        <button type="button" className="button danger" onClick={onDelete}>Eliminar</button>
       </div>
     </header>
   );
@@ -845,9 +859,11 @@ function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
 function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
   const h = useVehicleDetail(vehicle);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} />
+      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} />
+      <ConfirmDialog {...h.dialog.confirmProps} />
       {h.photos.length > 0 && (
         <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", padding: "0.25rem 0" }}>
           {h.photos.map((p) => (
@@ -903,6 +919,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
   const h = useVehicleDetail(vehicle);
   const [activeTab, setActiveTab] = useState<"datos" | "leads" | "documentos">("datos");
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   const tabStyle = (tab: typeof activeTab): React.CSSProperties => ({
     flex: "none", padding: "0.65rem 1.25rem", border: "none", background: "none", fontSize: "0.88rem", fontWeight: 600,
     color: activeTab === tab ? "#1d4ed8" : "#64748b", cursor: "pointer",
@@ -910,7 +927,8 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
   });
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} />
+      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} />
+      <ConfirmDialog {...h.dialog.confirmProps} />
       {h.mainPhoto && (
         <div className="page-container-medium">
           <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
@@ -980,9 +998,11 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
 function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
   const h = useVehicleDetail(vehicle);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} />
+      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} />
+      <ConfirmDialog {...h.dialog.confirmProps} />
       <div style={{ display: "grid", gridTemplateColumns: "35% 35% 30%", gap: "1.25rem" }}>
         {/* Col 1: Photo */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -1260,14 +1280,17 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
     }
   }
 
-  async function handleDelete(id: number, name: string) {
-    if (!confirm(`Eliminar proveedor "${name}"?`)) return;
-    await api.deleteSupplier(id);
-    onReload();
+  const dialog = useConfirmDialog();
+  function handleDelete(id: number, name: string) {
+    dialog.requestConfirm("Eliminar proveedor", `Eliminar proveedor "${name}"?`, async () => {
+      await api.deleteSupplier(id);
+      onReload();
+    });
   }
 
   return (
     <>
+      <ConfirmDialog {...dialog.confirmProps} />
       <header className="hero">
         <div>
           <p className="eyebrow">Proveedores</p>
