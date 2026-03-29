@@ -3,6 +3,7 @@ import * as api from "./lib/api";
 import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
 import ConfirmDialog from "./components/web/ConfirmDialog";
+import EmptyState from "./components/web/EmptyState";
 import "./App.css";
 
 function useConfirmDialog() {
@@ -837,7 +838,7 @@ function VDFactura({ facturas, docFileRef, uploadingDoc, handleUploadDoc, handle
 
 // Shared: Leads sidebar/section
 function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
-  if (vehicleLeads.length === 0) return <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Sin leads para este vehiculo.</p>;
+  if (vehicleLeads.length === 0) return <EmptyState title="Sin leads" description="Este vehículo no tiene leads asociados" />;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
       {vehicleLeads.map((l) => (
@@ -976,10 +977,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
         {activeTab === "leads" && (
           <div style={{ padding: "1.5rem" }}>
             {vehicleLeads.length > 0 ? <VDLeads vehicleLeads={vehicleLeads} /> : (
-              <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#475569", margin: "0 0 0.5rem" }}>Sin leads para este vehiculo</p>
-                <p className="muted" style={{ margin: 0 }}>Cuando un cliente contacte interesado en este coche, aparecera aqui.</p>
-              </div>
+              <EmptyState icon="📋" title="Sin leads" description="Cuando un cliente contacte interesado en este coche, aparecerá aquí." />
             )}
           </div>
         )}
