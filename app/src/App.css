@@ -46,6 +46,25 @@
   --font-semibold: 600;
   --font-bold: 700;
 
+  /* Backgrounds adicionales */
+  --color-bg-error: #fef2f2;
+  --color-bg-success: #f0fdf4;
+  --color-bg-info: #eff6ff;
+  --color-bg-warning: #fffbeb;
+
+  /* Brand */
+  --color-sidebar-dark: #1a1a2e;
+  --color-sidebar-accent: #3b82f6;
+  --color-orange: #ff6b00;
+
+  /* Borders */
+  --color-border-light: rgba(0, 0, 0, 0.08);
+  --color-border-medium: rgba(0, 0, 0, 0.15);
+
+  /* Input */
+  --color-input-border: rgba(0, 0, 0, 0.12);
+  --color-input-focus: rgba(29, 78, 216, 0.3);
+
   background:
     radial-gradient(circle at top left, rgba(30, 100, 200, 0.08), transparent 24rem),
     linear-gradient(180deg, #f5f7fa 0%, #ebeef3 100%);
