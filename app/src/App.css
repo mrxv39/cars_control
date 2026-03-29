@@ -285,6 +285,25 @@ select {
   opacity: 0.7;
 }
 
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: #1d4ed8;
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+.button:focus-visible {
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+.nav-item:focus-visible {
+  box-shadow: var(--shadow-focus);
+  outline: none;
+  border-radius: var(--radius-lg);
+}
+
 .button.xs { padding: 0.25rem 0.5rem; font-size: var(--text-xs); }
 .button.sm { padding: 0.4rem 0.75rem; font-size: var(--text-sm); }
 .button.lg { padding: 1rem 1.5rem; font-size: var(--text-lg); }
