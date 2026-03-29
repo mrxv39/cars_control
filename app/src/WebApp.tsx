@@ -70,7 +70,7 @@ function WebApp() {
         <main className="page-container-narrow">
           <section className="panel" style={{ padding: "2rem" }}>
             <p className="eyebrow">Acceso usuarios</p>
-            <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesion</h2>
+            <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesión</h2>
             <p className="muted" style={{ marginBottom: "1.5rem" }}>Panel de gestion para usuarios autorizados.</p>
             <form onSubmit={(e) => void handleLogin(e)}>
               <div style={{ marginBottom: "1rem" }}>
@@ -78,8 +78,8 @@ function WebApp() {
                 <input id="login-user" type="text" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="Usuario" autoFocus />
               </div>
               <div style={{ marginBottom: "1rem" }}>
-                <label className="field-label" htmlFor="login-pass">Contrasena</label>
-                <input id="login-pass" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Contrasena" />
+                <label className="field-label" htmlFor="login-pass">Contraseña</label>
+                <input id="login-pass" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Contraseña" />
               </div>
               {loginError && <p className="error-banner" style={{ marginBottom: "1rem" }}>{loginError}</p>}
               <button type="submit" className="button primary full-width" disabled={loginSubmitting}>
@@ -170,7 +170,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por marca, modelo, año..."
           />
-          <span className="muted">{filtered.length} vehiculo{filtered.length !== 1 ? "s" : ""}</span>
+          <span className="muted">{filtered.length} vehículo{filtered.length !== 1 ? "s" : ""}</span>
         </div>
 
         {loading ? (
@@ -324,14 +324,14 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
       <input type="hidden" name="_template" value="table" />
       <input type="hidden" name="_captcha" value="false" />
       <input type="hidden" name="Vehiculo" value={vehicleName} />
-      <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Contactar por este vehiculo</p>
+      <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Contactar por este vehículo</p>
       <div className="form-grid-2">
         <div>
           <label className="field-label">Nombre</label>
           <input name="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" required />
         </div>
         <div>
-          <label className="field-label">Telefono</label>
+          <label className="field-label">Teléfono</label>
           <input name="Telefono" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="600 123 456" required />
         </div>
       </div>
@@ -427,7 +427,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
         </nav>
         <div className="sidebar-tools panel">
           <button type="button" className="button danger full-width" onClick={onLogout}>
-            Cerrar sesion
+            Cerrar sesión
           </button>
         </div>
       </aside>
@@ -448,7 +448,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
 
       <FeedbackButton
         userName={session.user.full_name}
-        currentView={selectedVehicle ? "vehiculo: " + selectedVehicle.name : currentView}
+        currentView={selectedVehicle ? "vehículo: " + selectedVehicle.name : currentView}
         stock={vehicles}
         leads={leads}
         clients={clients}
@@ -541,14 +541,14 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
         <div>
           <p className="eyebrow">Stock</p>
           <h2>Vehiculos en stock</h2>
-          <p className="muted">{vehicles.length} vehiculo{vehicles.length !== 1 ? "s" : ""}</p>
+          <p className="muted">{vehicles.length} vehículo{vehicles.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="hero-actions">
           <button type="button" className="button secondary" onClick={() => window.open("https://www.coches.net/concesionario/codinacars/", "_blank")}>
             Update stock
           </button>
           <button type="button" className="button primary" onClick={() => setShowAdd(!showAdd)}>
-            {showAdd ? "Cancelar" : "Añadir vehiculo"}
+            {showAdd ? "Cancelar" : "Añadir vehículo"}
           </button>
         </div>
       </header>
@@ -578,7 +578,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
                 <input type="number" value={newAnio} onChange={(e) => setNewAnio(e.target.value)} placeholder="2024" />
               </div>
               <div>
-                <label className="field-label">Kilometros</label>
+                <label className="field-label">Kilómetros</label>
                 <input type="number" value={newKm} onChange={(e) => setNewKm(e.target.value)} placeholder="50000" />
               </div>
             </div>
@@ -614,7 +614,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
               <textarea value={newNotes} onChange={(e) => setNewNotes(e.target.value)} rows={2} placeholder="Observaciones..." />
             </div>
             <div style={{ marginTop: "0.75rem" }}>
-              <button type="submit" className="button primary" disabled={adding}>{adding ? "Añadiendo..." : "Añadir vehiculo"}</button>
+              <button type="submit" className="button primary" disabled={adding}>{adding ? "Añadiendo..." : "Añadir vehículo"}</button>
             </div>
             {suggestions.length > 0 && (
               <div className="suggestions-list">
@@ -876,11 +876,11 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
       )}
       <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "1.25rem", alignItems: "start" }}>
         <section className="panel" style={{ padding: "1.25rem" }}>
-          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehiculo</p>
+          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehículo</p>
           <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
             <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
             <div className="form-grid-3">
-              <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
+              <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
               <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
               <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
             </div>
@@ -961,7 +961,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
                 <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
               </div>
               <div className="form-grid-2">
-                <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
+                <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
                 <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
               </div>
               <div className="form-grid-2">
@@ -1025,11 +1025,11 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
         </div>
         {/* Col 2: Form */}
         <section className="panel" style={{ padding: "1.25rem" }}>
-          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehiculo</p>
+          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehículo</p>
           <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
             <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
             <div className="form-grid-2">
-              <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
+              <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
               <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
             </div>
             <div className="form-grid-2">
@@ -1320,7 +1320,7 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
             </div>
             <div className="form-grid-2">
               <div>
-                <label className="field-label">Telefono</label>
+                <label className="field-label">Teléfono</label>
                 <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="612 345 678" />
               </div>
               <div>
@@ -1346,7 +1346,7 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
               <th className="sales-th">Proveedor</th>
               <th className="sales-th">CIF</th>
               <th className="sales-th">Contacto</th>
-              <th className="sales-th">Telefono</th>
+              <th className="sales-th">Teléfono</th>
               <th className="sales-th"></th>
             </tr></thead>
             <tbody>
@@ -1418,7 +1418,7 @@ const INSPECTION_SECTIONS: Array<{ title: string; items: Array<{ key: string; la
     items: [
       { key: "trans_embrague", label: "Embrague (si manual)" },
       { key: "trans_marchas", label: "Cambio de marchas" },
-      { key: "trans_dir_asistida", label: "Direccion asistida" },
+      { key: "trans_dir_asistida", label: "Dirección asistida" },
       { key: "trans_holguras", label: "Holguras en la direccion" },
     ],
   },
@@ -1499,7 +1499,7 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
   }
 
   async function handleSave() {
-    if (!selectedVehicleId) { setSaveMsg("Selecciona un vehiculo."); return; }
+    if (!selectedVehicleId) { setSaveMsg("Selecciona un vehículo."); return; }
     setSaving(true);
     setSaveMsg(null);
     try {
@@ -1534,7 +1534,7 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <p className="eyebrow">Inspeccion de vehiculo</p>
+      <p className="eyebrow">Inspección de vehículo</p>
       <h2 style={{ margin: "0.3rem 0 1rem" }}>Hoja de revision</h2>
 
       {/* Vehicle selector */}
@@ -1547,7 +1547,7 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
               onChange={(e) => setSelectedVehicleId(e.target.value ? Number(e.target.value) : "")}
               style={{ width: "100%" }}
             >
-              <option value="">-- Seleccionar vehiculo --</option>
+              <option value="">-- Seleccionar vehículo --</option>
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.name} {v.anio ? `(${v.anio})` : ""} {(v as any).matricula ? `- ${(v as any).matricula}` : ""}
