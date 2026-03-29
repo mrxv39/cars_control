@@ -141,7 +141,7 @@ button {
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-xl);
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .status-panel,
@@ -376,7 +376,7 @@ select:focus-visible {
   border-radius: var(--radius-xl);
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-md);
 }
 
 .record-card {
@@ -430,7 +430,7 @@ select:focus-visible {
 
 .vehicle-card-clickable:hover {
   transform: translateY(-3px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
 }
 
 .vehicle-price {
@@ -646,7 +646,7 @@ select:focus-visible {
 .sales-search:focus {
   outline: none;
   border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: var(--shadow-focus);
 }
 
 .sales-table-scroll {
@@ -912,13 +912,13 @@ select:focus-visible {
   border: 1px solid rgba(0,0,0,0.1);
   background: #fff;
   font-size: 0.95rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .catalog-search:focus {
   outline: none;
   border-color: #1d4ed8;
-  box-shadow: 0 0 0 3px rgba(29,78,216,0.1);
+  box-shadow: var(--shadow-focus);
 }
 
 .catalog-grid {
@@ -931,7 +931,7 @@ select:focus-visible {
   background: #fff;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition: transform 150ms, box-shadow 150ms;
   border: 1px solid rgba(0,0,0,0.06);
@@ -939,7 +939,7 @@ select:focus-visible {
 
 .catalog-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-lg);
 }
 
 .catalog-card-img {
@@ -1417,7 +1417,7 @@ select:focus-visible {
 .feedback-textarea:focus {
   outline: none;
   border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: var(--shadow-focus);
 }
 
 /* ── Form feedback ── */
