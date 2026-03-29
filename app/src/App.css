@@ -1452,6 +1452,24 @@ select:focus-visible {
   box-shadow: var(--shadow-focus);
 }
 
+/* ── Breadcrumb ── */
+
+.breadcrumb {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--text-sm);
+  color: #64748b;
+}
+
+.breadcrumb-link {
+  color: #1d4ed8;
+  cursor: pointer;
+  font-weight: var(--font-medium);
+}
+
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
 /* ── Form feedback ── */
 
 .field-label.required::after {

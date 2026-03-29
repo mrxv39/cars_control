@@ -787,12 +787,16 @@ function useVehicleDetail(vehicle: api.Vehicle) {
 }
 
 // Shared: Hero header
-function VDHero({ vehicle, onBack, onDelete }: { vehicle: api.Vehicle; onBack: () => void; onDelete: () => void }) {
+function VDHero({ vehicle, onBack, onDelete, margin, leadsCount }: { vehicle: api.Vehicle; onBack: () => void; onDelete: () => void; margin?: number | null; leadsCount?: number }) {
   return (
     <header className="hero">
       <div>
-        <p className="eyebrow">Stock</p>
-        <h2>{vehicle.name}</h2>
+        <p className="breadcrumb"><span className="breadcrumb-link" onClick={onBack}>Stock</span> › {vehicle.name}</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+          <h2 style={{ margin: 0 }}>{vehicle.name}</h2>
+          {margin != null && <span className={`badge ${margin >= 0 ? "badge-success" : "badge-warning"}`}>Margen: {margin >= 0 ? "+" : ""}{margin.toLocaleString()}€</span>}
+          {leadsCount != null && leadsCount > 0 && <span className="badge badge-info">{leadsCount} lead{leadsCount !== 1 ? "s" : ""}</span>}
+        </div>
         <p className="muted">{[vehicle.anio, vehicle.km ? `${vehicle.km.toLocaleString()} km` : null, vehicle.estado].filter(Boolean).join(" · ")}</p>
       </div>
       <div className="hero-actions">
@@ -874,7 +878,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} />
+      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} margin={h.margin} leadsCount={vehicleLeads.length} />
       <ConfirmDialog {...h.dialog.confirmProps} />
       {h.photos.length > 0 && (
         <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", padding: "0.25rem 0" }}>
@@ -939,7 +943,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
   });
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} />
+      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} margin={h.margin} leadsCount={vehicleLeads.length} />
       <ConfirmDialog {...h.dialog.confirmProps} />
       {h.mainPhoto && (
         <div className="page-container-medium">
@@ -1010,7 +1014,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} />
+      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} margin={h.margin} leadsCount={vehicleLeads.length} />
       <ConfirmDialog {...h.dialog.confirmProps} />
       <div style={{ display: "grid", gridTemplateColumns: "35% 35% 30%", gap: "1.25rem" }}>
         {/* Col 1: Photo */}
