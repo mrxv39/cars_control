@@ -54,7 +54,7 @@ export function LegacyView({
         <div>
           <p className="eyebrow">Fiscal / Gastos</p>
           <h2>Lectura desde docs_legacy</h2>
-          <p className="muted">
+          <p className="muted" role="status">
             {fiscalCountLabel} · {gastosCountLabel}
           </p>
         </div>

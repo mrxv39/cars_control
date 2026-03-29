@@ -12,6 +12,7 @@ use rusqlite::Connection;
 
 mod db;
 mod importer;
+mod platform;
 
 pub use db::{Company, LeadNote, LoginResult, PurchaseRecord, SalesRecord, User};
 pub use importer::ImportReport;
@@ -1846,6 +1847,9 @@ mod tests {
                 notes: "  Quiere financiar ".to_string(),
                 vehicle_interest: "  Seat Ibiza ".to_string(),
                 vehicle_folder_path: Some(" stock/seat ".to_string()),
+                estado: None,
+                fecha_contacto: None,
+                canal: None,
             },
             None,
         )

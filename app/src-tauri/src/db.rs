@@ -1,7 +1,27 @@
 use rusqlite::{Connection, OptionalExtension, Result as SqlResult};
 use sha2::{Sha256, Digest};
+use pbkdf2::pbkdf2_hmac;
+use rand::RngCore;
 
 use crate::{Client, Lead, StockVehicle, VehicleAdInfo};
+
+#[derive(Debug, thiserror::Error)]
+pub enum AppError {
+    #[error("Database: {0}")]
+    Db(#[from] rusqlite::Error),
+    #[error("Not found: {0}")]
+    NotFound(String),
+    #[error("Auth: {0}")]
+    Auth(String),
+    #[error("IO: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+impl From<AppError> for String {
+    fn from(err: AppError) -> String {
+        err.to_string()
+    }
+}
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Company {
@@ -32,10 +52,59 @@ pub struct LoginResult {
     pub company: Company,
 }
 
+const PBKDF2_ITERATIONS: u32 = 600_000;
+const HASH_LENGTH: usize = 32; // 256 bits
+const SALT_LENGTH: usize = 16; // 128 bits
+
+/// Hashea un password con PBKDF2-SHA256 (600k iteraciones, salt aleatorio).
+/// Formato: "pbkdf2:600000:<salt_hex>:<hash_hex>"
 pub fn hash_password(password: &str) -> String {
+    let mut salt = [0u8; SALT_LENGTH];
+    rand::thread_rng().fill_bytes(&mut salt);
+
+    let mut hash = [0u8; HASH_LENGTH];
+    pbkdf2_hmac::<Sha256>(password.as_bytes(), &salt, PBKDF2_ITERATIONS, &mut hash);
+
+    format!("pbkdf2:{}:{}:{}", PBKDF2_ITERATIONS, hex::encode(salt), hex::encode(hash))
+}
+
+/// Hash SHA-256 legacy (solo para compatibilidad con datos existentes, NO usar para nuevos passwords).
+fn legacy_sha256_hash(password: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(format!("codinacars_salt_{}", password));
     hex::encode(hasher.finalize())
+}
+
+/// Verifica un password contra un hash almacenado.
+/// Soporta PBKDF2 (nuevo) y SHA-256 legacy (migración gradual).
+/// Retorna (valid, Option<new_hash>) — new_hash presente si se debe actualizar el hash en BD.
+fn verify_password(password: &str, stored_hash: &str) -> (bool, Option<String>) {
+    if stored_hash.starts_with("pbkdf2:") {
+        let parts: Vec<&str> = stored_hash.split(':').collect();
+        if parts.len() != 4 { return (false, None); }
+
+        let iterations: u32 = match parts[1].parse() { Ok(n) => n, Err(_) => return (false, None) };
+        let salt = match hex::decode(parts[2]) { Ok(s) => s, Err(_) => return (false, None) };
+        let expected = match hex::decode(parts[3]) { Ok(h) => h, Err(_) => return (false, None) };
+
+        let mut derived = vec![0u8; expected.len()];
+        pbkdf2_hmac::<Sha256>(password.as_bytes(), &salt, iterations, &mut derived);
+
+        // Comparación en tiempo constante
+        let valid = derived.len() == expected.len()
+            && derived.iter().zip(expected.iter()).fold(0u8, |acc, (a, b)| acc | (a ^ b)) == 0;
+
+        (valid, None)
+    } else {
+        // SHA-256 legacy — verificar y proponer migración
+        let legacy = legacy_sha256_hash(password);
+        if legacy == stored_hash {
+            let new_hash = hash_password(password);
+            (true, Some(new_hash))
+        } else {
+            (false, None)
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -249,6 +318,7 @@ pub fn init_db(conn: &Connection) -> SqlResult<()> {
     )?;
 
     seed_default_data(conn)?;
+    crate::platform::init_platform_tables(conn)?;
     Ok(())
 }
 
@@ -432,19 +502,19 @@ pub fn save_lead(conn: &Connection, lead: &Lead) -> SqlResult<()> {
     conn.execute(
         "INSERT OR REPLACE INTO leads (id, name, phone, email, notes, vehicle_interest,
           vehicle_folder_path, converted_client_id, estado, fecha_contacto, canal)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-            lead.id.to_string(),
-            lead.name.clone(),
-            lead.phone.clone(),
-            lead.email.clone(),
-            lead.notes.clone(),
-            lead.vehicle_interest.clone(),
-            lead.vehicle_folder_path.clone().unwrap_or_default(),
-            lead.converted_client_id.map(|id| id.to_string()).unwrap_or_default(),
-            lead.estado.clone(),
-            lead.fecha_contacto.clone().unwrap_or_default(),
-            lead.canal.clone().unwrap_or_default(),
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        rusqlite::params![
+            lead.id,
+            lead.name,
+            lead.phone,
+            lead.email,
+            lead.notes,
+            lead.vehicle_interest,
+            lead.vehicle_folder_path,
+            lead.converted_client_id,
+            lead.estado,
+            lead.fecha_contacto,
+            lead.canal,
         ],
     )?;
     Ok(())
@@ -853,11 +923,13 @@ pub fn delete_purchase_record(conn: &Connection, record_id: u64) -> SqlResult<()
     Ok(())
 }
 
-/// Authenticate a user by username and password
+/// Authenticate a user by username and password.
+/// Soporta PBKDF2 (nuevo) y SHA-256 legacy con migración gradual automática.
+/// Usa una transacción para garantizar atomicidad de la migración de hash.
 pub fn authenticate_user(conn: &Connection, username: &str, password: &str) -> SqlResult<Option<LoginResult>> {
-    let expected_hash = hash_password(password);
+    let tx = conn.unchecked_transaction()?;
 
-    let user_row = conn.query_row(
+    let user_row = tx.query_row(
         "SELECT id, company_id, full_name, username, password_hash, role, active, created_at
          FROM users WHERE username = ?",
         [username],
@@ -879,14 +951,30 @@ pub fn authenticate_user(conn: &Connection, username: &str, password: &str) -> S
         return Ok(None);
     };
 
-    if stored_hash != expected_hash || !active {
+    if !active {
         return Ok(None);
     }
 
-    let company = get_company(conn, company_id)?;
+    // Verificar password (soporta PBKDF2 y SHA-256 legacy)
+    let (valid, new_hash) = verify_password(password, &stored_hash);
+    if !valid {
+        return Ok(None);
+    }
+
+    // Si el hash era legacy SHA-256, migrar silenciosamente a PBKDF2
+    if let Some(upgraded_hash) = new_hash {
+        let _ = tx.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            rusqlite::params![upgraded_hash, id],
+        );
+    }
+
+    let company = get_company(&tx, company_id)?;
     let Some(company) = company else {
         return Ok(None);
     };
+
+    tx.commit()?;
 
     Ok(Some(LoginResult {
         user: User { id, company_id, full_name, username: uname, role, active, created_at },
@@ -913,4 +1001,125 @@ pub fn get_company(conn: &Connection, id: u64) -> SqlResult<Option<Company>> {
             })
         },
     ).optional()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        // Disable FK enforcement for tests (matches production behavior where FK is off by default)
+        conn.execute_batch("PRAGMA foreign_keys = OFF;").unwrap();
+        init_db(&conn).unwrap();
+        conn
+    }
+
+    #[test]
+    fn hash_password_generates_pbkdf2_format() {
+        let hash = hash_password("testpassword");
+        let parts: Vec<&str> = hash.split(':').collect();
+        assert_eq!(parts.len(), 4);
+        assert_eq!(parts[0], "pbkdf2");
+        assert_eq!(parts[1], "600000");
+        assert_eq!(parts[2].len(), 32); // 16 bytes = 32 hex chars
+        assert_eq!(parts[3].len(), 64); // 32 bytes = 64 hex chars
+    }
+
+    #[test]
+    fn hash_password_generates_different_salts() {
+        let hash1 = hash_password("same");
+        let hash2 = hash_password("same");
+        assert_ne!(hash1, hash2);
+    }
+
+    #[test]
+    fn verify_password_validates_pbkdf2() {
+        let hash = hash_password("correct");
+        let (valid, new_hash) = verify_password("correct", &hash);
+        assert!(valid);
+        assert!(new_hash.is_none());
+    }
+
+    #[test]
+    fn verify_password_rejects_wrong_password() {
+        let hash = hash_password("correct");
+        let (valid, _) = verify_password("wrong", &hash);
+        assert!(!valid);
+    }
+
+    #[test]
+    fn verify_password_validates_sha256_legacy() {
+        let legacy = legacy_sha256_hash("legacypass");
+        let (valid, new_hash) = verify_password("legacypass", &legacy);
+        assert!(valid);
+        assert!(new_hash.is_some());
+        // The new hash should be PBKDF2
+        assert!(new_hash.unwrap().starts_with("pbkdf2:"));
+    }
+
+    #[test]
+    fn verify_password_rejects_wrong_sha256_legacy() {
+        let legacy = legacy_sha256_hash("correct");
+        let (valid, _) = verify_password("wrong", &legacy);
+        assert!(!valid);
+    }
+
+    #[test]
+    fn authenticate_user_with_valid_credentials() {
+        let conn = setup_test_db();
+        // init_db seeds company id=1, so add a new user for that company
+        let hash = hash_password("password123");
+        conn.execute(
+            "INSERT INTO users (company_id, full_name, username, password_hash, role, active, created_at)
+             VALUES (1, 'Test User', 'testuser', ?1, 'admin', 1, '2024-01-01')",
+            [&hash],
+        ).unwrap();
+
+        let result = authenticate_user(&conn, "testuser", "password123").unwrap();
+        assert!(result.is_some());
+        let login = result.unwrap();
+        assert_eq!(login.user.username, "testuser");
+        assert_eq!(login.company.trade_name, "CodinaCars");
+    }
+
+    #[test]
+    fn authenticate_user_with_invalid_credentials() {
+        let conn = setup_test_db();
+        let hash = hash_password("correct");
+        conn.execute(
+            "INSERT INTO users (company_id, full_name, username, password_hash, role, active, created_at)
+             VALUES (1, 'Test', 'user2', ?1, 'admin', 1, '2024-01-01')",
+            [&hash],
+        ).unwrap();
+
+        let result = authenticate_user(&conn, "user2", "wrong").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn create_and_list_leads() {
+        let conn = setup_test_db();
+        let lead = Lead {
+            id: 0,
+            name: "Test Lead".to_string(),
+            phone: "666111222".to_string(),
+            email: "test@test.com".to_string(),
+            notes: "".to_string(),
+            vehicle_interest: "SUV".to_string(),
+            vehicle_folder_path: None,
+            converted_client_id: None,
+            estado: "nuevo".to_string(),
+            fecha_contacto: None,
+            canal: Some("web".to_string()),
+        };
+        let created = add_lead(&conn, &lead).unwrap();
+        assert!(created.id > 0);
+        assert_eq!(created.name, "Test Lead");
+
+        let leads = load_leads(&conn).unwrap();
+        assert_eq!(leads.len(), 1);
+        assert_eq!(leads[0].name, "Test Lead");
+    }
 }

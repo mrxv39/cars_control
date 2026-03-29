@@ -1,13 +1,20 @@
-import React, { useState, useMemo, FormEvent } from "react";
+import React, { useState, useEffect, useMemo, FormEvent } from "react";
 import * as api from "./lib/api";
 import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
+import { isSuperAdmin } from "./lib/platform-types";
+import { PlatformLayout } from "./components/platform/PlatformLayout";
+import { RegistrationPage } from "./components/platform/RegistrationPage";
+import * as platformApi from "./lib/platform-api";
+import { exportToCSV } from "./lib/csv-export";
+import { usePagination } from "./hooks/usePagination";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./App.css";
 
-type ViewKey = "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision";
+type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "reminders" | "revision";
 
 function WebApp() {
-  const [page, setPage] = useState<"catalog" | "login" | "admin">(() => {
+  const [page, setPage] = useState<"catalog" | "login" | "register" | "admin" | "platform">(() => {
     try {
       const saved = localStorage.getItem("cc_session");
       if (saved) {
@@ -32,6 +39,48 @@ function WebApp() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
+
+  // Detectar callback de Google OAuth al cargar la página
+  useEffect(() => {
+    if (session) return; // Ya tiene sesión
+    const hash = window.location.hash;
+    if (!hash.includes("access_token")) return; // No es un callback OAuth
+
+    setOauthLoading(true);
+    void (async () => {
+      try {
+        const result = await platformApi.linkOAuthSession();
+        if (result) {
+          const loginResult: api.LoginResult = { user: result.user as any, company: result.company as any };
+          localStorage.setItem("cc_session", JSON.stringify(loginResult));
+          setSession(loginResult);
+          // Si es super_admin, ir al panel de plataforma directamente
+          setPage(isSuperAdmin(result.user.role) ? "platform" : "admin");
+        } else {
+          setLoginError("Tu email no tiene una cuenta en Cars Control. Contacta con el administrador o registra tu empresa.");
+          setPage("login");
+        }
+      } catch (err) {
+        setLoginError("Error al vincular cuenta Google. Comprueba tu conexion e intentalo de nuevo.");
+        setPage("login");
+      } finally {
+        setOauthLoading(false);
+        // Limpiar el hash de la URL
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+    })();
+  }, []);
+
+  async function handleGoogleLogin() {
+    setLoginError(null);
+    try {
+      await platformApi.signInWithGoogle();
+      // El navegador redirige a Google, no llegamos aquí hasta el callback
+    } catch (err) {
+      setLoginError("Error al conectar con Google. Comprueba tu conexion e intentalo de nuevo.");
+    }
+  }
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
@@ -43,10 +92,42 @@ function WebApp() {
       setSession(result);
       setPage("admin");
     } catch (err) {
-      setLoginError(String(err));
+      const msg = String(err);
+      if (msg.includes("Usuario o contrasena")) setLoginError("Usuario o contraseña incorrectos.");
+      else if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed")) setLoginError("Error de conexion. Comprueba tu internet.");
+      else setLoginError("Error al iniciar sesion. Intentalo de nuevo.");
     } finally {
       setLoginSubmitting(false);
     }
+  }
+
+  // Registration page (public)
+  if (page === "register") {
+    return <RegistrationPage onBackToLogin={() => setPage("login")} />;
+  }
+
+  // Platform super-admin panel
+  if (page === "platform" && session && isSuperAdmin(session.user.role)) {
+    return (
+      <PlatformLayout
+        userId={session.user.id}
+        userName={session.user.full_name}
+        onBackToCompany={() => setPage("admin")}
+      />
+    );
+  }
+
+  // OAuth loading splash
+  if (oauthLoading) {
+    return (
+      <main className="shell" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <section className="panel" style={{ padding: "2rem", textAlign: "center" }}>
+          <p className="eyebrow">Cars Control</p>
+          <h2>Verificando cuenta Google...</h2>
+          <p className="muted">Un momento, estamos vinculando tu cuenta.</p>
+        </section>
+      </main>
+    );
   }
 
   // Login page
@@ -59,6 +140,35 @@ function WebApp() {
             <p className="eyebrow">Acceso usuarios</p>
             <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesion</h2>
             <p className="muted" style={{ marginBottom: "1.5rem" }}>Panel de gestion para usuarios autorizados.</p>
+
+            {/* Google OAuth */}
+            <button
+              type="button"
+              onClick={() => void handleGoogleLogin()}
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                marginBottom: "1.5rem",
+                border: "1px solid #ddd",
+                borderRadius: "6px",
+                background: "white",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+                fontSize: "0.95rem",
+                fontWeight: 500,
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 010-9.18l-7.98-6.19a24.07 24.07 0 000 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+              Entrar con Google
+            </button>
+
+            <div style={{ textAlign: "center", marginBottom: "1.5rem", color: "#999", fontSize: "0.85rem" }}>
+              o con usuario y contrasena
+            </div>
+
             <form onSubmit={(e) => void handleLogin(e)}>
               <div style={{ marginBottom: "1rem" }}>
                 <label className="field-label" htmlFor="login-user">Usuario</label>
@@ -73,6 +183,11 @@ function WebApp() {
                 {loginSubmitting ? "Entrando..." : "Entrar"}
               </button>
             </form>
+            <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <button type="button" className="button secondary" onClick={() => setPage("register")} style={{ fontSize: "0.85rem" }}>
+                ¿No tienes cuenta? Registra tu empresa
+              </button>
+            </div>
           </section>
         </main>
       </div>
@@ -81,7 +196,7 @@ function WebApp() {
 
   // Admin panel
   if (page === "admin" && session) {
-    return <AuthenticatedWebApp session={session} onLogout={() => { localStorage.removeItem("cc_session"); setSession(null); setPage("catalog"); }} />;
+    return <AuthenticatedWebApp session={session} onLogout={() => { void platformApi.signOutOAuth(); localStorage.removeItem("cc_session"); setSession(null); setPage("catalog"); }} onOpenPlatform={() => setPage("platform")} />;
   }
 
   // Public catalog (default)
@@ -208,7 +323,7 @@ function CatalogThumb({ vehicleId }: { vehicleId: number }) {
 
   return (
     <div className="catalog-card-img">
-      {url ? <img src={url} alt="" /> : <div className="catalog-card-noimg">Sin foto</div>}
+      {url ? <img src={url} alt="" loading="lazy" /> : <div className="catalog-card-noimg">Sin foto</div>}
     </div>
   );
 }
@@ -234,7 +349,7 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
         <div className="catalog-detail-gallery">
           {mainPhoto && (
             <div className="catalog-detail-main-img">
-              <img src={mainPhoto} alt={vehicle.name} />
+              <img src={mainPhoto} alt={vehicle.name} loading="lazy" />
             </div>
           )}
           {photos.length > 1 && (
@@ -329,19 +444,445 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
   );
 }
 
+// ── Pagination Controls ──
+function PaginationControls({ page, totalPages, setPage }: { page: number; totalPages: number; setPage: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", alignItems: "center", padding: "1rem 0" }}>
+      <button type="button" className="button secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }} disabled={page === 0} onClick={() => setPage(page - 1)}>
+        Anterior
+      </button>
+      <span className="muted" style={{ fontSize: "0.85rem" }}>
+        Pagina {page + 1} de {totalPages}
+      </span>
+      <button type="button" className="button secondary" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }} disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+        Siguiente
+      </button>
+    </div>
+  );
+}
+
+// ── Reminders ──
+function WebReminders({ leads, onReload }: { leads: api.Lead[]; onReload: () => void }) {
+  const hoy = new Date();
+  const hace7Dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const leadsSinSeguimiento = leads.filter((l) => {
+    if (["cerrado", "perdido", "vendido", "descartado"].includes(l.estado || "")) return false;
+    if (!l.fecha_contacto) return true;
+    return new Date(l.fecha_contacto) < hace7Dias;
+  });
+
+  const sinContactoInicial = leadsSinSeguimiento.filter((l) => !l.fecha_contacto);
+  const contactoAntiguo = leadsSinSeguimiento.filter((l) => l.fecha_contacto);
+
+  async function marcarContactado(leadId: number) {
+    await api.updateLead(leadId, { fecha_contacto: hoy.toISOString().slice(0, 10) } as Partial<api.Lead>);
+    onReload();
+  }
+
+  return (
+    <>
+      <header className="hero">
+        <div>
+          <p className="eyebrow">Recordatorios</p>
+          <h2>Leads que necesitan seguimiento</h2>
+          <p className="muted">{leadsSinSeguimiento.length} lead{leadsSinSeguimiento.length !== 1 ? "s" : ""} requieren atencion</p>
+        </div>
+        <div className="hero-actions">
+          <button type="button" className="button primary" onClick={onReload}>Recargar</button>
+        </div>
+      </header>
+
+      {leadsSinSeguimiento.length === 0 ? (
+        <section className="panel setup-panel">
+          <h2>Todos los leads estan al dia</h2>
+          <p className="muted">No hay leads sin seguimiento hace mas de 7 dias.</p>
+        </section>
+      ) : (
+        <>
+          {sinContactoInicial.length > 0 && (
+            <section className="panel" style={{ padding: "1.25rem" }}>
+              <h3 style={{ margin: "0 0 1rem" }}>Leads nuevos sin primer contacto ({sinContactoInicial.length})</h3>
+              <div className="record-grid">
+                {sinContactoInicial.map((l) => (
+                  <article key={l.id} className="record-card panel" style={{ borderLeft: "3px solid var(--color-primary, #1d4ed8)" }}>
+                    <p className="record-title">{l.name}</p>
+                    <p className="muted">{l.phone || "Sin telefono"}</p>
+                    {l.canal && <span className="badge">{l.canal}</span>}
+                    <button type="button" className="button primary" style={{ marginTop: "0.5rem", fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => marcarContactado(l.id)}>
+                      Marcar como contactado
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {contactoAntiguo.length > 0 && (
+            <section className="panel" style={{ padding: "1.25rem" }}>
+              <h3 style={{ margin: "0 0 1rem" }}>Leads sin contacto hace 7+ dias ({contactoAntiguo.length})</h3>
+              <div className="record-grid">
+                {contactoAntiguo.map((l) => {
+                  const dias = Math.floor((hoy.getTime() - new Date(l.fecha_contacto || "").getTime()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <article key={l.id} className="record-card panel" style={{ borderLeft: "3px solid var(--color-warning, #f59e0b)" }}>
+                      <p className="record-title">{l.name}</p>
+                      <p className="muted">{l.phone || "Sin telefono"}</p>
+                      <p className="muted" style={{ fontWeight: 600, color: "var(--color-warning, #f59e0b)" }}>Sin contacto: {dias} dias</p>
+                      <button type="button" className="button secondary" style={{ marginTop: "0.5rem", fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => marcarContactado(l.id)}>
+                        Marcar como contactado
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+// ── Global Search Results ──
+function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
+  query: string;
+  vehicles: api.Vehicle[];
+  leads: api.Lead[];
+  clients: api.Client[];
+  onSelect: (type: "vehicle" | "lead" | "client", id: number) => void;
+}) {
+  const q = query.toLowerCase().trim();
+
+  const matchedVehicles = vehicles.filter((v) =>
+    [v.name, String(v.anio || "")].some((f) => f.toLowerCase().includes(q))
+  ).slice(0, 5);
+
+  const matchedLeads = leads.filter((l) =>
+    [l.name, l.phone, l.vehicle_interest].some((f) => f.toLowerCase().includes(q))
+  ).slice(0, 5);
+
+  const matchedClients = clients.filter((c) =>
+    [c.name, c.dni, c.email, c.phone].some((f) => f.toLowerCase().includes(q))
+  ).slice(0, 5);
+
+  const hasResults = matchedVehicles.length > 0 || matchedLeads.length > 0 || matchedClients.length > 0;
+
+  return (
+    <div style={{
+      position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100,
+      background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "12px",
+      marginTop: "0.35rem", maxHeight: "320px", overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+    }}>
+      {!hasResults && (
+        <p style={{ padding: "0.85rem 1rem", margin: 0, color: "rgba(255,255,255,0.5)", fontSize: "0.85rem" }}>Sin resultados</p>
+      )}
+      {matchedVehicles.length > 0 && (
+        <div>
+          <p style={{ padding: "0.5rem 1rem 0.25rem", margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.45)" }}>Vehiculos</p>
+          {matchedVehicles.map((v) => (
+            <button key={v.id} type="button" onClick={() => onSelect("vehicle", v.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 1rem", background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "0.88rem" }}>
+              {v.name} <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>{v.anio || ""}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {matchedLeads.length > 0 && (
+        <div>
+          <p style={{ padding: "0.5rem 1rem 0.25rem", margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.45)" }}>Leads</p>
+          {matchedLeads.map((l) => (
+            <button key={l.id} type="button" onClick={() => onSelect("lead", l.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 1rem", background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "0.88rem" }}>
+              {l.name} <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>{l.phone}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {matchedClients.length > 0 && (
+        <div>
+          <p style={{ padding: "0.5rem 1rem 0.25rem", margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.45)" }}>Clientes</p>
+          {matchedClients.map((c) => (
+            <button key={c.id} type="button" onClick={() => onSelect("client", c.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 1rem", background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "0.88rem" }}>
+              {c.name} <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>{c.dni || c.email}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Dashboard ──
+function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseRecords, onReload, onNavigate }: {
+  vehicles: api.Vehicle[];
+  allVehicles: api.Vehicle[];
+  leads: api.Lead[];
+  salesRecords: api.SalesRecord[];
+  purchaseRecords: api.PurchaseRecord[];
+  onReload: () => void;
+  onNavigate: (view: string) => void;
+}) {
+  const stockDisponible = vehicles.filter((v) => v.estado !== "reservado" && v.estado !== "vendido").length;
+  const stockReservado = vehicles.filter((v) => v.estado === "reservado").length;
+  const stockVendido = allVehicles.filter((v) => v.estado === "vendido").length;
+
+  const leadsNuevos = leads.filter((l) => l.estado === "nuevo" || !l.estado).length;
+  const leadsContactados = leads.filter((l) => l.estado === "contactado").length;
+  const leadsNegociando = leads.filter((l) => l.estado === "negociando").length;
+  const leadsCerrados = leads.filter((l) => l.estado === "cerrado").length;
+  const leadsPerdidos = leads.filter((l) => l.estado === "perdido").length;
+
+  const beneficioTotal = vehicles.reduce((sum, v) => {
+    if (v.precio_compra && v.precio_venta) return sum + (v.precio_venta - v.precio_compra);
+    return sum;
+  }, 0);
+
+  const now = new Date();
+  const mesActual = now.getMonth();
+  const anioActual = now.getFullYear();
+  const ventasMes = salesRecords.filter((s) => {
+    const d = new Date(s.date);
+    return d.getMonth() === mesActual && d.getFullYear() === anioActual;
+  });
+  const totalFacturadoMes = ventasMes.reduce((sum, s) => sum + (s.price_final || 0), 0);
+
+  const hace7Dias = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const estadosFinales = ["cerrado", "perdido", "vendido", "descartado"];
+  const leadsSinSeguimiento = leads.filter((l) => {
+    if (estadosFinales.includes(l.estado || "")) return false;
+    if (!l.fecha_contacto) return true;
+    return new Date(l.fecha_contacto) < hace7Dias;
+  });
+
+  return (
+    <>
+      <header className="hero">
+        <div>
+          <p className="eyebrow">Dashboard</p>
+          <h2>Estado del negocio</h2>
+        </div>
+        <div className="hero-actions">
+          <button type="button" className="button primary" onClick={onReload}>Recargar</button>
+        </div>
+      </header>
+
+      <div className="sales-stats-grid">
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Stock disponible</p>
+          <p className="sales-stat-value sales-stat-primary">{stockDisponible}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Reservados</p>
+          <p className="sales-stat-value">{stockReservado}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Vendidos</p>
+          <p className="sales-stat-value sales-stat-success">{stockVendido}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Margen potencial</p>
+          <p className="sales-stat-value sales-stat-success">{beneficioTotal.toLocaleString("es-ES")} &euro;</p>
+        </section>
+      </div>
+
+      <div className="sales-stats-grid">
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Leads nuevos</p>
+          <p className="sales-stat-value">{leadsNuevos}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Contactados</p>
+          <p className="sales-stat-value">{leadsContactados}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Negociando</p>
+          <p className="sales-stat-value">{leadsNegociando}</p>
+        </section>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Cerrados / Perdidos</p>
+          <p className="sales-stat-value">{leadsCerrados} / {leadsPerdidos}</p>
+        </section>
+      </div>
+
+      <div className="sales-stats-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+        <section className="panel sales-stat-card">
+          <p className="sales-stat-label">Ventas este mes</p>
+          <p className="sales-stat-value sales-stat-primary">{ventasMes.length}</p>
+          <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+            Total facturado: {totalFacturadoMes.toLocaleString("es-ES")} &euro;
+          </p>
+        </section>
+        <section className="panel sales-stat-card" style={leadsSinSeguimiento.length > 0 ? { borderLeft: "3px solid var(--color-danger, #dc2626)" } : undefined}>
+          <p className="sales-stat-label">Leads sin contactar &gt;7 dias</p>
+          <p className="sales-stat-value" style={leadsSinSeguimiento.length > 0 ? { color: "var(--color-danger, #dc2626)" } : undefined}>
+            {leadsSinSeguimiento.length}
+          </p>
+          {leadsSinSeguimiento.length > 0 && (
+            <button type="button" className="button danger" style={{ marginTop: "0.5rem", fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => onNavigate("leads")}>
+              Ver leads pendientes
+            </button>
+          )}
+        </section>
+      </div>
+
+      {/* Margin Report - Sold vehicles */}
+      {(() => {
+        const soldVehicles = allVehicles.filter((v) => v.estado === "vendido" && v.precio_compra && v.precio_venta);
+        if (soldVehicles.length === 0) return null;
+
+        const purchasesByVehicle = new Map<number, number>();
+        for (const p of purchaseRecords) {
+          if (p.vehicle_id) {
+            purchasesByVehicle.set(p.vehicle_id, (purchasesByVehicle.get(p.vehicle_id) || 0) + p.purchase_price);
+          }
+        }
+
+        const margins = soldVehicles.map((v) => {
+          const gastos = purchasesByVehicle.get(v.id) || 0;
+          const margen = (v.precio_venta || 0) - (v.precio_compra || 0) - gastos;
+          return { vehicle: v, margen, gastos };
+        }).sort((a, b) => b.margen - a.margen);
+
+        const margenTotal = margins.reduce((s, m) => s + m.margen, 0);
+        const margenMedio = margins.length > 0 ? Math.round(margenTotal / margins.length) : 0;
+
+        return (
+          <section className="panel" style={{ padding: "1.25rem" }}>
+            <p className="eyebrow">Informe de margen</p>
+            <h3 style={{ margin: "0.3rem 0 0.75rem" }}>Margen por vehiculo vendido</h3>
+            <div className="sales-stats-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: "1rem" }}>
+              <div className="panel sales-stat-card">
+                <p className="sales-stat-label">Margen total</p>
+                <p className="sales-stat-value sales-stat-success">{margenTotal.toLocaleString("es-ES")} &euro;</p>
+              </div>
+              <div className="panel sales-stat-card">
+                <p className="sales-stat-label">Margen medio</p>
+                <p className="sales-stat-value">{margenMedio.toLocaleString("es-ES")} &euro;</p>
+              </div>
+            </div>
+            <div className="sales-table-scroll">
+              <table className="sales-table">
+                <thead><tr>
+                  <th className="sales-th">Vehiculo</th>
+                  <th className="sales-th sales-th-right">P. Compra</th>
+                  <th className="sales-th sales-th-right">P. Venta</th>
+                  <th className="sales-th sales-th-right">Gastos</th>
+                  <th className="sales-th sales-th-right">Margen</th>
+                </tr></thead>
+                <tbody>
+                  {margins.slice(0, 10).map((m) => (
+                    <tr key={m.vehicle.id} className="sales-row">
+                      <td className="sales-td"><span className="sales-vehicle-name">{m.vehicle.name}</span></td>
+                      <td className="sales-td sales-td-right">{(m.vehicle.precio_compra || 0).toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right">{(m.vehicle.precio_venta || 0).toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right">{m.gastos.toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right" style={{ fontWeight: 700, color: m.margen >= 0 ? "var(--color-success-dark, #166534)" : "var(--color-danger-dark, #991b1b)" }}>
+                        {m.margen >= 0 ? "+" : ""}{m.margen.toLocaleString("es-ES")} &euro;
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* Monthly Sales vs Expenses Report */}
+      {(() => {
+        const months: { key: string; label: string; ventas: number; gastos: number; nVentas: number }[] = [];
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(anioActual, mesActual - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          const label = d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
+          const ventasMes = salesRecords.filter((s) => s.date.startsWith(key));
+          const gastosMes = purchaseRecords.filter((p) => p.purchase_date.startsWith(key));
+          months.push({
+            key,
+            label,
+            ventas: ventasMes.reduce((s, r) => s + r.price_final, 0),
+            gastos: gastosMes.reduce((s, r) => s + r.purchase_price, 0),
+            nVentas: ventasMes.length,
+          });
+        }
+
+        const maxValue = Math.max(...months.map((m) => Math.max(m.ventas, m.gastos)), 1);
+        const hasData = months.some((m) => m.ventas > 0 || m.gastos > 0);
+        if (!hasData) return null;
+
+        return (
+          <section className="panel" style={{ padding: "1.25rem" }}>
+            <p className="eyebrow">Evolucion mensual</p>
+            <h3 style={{ margin: "0.3rem 0 0.75rem" }}>Ventas vs Gastos (12 meses)</h3>
+            <div style={{ display: "flex", gap: "0.25rem", alignItems: "flex-end", height: 180, marginBottom: "0.5rem" }}>
+              {months.map((m) => (
+                <div key={m.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.15rem", height: "100%", justifyContent: "flex-end" }}>
+                  <div style={{ display: "flex", gap: 1, alignItems: "flex-end", width: "100%", justifyContent: "center", flex: 1 }}>
+                    <div style={{ width: "40%", background: "var(--color-success, #16a34a)", borderRadius: "3px 3px 0 0", height: `${Math.max((m.ventas / maxValue) * 100, m.ventas > 0 ? 4 : 0)}%`, minHeight: m.ventas > 0 ? 3 : 0 }} title={`Ventas: ${m.ventas.toLocaleString("es-ES")} €`} />
+                    <div style={{ width: "40%", background: "var(--color-danger, #dc2626)", borderRadius: "3px 3px 0 0", height: `${Math.max((m.gastos / maxValue) * 100, m.gastos > 0 ? 4 : 0)}%`, minHeight: m.gastos > 0 ? 3 : 0 }} title={`Gastos: ${m.gastos.toLocaleString("es-ES")} €`} />
+                  </div>
+                  <span style={{ fontSize: "0.6rem", color: "var(--color-text-muted, #64748b)", whiteSpace: "nowrap" }}>{m.label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: "1.5rem", fontSize: "0.78rem" }}>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "var(--color-success, #16a34a)", marginRight: 4 }}></span>Ventas</span>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "var(--color-danger, #dc2626)", marginRight: 4 }}></span>Gastos</span>
+            </div>
+            <div className="sales-table-scroll" style={{ marginTop: "1rem" }}>
+              <table className="sales-table">
+                <thead><tr>
+                  <th className="sales-th">Mes</th>
+                  <th className="sales-th sales-th-right">N. Ventas</th>
+                  <th className="sales-th sales-th-right">Ingresos</th>
+                  <th className="sales-th sales-th-right">Gastos</th>
+                  <th className="sales-th sales-th-right">Balance</th>
+                </tr></thead>
+                <tbody>
+                  {[...months].reverse().filter((m) => m.ventas > 0 || m.gastos > 0).map((m) => (
+                    <tr key={m.key} className="sales-row">
+                      <td className="sales-td"><span className="sales-vehicle-name">{m.label}</span></td>
+                      <td className="sales-td sales-td-right">{m.nVentas}</td>
+                      <td className="sales-td sales-td-right sales-price">{m.ventas.toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right">{m.gastos.toLocaleString("es-ES")} &euro;</td>
+                      <td className="sales-td sales-td-right" style={{ fontWeight: 700, color: m.ventas - m.gastos >= 0 ? "var(--color-success-dark, #166534)" : "var(--color-danger-dark, #991b1b)" }}>
+                        {(m.ventas - m.gastos).toLocaleString("es-ES")} &euro;
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      })()}
+
+      {allVehicles.length === 0 && leads.length === 0 && (
+        <section className="panel setup-panel">
+          <p className="eyebrow">Sin datos</p>
+          <h2>Dashboard vacio</h2>
+          <p className="muted">Comienza por anadir vehiculos al stock y registrar los primeros leads.</p>
+        </section>
+      )}
+    </>
+  );
+}
+
 const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
+  { key: "dashboard", label: "Dashboard" },
   { key: "stock", label: "Stock" },
   { key: "sales", label: "Ventas" },
   { key: "purchases", label: "Compras" },
   { key: "suppliers", label: "Proveedores" },
   { key: "leads", label: "Leads" },
   { key: "clients", label: "Clientes" },
+  { key: "reminders", label: "Recordatorios" },
   { key: "revision", label: "Revision" },
 ];
 
-function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; onLogout: () => void }) {
+function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: api.LoginResult; onLogout: () => void; onOpenPlatform?: () => void }) {
   const companyId = session.company.id;
-  const [currentView, setCurrentView] = useState<ViewKey>("stock");
+  const [currentView, setCurrentView] = useState<ViewKey>("dashboard");
   const [vehicles, setVehicles] = useState<api.Vehicle[]>([]);
   const [allVehicles, setAllVehicles] = useState<api.Vehicle[]>([]);
   const [leads, setLeads] = useState<api.Lead[]>([]);
@@ -351,6 +892,8 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
   const [suppliers, setSuppliers] = useState<api.Supplier[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<api.Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   React.useEffect(() => {
     void loadAll();
@@ -395,11 +938,42 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
 
   return (
     <main className="shell">
-      <aside className="sidebar">
+      <button
+        type="button"
+        className="mobile-menu-btn"
+        aria-label="Abrir menu"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+      >
+        {mobileMenuOpen ? "✕" : "☰"}
+      </button>
+      {mobileMenuOpen && <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)} />}
+      <aside className={`sidebar ${mobileMenuOpen ? "sidebar-open" : ""}`}>
         <div>
           <p className="eyebrow">Cars Control</p>
           <h1 className="sidebar-title">{session.company.trade_name}</h1>
           <p className="muted">{session.user.full_name} ({session.user.role})</p>
+        </div>
+        <div style={{ position: "relative" }}>
+          <input
+            value={globalSearch}
+            onChange={(e) => setGlobalSearch(e.target.value)}
+            placeholder="Buscar vehiculos, leads, clientes..."
+            style={{ width: "100%", padding: "0.7rem 1rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "inherit", fontSize: "0.88rem" }}
+          />
+          {globalSearch.trim().length >= 2 && (
+            <GlobalSearchResults
+              query={globalSearch}
+              vehicles={vehicles}
+              leads={leads}
+              clients={clients}
+              onSelect={(type, _id) => {
+                setGlobalSearch("");
+                if (type === "vehicle") setCurrentView("stock");
+                else if (type === "lead") setCurrentView("leads");
+                else if (type === "client") setCurrentView("clients");
+              }}
+            />
+          )}
         </div>
         <nav className="nav">
           {NAV_ITEMS.map((item) => (
@@ -407,19 +981,35 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
               key={item.key}
               type="button"
               className={currentView === item.key ? "nav-item active" : "nav-item"}
-              onClick={() => { setCurrentView(item.key); setSelectedVehicle(null); }}
+              onClick={() => { setCurrentView(item.key); setSelectedVehicle(null); setMobileMenuOpen(false); }}
             >
               {item.label}
             </button>
           ))}
         </nav>
         <div className="sidebar-tools panel">
+          {onOpenPlatform && isSuperAdmin(session.user.role) && (
+            <button type="button" className="button secondary" onClick={onOpenPlatform} style={{ width: "100%", marginBottom: "0.5rem" }}>
+              Panel plataforma
+            </button>
+          )}
           <button type="button" className="button danger" onClick={onLogout} style={{ width: "100%" }}>
             Cerrar sesion
           </button>
         </div>
       </aside>
       <section className="content">
+        {currentView === "dashboard" && (
+          <WebDashboard
+            vehicles={vehicles}
+            allVehicles={allVehicles}
+            leads={leads}
+            salesRecords={salesRecords}
+            purchaseRecords={purchaseRecords}
+            onReload={loadAll}
+            onNavigate={(view) => { setCurrentView(view as ViewKey); }}
+          />
+        )}
         {currentView === "stock" && !selectedVehicle && (
           <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
         )}
@@ -431,6 +1021,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
         {currentView === "sales" && <SalesList records={salesRecords} vehicles={vehicles} clients={clients} companyId={companyId} onReload={loadAll} />}
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}
         {currentView === "suppliers" && <SuppliersList suppliers={suppliers} companyId={companyId} onReload={loadAll} />}
+        {currentView === "reminders" && <WebReminders leads={leads} onReload={loadAll} />}
         {currentView === "revision" && <RevisionSheet vehicles={allVehicles} companyId={companyId} />}
       </section>
 
@@ -532,6 +1123,9 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
           <p className="muted">{vehicles.length} vehiculo{vehicles.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="hero-actions">
+          <button type="button" className="button secondary" onClick={() => exportToCSV(vehicles.map(v => ({ Nombre: v.name, Año: v.anio, Km: v.km, Precio_compra: v.precio_compra, Precio_venta: v.precio_venta, Estado: v.estado, Combustible: v.fuel, Color: v.color })), "stock")}>
+            Exportar CSV
+          </button>
           <button type="button" className="button secondary" onClick={() => window.open("https://www.coches.net/concesionario/codinacars/", "_blank")}>
             Update stock
           </button>
@@ -658,7 +1252,7 @@ function VehicleThumb({ vehicleId }: { vehicleId: number }) {
   if (!url) return null;
   return (
     <div className="thumb-frame">
-      <img src={url} className="thumb-image" alt="" />
+      <img src={url} className="thumb-image" alt="" loading="lazy" />
     </div>
   );
 }
@@ -792,7 +1386,7 @@ function VDPhotos({ photos, fileRef, uploading, handleUpload, handleDeletePhoto,
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "0.75rem" }}>
           {photos.map((p) => (
             <div key={p.id} style={{ position: "relative" }}>
-              <img src={p.url} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12, cursor: "pointer" }} onClick={() => setSelectedPhoto(p.id)} />
+              <img src={p.url} loading="lazy" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12, cursor: "pointer" }} onClick={() => setSelectedPhoto(p.id)} />
               <button type="button" onClick={() => void handleDeletePhoto(p)} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 8, padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}>X</button>
             </div>
           ))}
@@ -851,7 +1445,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
       {h.photos.length > 0 && (
         <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", padding: "0.25rem 0" }}>
           {h.photos.map((p) => (
-            <img key={p.id} src={p.url} onClick={() => h.setSelectedPhoto(p.id)}
+            <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
               style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 10, cursor: "pointer", flexShrink: 0,
                 border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
           ))}
@@ -914,12 +1508,12 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
       {h.mainPhoto && (
         <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
           <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
-            <img src={h.mainPhoto} alt={vehicle.name} style={{ width: "100%", display: "block", borderRadius: 24, maxHeight: 360, objectFit: "cover" }} />
+            <img src={h.mainPhoto} alt={vehicle.name} loading="lazy" style={{ width: "100%", display: "block", borderRadius: 24, maxHeight: 360, objectFit: "cover" }} />
           </section>
           {h.photos.length > 1 && (
             <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem", overflowX: "auto" }}>
               {h.photos.map((p) => (
-                <img key={p.id} src={p.url} onClick={() => h.setSelectedPhoto(p.id)}
+                <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
                   style={{ width: 72, height: 54, objectFit: "cover", borderRadius: 8, cursor: "pointer",
                     border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
               ))}
@@ -988,7 +1582,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
             {h.mainPhoto ? (
-              <img src={h.mainPhoto} alt={vehicle.name} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block", borderRadius: 24 }} />
+              <img src={h.mainPhoto} alt={vehicle.name} loading="lazy" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block", borderRadius: 24 }} />
             ) : (
               <div style={{ width: "100%", aspectRatio: "4/3", display: "grid", placeItems: "center", background: "#e8ecf2", borderRadius: 24, color: "#64748b", textAlign: "center" }}>
                 <div><p style={{ margin: 0, fontWeight: 600 }}>Sin foto</p><p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem" }}>Sube fotos desde la galeria</p></div>
@@ -998,7 +1592,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
           {h.photos.length > 1 && (
             <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto" }}>
               {h.photos.map((p) => (
-                <img key={p.id} src={p.url} onClick={() => h.setSelectedPhoto(p.id)}
+                <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
                   style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 8, cursor: "pointer", flexShrink: 0,
                     border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
               ))}
@@ -1055,13 +1649,70 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
 // ============================================================
 // Leads List
 // ============================================================
-function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload: _onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
+function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "", estado: "", canal: "" });
+  const [notesLeadId, setNotesLeadId] = useState<number | null>(null);
+  const [leadNotes, setLeadNotes] = useState<api.LeadNote[]>([]);
+  const [newNote, setNewNote] = useState("");
+  const [loadingNotes, setLoadingNotes] = useState(false);
+
+  async function openNotes(leadId: number) {
+    if (notesLeadId === leadId) { setNotesLeadId(null); return; }
+    setNotesLeadId(leadId);
+    setLoadingNotes(true);
+    try { setLeadNotes(await api.listLeadNotes(leadId)); } catch { setLeadNotes([]); }
+    finally { setLoadingNotes(false); }
+  }
+
+  async function addNote() {
+    if (!notesLeadId || !newNote.trim()) return;
+    await api.createLeadNote(notesLeadId, newNote.trim());
+    setNewNote("");
+    setLeadNotes(await api.listLeadNotes(notesLeadId));
+  }
+
+  async function removeNote(noteId: number) {
+    await api.deleteLeadNote(noteId);
+    if (notesLeadId) setLeadNotes(await api.listLeadNotes(notesLeadId));
+  }
   const filtered = useMemo(() => {
     if (!search.trim()) return leads;
     const q = search.toLowerCase();
     return leads.filter((l) => [l.name, l.phone, l.vehicle_interest].some((v) => v.toLowerCase().includes(q)));
   }, [leads, search]);
+  const { paged: pagedLeads, page: leadsPage, totalPages: leadsTotalPages, setPage: setLeadsPage } = usePagination(filtered);
+
+  function startEdit(lead: api.Lead) {
+    setEditingId(lead.id);
+    setEditForm({ name: lead.name, phone: lead.phone, email: lead.email, notes: lead.notes, estado: lead.estado, canal: lead.canal });
+  }
+
+  async function saveEdit() {
+    if (editingId == null) return;
+    await api.updateLead(editingId, editForm as Partial<api.Lead>);
+    setEditingId(null);
+    onReload();
+  }
+
+  async function handleDeleteLead(id: number, name: string) {
+    if (!confirm(`¿Eliminar lead "${name}"? Esta acción no se puede deshacer.`)) return;
+    await api.deleteLead(id);
+    onReload();
+  }
+
+  async function convertToClient(lead: api.Lead) {
+    if (!confirm(`¿Convertir "${lead.name}" en cliente?`)) return;
+    const client = await api.createClient(companyId, {
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      notes: lead.notes,
+    } as Partial<api.Client>);
+    await api.updateLead(lead.id, { converted_client_id: client.id, estado: "cerrado" } as Partial<api.Lead>);
+    onReload();
+  }
 
   return (
     <>
@@ -1071,36 +1722,100 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
           <h2>Contactos</h2>
           <p className="muted">{leads.length} lead{leads.length !== 1 ? "s" : ""}</p>
         </div>
+        {leads.length > 0 && (
+          <div className="hero-actions">
+            <button type="button" className="button secondary" onClick={() => exportToCSV(leads.map(l => ({ Nombre: l.name, Telefono: l.phone, Email: l.email, Estado: l.estado, Canal: l.canal, Interes: l.vehicle_interest, Fecha_contacto: l.fecha_contacto, Notas: l.notes })), "leads")}>
+              Exportar CSV
+            </button>
+          </div>
+        )}
       </header>
       {leads.length > 0 && (
         <section className="panel filter-panel">
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar lead..." />
         </section>
       )}
+      <PaginationControls page={leadsPage} totalPages={leadsTotalPages} setPage={setLeadsPage} />
       <section className="record-grid">
-        {filtered.map((lead) => (
+        {pagedLeads.map((lead) => (
           <article key={lead.id} className="record-card panel">
-            <div className="record-header">
-              <div>
-                <p className="record-title">{lead.name}</p>
-                <p className="muted">{lead.phone || "Sin telefono"}</p>
+            {editingId === lead.id ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" />
+                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Telefono" />
+                <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
+                <select value={editForm.estado} onChange={(e) => setEditForm({ ...editForm, estado: e.target.value })}>
+                  <option value="nuevo">Nuevo</option><option value="contactado">Contactado</option><option value="negociando">Negociando</option><option value="cerrado">Cerrado</option><option value="perdido">Perdido</option>
+                </select>
+                <input value={editForm.canal} onChange={(e) => setEditForm({ ...editForm, canal: e.target.value })} placeholder="Canal" />
+                <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notas" rows={2} />
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void saveEdit()}>Guardar</button>
+                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => setEditingId(null)}>Cancelar</button>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                {lead.canal === "coches.net" && <span className="badge badge-coches">coches.net</span>}
-                <span className="badge">{lead.estado}</span>
-              </div>
-            </div>
-            {lead.vehicle_interest && <p className="record-line">Interes: {lead.vehicle_interest}</p>}
-            {lead.notes && <p className="record-notes">{lead.notes}</p>}
-            {lead.canal === "coches.net" && (
-              <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
-                className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
-                Responder en coches.net
-              </a>
+            ) : (
+              <>
+                <div className="record-header">
+                  <div>
+                    <p className="record-title">{lead.name}</p>
+                    <p className="muted">{lead.phone || "Sin telefono"}</p>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
+                    {lead.canal === "coches.net" && <span className="badge badge-coches">coches.net</span>}
+                    <span className="badge">{lead.estado}</span>
+                    <button type="button" className="button secondary" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => startEdit(lead)}>Editar</button>
+                    <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteLead(lead.id, lead.name)}>Eliminar</button>
+                  </div>
+                </div>
+                {lead.vehicle_interest && <p className="record-line">Interes: {lead.vehicle_interest}</p>}
+                {lead.notes && <p className="record-notes">{lead.notes}</p>}
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.25rem" }}>
+                  {!lead.converted_client_id && lead.estado !== "perdido" && (
+                    <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void convertToClient(lead)}>
+                      Convertir a cliente
+                    </button>
+                  )}
+                  {lead.converted_client_id && <span className="badge badge-success">Convertido</span>}
+                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void openNotes(lead.id)}>
+                    {notesLeadId === lead.id ? "Cerrar notas" : "Notas"}
+                  </button>
+                  {lead.canal === "coches.net" && (
+                    <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
+                      className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
+                      Responder en coches.net
+                    </a>
+                  )}
+                </div>
+                {notesLeadId === lead.id && (
+                  <div style={{ marginTop: "0.75rem", padding: "0.75rem", borderRadius: 10, background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.06)" }}>
+                    <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                      <input value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Añadir nota..." style={{ flex: 1, fontSize: "0.85rem", padding: "0.5rem 0.75rem" }} />
+                      <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void addNote()} disabled={!newNote.trim()}>Añadir</button>
+                    </div>
+                    {loadingNotes ? <p className="muted" style={{ margin: 0 }}>Cargando...</p> : (
+                      leadNotes.length === 0 ? <p className="muted" style={{ margin: 0, fontSize: "0.82rem" }}>Sin notas</p> : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                          {leadNotes.map((n) => (
+                            <div key={n.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem", padding: "0.35rem 0", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+                              <div>
+                                <p style={{ margin: 0, fontSize: "0.82rem" }}>{n.content}</p>
+                                <p className="muted" style={{ margin: "0.1rem 0 0", fontSize: "0.72rem" }}>{new Date(n.timestamp).toLocaleString("es-ES")}</p>
+                              </div>
+                              <button type="button" className="button danger" aria-label="Eliminar nota" style={{ padding: "0.15rem 0.4rem", fontSize: "0.65rem", flexShrink: 0 }} onClick={() => void removeNote(n.id)}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </article>
         ))}
       </section>
+      <PaginationControls page={leadsPage} totalPages={leadsTotalPages} setPage={setLeadsPage} />
     </>
   );
 }
@@ -1108,7 +1823,28 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
 // ============================================================
 // Clients List
 // ============================================================
-function ClientsList({ clients, companyId: _companyId, onReload: _onReload }: { clients: api.Client[]; companyId: number; onReload: () => void }) {
+function ClientsList({ clients, companyId: _companyId, onReload }: { clients: api.Client[]; companyId: number; onReload: () => void }) {
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", dni: "", notes: "" });
+
+  function startEdit(c: api.Client) {
+    setEditingId(c.id);
+    setEditForm({ name: c.name, phone: c.phone, email: c.email, dni: c.dni, notes: c.notes });
+  }
+
+  async function saveEdit() {
+    if (editingId == null) return;
+    await api.updateClient(editingId, editForm as Partial<api.Client>);
+    setEditingId(null);
+    onReload();
+  }
+
+  async function handleDeleteClient(id: number, name: string) {
+    if (!confirm(`¿Eliminar cliente "${name}"? Esta acción no se puede deshacer.`)) return;
+    await api.deleteClient(id);
+    onReload();
+  }
+
   return (
     <>
       <header className="hero">
@@ -1117,19 +1853,46 @@ function ClientsList({ clients, companyId: _companyId, onReload: _onReload }: { 
           <h2>Clientes registrados</h2>
           <p className="muted">{clients.length} cliente{clients.length !== 1 ? "s" : ""}</p>
         </div>
+        {clients.length > 0 && (
+          <div className="hero-actions">
+            <button type="button" className="button secondary" onClick={() => exportToCSV(clients.map(c => ({ Nombre: c.name, Telefono: c.phone, Email: c.email, DNI: c.dni, Notas: c.notes })), "clientes")}>
+              Exportar CSV
+            </button>
+          </div>
+        )}
       </header>
       <section className="record-grid">
         {clients.map((c) => (
           <article key={c.id} className="record-card panel">
-            <div className="record-header">
-              <div>
-                <p className="record-title">{c.name}</p>
-                <p className="muted">{c.phone || "Sin telefono"}</p>
+            {editingId === c.id ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" />
+                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Telefono" />
+                <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
+                <input value={editForm.dni} onChange={(e) => setEditForm({ ...editForm, dni: e.target.value })} placeholder="DNI" />
+                <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notas" rows={2} />
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void saveEdit()}>Guardar</button>
+                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => setEditingId(null)}>Cancelar</button>
+                </div>
               </div>
-              <span className="badge badge-success">Cliente</span>
-            </div>
-            {c.dni && <p className="record-line">DNI: {c.dni}</p>}
-            {c.email && <p className="record-line">{c.email}</p>}
+            ) : (
+              <>
+                <div className="record-header">
+                  <div>
+                    <p className="record-title">{c.name}</p>
+                    <p className="muted">{c.phone || "Sin telefono"}</p>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                    <span className="badge badge-success">Cliente</span>
+                    <button type="button" className="button secondary" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => startEdit(c)}>Editar</button>
+                    <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteClient(c.id, c.name)}>Eliminar</button>
+                  </div>
+                </div>
+                {c.dni && <p className="record-line">DNI: {c.dni}</p>}
+                {c.email && <p className="record-line">{c.email}</p>}
+              </>
+            )}
           </article>
         ))}
       </section>
@@ -1140,10 +1903,17 @@ function ClientsList({ clients, companyId: _companyId, onReload: _onReload }: { 
 // ============================================================
 // Sales List
 // ============================================================
-function SalesList({ records, vehicles, clients, companyId: _companyId, onReload: _onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; onReload: () => void }) {
-  const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
-  const clientMap = new Map(clients.map((c) => [c.id, c]));
-  const total = records.reduce((s, r) => s + r.price_final, 0);
+function SalesList({ records, vehicles, clients, companyId: _companyId, onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; onReload: () => void }) {
+  const vehicleMap = useMemo(() => new Map(vehicles.map((v) => [v.id, v])), [vehicles]);
+  const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
+  const total = useMemo(() => records.reduce((s, r) => s + r.price_final, 0), [records]);
+  const { paged: pagedSales, page: salesPage, totalPages: salesTotalPages, setPage: setSalesPage } = usePagination(records);
+
+  async function handleDeleteSale(id: number, vehicleName: string) {
+    if (!confirm(`¿Eliminar registro de venta de "${vehicleName}"? Esta acción no se puede deshacer.`)) return;
+    await api.deleteSalesRecord(id);
+    onReload();
+  }
 
   return (
     <>
@@ -1153,6 +1923,13 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
           <h2>Registro de ventas</h2>
           <p className="muted">{records.length} venta{records.length !== 1 ? "s" : ""} · {total.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
         </div>
+        {records.length > 0 && (
+          <div className="hero-actions">
+            <button type="button" className="button secondary" onClick={() => exportToCSV(records.map(r => ({ Vehiculo: r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "" : "", Cliente: r.client_id ? clientMap.get(r.client_id)?.name || "" : "", Fecha: r.date, Precio: r.price_final, Notas: r.notes })), "ventas")}>
+              Exportar CSV
+            </button>
+          </div>
+        )}
       </header>
       {records.length > 0 && (
         <section className="panel sales-records-panel">
@@ -1163,19 +1940,25 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
                 <th className="sales-th">Cliente</th>
                 <th className="sales-th">Fecha</th>
                 <th className="sales-th sales-th-right">Precio</th>
+                <th className="sales-th" style={{ width: "4rem" }}></th>
               </tr></thead>
               <tbody>
-                {records.map((r) => (
-                  <tr key={r.id} className="sales-row">
-                    <td className="sales-td">{r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "—" : "—"}</td>
-                    <td className="sales-td">{r.client_id ? clientMap.get(r.client_id)?.name || "—" : "—"}</td>
-                    <td className="sales-td">{new Date(r.date).toLocaleDateString("es-ES")}</td>
-                    <td className="sales-td sales-td-right"><span className="sales-price">{r.price_final.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
-                  </tr>
-                ))}
+                {pagedSales.map((r) => {
+                  const vName = r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "Venta" : "Venta";
+                  return (
+                    <tr key={r.id} className="sales-row">
+                      <td className="sales-td">{r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "—" : "—"}</td>
+                      <td className="sales-td">{r.client_id ? clientMap.get(r.client_id)?.name || "—" : "—"}</td>
+                      <td className="sales-td">{new Date(r.date).toLocaleDateString("es-ES")}</td>
+                      <td className="sales-td sales-td-right"><span className="sales-price">{r.price_final.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
+                      <td className="sales-td"><button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteSale(r.id, vName)}>Eliminar</button></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+          <PaginationControls page={salesPage} totalPages={salesTotalPages} setPage={setSalesPage} />
         </section>
       )}
     </>
@@ -1185,8 +1968,16 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
 // ============================================================
 // Purchases List
 // ============================================================
-function PurchasesList({ records, companyId: _companyId, onReload: _onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
-  const total = records.reduce((s, r) => s + r.purchase_price, 0);
+function PurchasesList({ records, companyId: _companyId, onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
+  const total = useMemo(() => records.reduce((s, r) => s + r.purchase_price, 0), [records]);
+  const { paged: pagedPurchases, page: purchasesPage, totalPages: purchasesTotalPages, setPage: setPurchasesPage } = usePagination(records);
+
+  async function handleDeletePurchase(id: number, supplierName: string) {
+    if (!confirm(`¿Eliminar registro de compra de "${supplierName}"? Esta acción no se puede deshacer.`)) return;
+    await api.deletePurchaseRecord(id);
+    onReload();
+  }
+
   return (
     <>
       <header className="hero">
@@ -1195,6 +1986,13 @@ function PurchasesList({ records, companyId: _companyId, onReload: _onReload }: 
           <h2>Registro de compras</h2>
           <p className="muted">{records.length} registro{records.length !== 1 ? "s" : ""} · {total.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
         </div>
+        {records.length > 0 && (
+          <div className="hero-actions">
+            <button type="button" className="button secondary" onClick={() => exportToCSV(records.map(r => ({ Tipo: r.expense_type, Vehiculo: r.vehicle_name, Matricula: r.plate, Proveedor: r.supplier_name, Fecha: r.purchase_date, Importe: r.purchase_price, Factura: r.invoice_number, Pago: r.payment_method, Notas: r.notes })), "compras")}>
+              Exportar CSV
+            </button>
+          </div>
+        )}
       </header>
       {records.length > 0 && (
         <section className="panel sales-records-panel">
@@ -1206,20 +2004,23 @@ function PurchasesList({ records, companyId: _companyId, onReload: _onReload }: 
                 <th className="sales-th">Fecha</th>
                 <th className="sales-th sales-th-right">Importe</th>
                 <th className="sales-th">Factura</th>
+                <th className="sales-th" style={{ width: "4rem" }}></th>
               </tr></thead>
               <tbody>
-                {records.map((r) => (
+                {pagedPurchases.map((r) => (
                   <tr key={r.id} className="sales-row">
                     <td className="sales-td"><span className="badge">{r.expense_type}</span></td>
                     <td className="sales-td">{r.supplier_name}</td>
                     <td className="sales-td">{r.purchase_date}</td>
                     <td className="sales-td sales-td-right"><span className="sales-price">{r.purchase_price.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
                     <td className="sales-td"><span className="badge badge-info">{r.invoice_number || "—"}</span></td>
+                    <td className="sales-td"><button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeletePurchase(r.id, r.supplier_name)}>Eliminar</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <PaginationControls page={purchasesPage} totalPages={purchasesTotalPages} setPage={setPurchasesPage} />
         </section>
       )}
     </>
@@ -1275,6 +2076,11 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
           <p className="muted">{suppliers.length} proveedor{suppliers.length !== 1 ? "es" : ""}</p>
         </div>
         <div className="hero-actions">
+          {suppliers.length > 0 && (
+            <button type="button" className="button secondary" onClick={() => exportToCSV(suppliers.map(s => ({ Nombre: s.name, CIF: s.cif, Telefono: s.phone, Email: s.email, Contacto: s.contact_person, Notas: s.notes })), "proveedores")}>
+              Exportar CSV
+            </button>
+          )}
           <button type="button" className="button primary" onClick={() => setShowAdd(!showAdd)}>
             {showAdd ? "Cancelar" : "Nuevo proveedor"}
           </button>
@@ -1455,6 +2261,15 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
   const [resultadoGeneral, setResultadoGeneral] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [history, setHistory] = useState<api.VehicleInspection[]>([]);
+
+  useEffect(() => {
+    if (selectedVehicleId) {
+      void api.listVehicleInspections(Number(selectedVehicleId)).then(setHistory);
+    } else {
+      setHistory([]);
+    }
+  }, [selectedVehicleId]);
 
   function setItemStatus(key: string, status: ItemStatus) {
     setItems((prev) => ({ ...prev, [key]: { ...prev[key], status: prev[key].status === status ? null : status } }));
@@ -1493,9 +2308,11 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
       const { error } = await supabase.from("vehicle_inspections").insert(payload);
       if (error) throw error;
       setSaveMsg("Revision guardada correctamente.");
+      const savedVehicleId = selectedVehicleId;
       resetForm();
+      if (savedVehicleId) void api.listVehicleInspections(Number(savedVehicleId)).then(setHistory);
     } catch (err) {
-      setSaveMsg("Error al guardar: " + String(err));
+      setSaveMsg("Error al guardar. Intentalo de nuevo.");
     } finally {
       setSaving(false);
     }
@@ -1621,8 +2438,50 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
           {saveMsg && <span style={{ fontSize: "0.85rem", color: saveMsg.startsWith("Error") ? "#dc2626" : "#16a34a" }}>{saveMsg}</span>}
         </div>
       </section>
+
+      {/* Inspection History */}
+      {history.length > 0 && (
+        <section className="panel" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>
+          <p className="eyebrow">Historial de revisiones</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.5rem" }}>
+            {history.map((insp) => {
+              const totalItems = Object.keys(insp.items).length;
+              const okCount = Object.values(insp.items).filter((i) => i.status === "ok").length;
+              const noCount = Object.values(insp.items).filter((i) => i.status === "no").length;
+              return (
+                <div key={insp.id} style={{ padding: "0.75rem", borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.5)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: "0.9rem" }}>
+                        {new Date(insp.created_at).toLocaleDateString("es-ES")}
+                        {insp.inspector_name && <span className="muted"> — {insp.inspector_name}</span>}
+                      </p>
+                      <p className="muted" style={{ margin: "0.2rem 0 0", fontSize: "0.82rem" }}>
+                        {okCount} OK · {noCount} NO · {totalItems - okCount - noCount} sin revisar
+                      </p>
+                    </div>
+                    <button type="button" className="button danger" style={{ padding: "0.25rem 0.6rem", fontSize: "0.72rem" }}
+                      onClick={async () => { await api.deleteVehicleInspection(insp.id); setHistory((h) => h.filter((x) => x.id !== insp.id)); }}>
+                      Eliminar
+                    </button>
+                  </div>
+                  {insp.resultado_general && <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.82rem", fontStyle: "italic" }}>{insp.resultado_general}</p>}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
 
-export default WebApp;
+function WebAppWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <WebApp />
+    </ErrorBoundary>
+  );
+}
+
+export default WebAppWithBoundary;

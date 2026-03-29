@@ -73,19 +73,19 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
           </div>
           <div className="dashboard-stats">
             <div className="stat-item">
-              <div className="stat-number">{stockDisponible}</div>
+              <div className="stat-number" role="status">{stockDisponible}</div>
               <p className="stat-label">Disponibles</p>
             </div>
             <div className="stat-item">
-              <div className="stat-number">{stockReservado}</div>
+              <div className="stat-number" role="status">{stockReservado}</div>
               <p className="stat-label">Reservados</p>
             </div>
             <div className="stat-item">
-              <div className="stat-number">{stockVendido}</div>
+              <div className="stat-number" role="status">{stockVendido}</div>
               <p className="stat-label">Vendidos</p>
             </div>
             <div className="stat-item">
-              <div className="stat-number">{stock.length}</div>
+              <div className="stat-number" role="status">{stock.length}</div>
               <p className="stat-label">Total</p>
             </div>
           </div>
@@ -99,19 +99,19 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
           </div>
           <div className="dashboard-stats">
             <div className="stat-item">
-              <div className="stat-number">{leadsNuevos}</div>
+              <div className="stat-number" role="status">{leadsNuevos}</div>
               <p className="stat-label">Nuevos</p>
             </div>
             <div className="stat-item">
-              <div className="stat-number">{leadsActivos}</div>
+              <div className="stat-number" role="status">{leadsActivos}</div>
               <p className="stat-label">En negociación</p>
             </div>
             <div className="stat-item">
-              <div className="stat-number">{leadsCerrados}</div>
+              <div className="stat-number" role="status">{leadsCerrados}</div>
               <p className="stat-label">Cerrados</p>
             </div>
             <div className="stat-item">
-              <div className="stat-number">{leadsPerdidos}</div>
+              <div className="stat-number" role="status">{leadsPerdidos}</div>
               <p className="stat-label">Perdidos</p>
             </div>
           </div>
@@ -149,7 +149,7 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
             <h3>Leads sin contactar</h3>
           </div>
           <div className="warning-content">
-            <p className="warning-number" style={leadsSinSeguimiento > 0 ? { color: "#e53e3e", fontSize: "2.5rem" } : undefined}>
+            <p className="warning-number" role={leadsSinSeguimiento > 0 ? "alert" : "status"} style={leadsSinSeguimiento > 0 ? { color: "#e53e3e", fontSize: "2.5rem" } : undefined}>
               {leadsSinSeguimiento}
             </p>
             {leadsSinSeguimiento > 0 ? (

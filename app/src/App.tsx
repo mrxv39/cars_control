@@ -36,6 +36,9 @@ import { StockDetailView } from "./components/StockDetailView";
 import { LeadModal as LeadModalComponent } from "./components/LeadModal";
 import { ClientModal as ClientModalComponent } from "./components/ClientModal";
 import { FeedbackButton } from "./components/FeedbackButton";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { isSuperAdmin } from "./lib/platform-types";
+import { PlatformLayout } from "./components/platform/PlatformLayout";
 import "./App.css";
 
 const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
@@ -115,6 +118,23 @@ function App() {
 }
 
 function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogout: () => void }) {
+  const [showPlatform, setShowPlatform] = useState(false);
+
+  // Panel de plataforma super-admin
+  if (showPlatform && isSuperAdmin(session.user.role)) {
+    return (
+      <PlatformLayout
+        userId={session.user.id}
+        userName={session.user.full_name}
+        onBackToCompany={() => setShowPlatform(false)}
+      />
+    );
+  }
+
+  return <CompanyApp session={session} onLogout={onLogout} onOpenPlatform={isSuperAdmin(session.user.role) ? () => setShowPlatform(true) : undefined} />;
+}
+
+function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResult; onLogout: () => void; onOpenPlatform?: () => void }) {
   const { appState, loading, error: appError, loadState } = useAppState();
   const [currentView, setCurrentView] = useState<ViewKey>("dashboard");
   const [thumbnails, setThumbnails] = useState<Record<string, string | null>>({});
@@ -407,6 +427,11 @@ function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogou
           <button type="button" className="button secondary" onClick={() => void exportData()} disabled={submitting} style={{ width: "100%", marginBottom: "0.5rem" }}>
             {submitting ? "Exportando..." : "Exportar datos"}
           </button>
+          {onOpenPlatform && (
+            <button type="button" className="button secondary" onClick={onOpenPlatform} style={{ width: "100%", marginBottom: "0.5rem" }}>
+              Panel plataforma
+            </button>
+          )}
           <button type="button" className="button danger" onClick={onLogout} style={{ width: "100%" }}>
             Cerrar sesion
           </button>
@@ -626,4 +651,12 @@ function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogou
   );
 }
 
-export default App;
+function AppWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+export default AppWithBoundary;

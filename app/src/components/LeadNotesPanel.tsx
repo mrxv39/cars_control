@@ -56,7 +56,7 @@ export function LeadNotesPanel({ leadId, notes, onNotesUpdated, submitting }: Pr
         <p className="muted">{notes.length} nota{notes.length !== 1 ? "s" : ""} registrada{notes.length !== 1 ? "s" : ""}</p>
       </div>
 
-      {error && <p style={{ color: "#d32f2f", marginBottom: "1rem" }}>{error}</p>}
+      {error && <p role="alert" style={{ color: "#d32f2f", marginBottom: "1rem" }}>{error}</p>}
 
       {/* Add Note Form */}
       <div className="notes-input">
@@ -80,7 +80,7 @@ export function LeadNotesPanel({ leadId, notes, onNotesUpdated, submitting }: Pr
       </div>
 
       {/* Notes Timeline */}
-      <div className="notes-timeline">
+      <div className="notes-timeline" aria-live="polite">
         {notes.length > 0 ? (
           notes.map((note) => (
             <div key={note.id} className="note-item">
@@ -89,6 +89,7 @@ export function LeadNotesPanel({ leadId, notes, onNotesUpdated, submitting }: Pr
                 <button
                   type="button"
                   className="button small danger"
+                  aria-label="Eliminar nota"
                   onClick={() => void handleDeleteNote(note.id)}
                   disabled={loadingNotes || submitting}
                 >

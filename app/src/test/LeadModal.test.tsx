@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { LeadModal } from '../components/LeadModal'
-import type { LeadForm, StockVehicle } from '../types'
+import type { StockVehicle } from '../types'
 import { EMPTY_LEAD_FORM } from '../types'
 
 describe('LeadModal', () => {
