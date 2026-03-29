@@ -45,9 +45,15 @@ function WebApp() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [loginFieldErrors, setLoginFieldErrors] = useState<{ user?: string; pass?: string }>({});
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
+    const fieldErrors: { user?: string; pass?: string } = {};
+    if (!loginUsername.trim()) fieldErrors.user = "Usuario obligatorio";
+    if (!loginPassword) fieldErrors.pass = "Contraseña obligatoria";
+    if (Object.keys(fieldErrors).length > 0) { setLoginFieldErrors(fieldErrors); return; }
+    setLoginFieldErrors({});
     setLoginError(null);
     setLoginSubmitting(true);
     try {
@@ -74,12 +80,14 @@ function WebApp() {
             <p className="muted" style={{ marginBottom: "1.5rem" }}>Panel de gestion para usuarios autorizados.</p>
             <form onSubmit={(e) => void handleLogin(e)}>
               <div style={{ marginBottom: "1rem" }}>
-                <label className="field-label" htmlFor="login-user">Usuario</label>
-                <input id="login-user" type="text" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="Usuario" autoFocus />
+                <label className="field-label required" htmlFor="login-user">Usuario</label>
+                <input id="login-user" type="text" value={loginUsername} onChange={(e) => { setLoginUsername(e.target.value); setLoginFieldErrors((f) => ({ ...f, user: undefined })); }} placeholder="Usuario" autoFocus className={loginFieldErrors.user ? "input-error" : ""} />
+                {loginFieldErrors.user && <p className="input-error-message">{loginFieldErrors.user}</p>}
               </div>
               <div style={{ marginBottom: "1rem" }}>
-                <label className="field-label" htmlFor="login-pass">Contraseña</label>
-                <input id="login-pass" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Contraseña" />
+                <label className="field-label required" htmlFor="login-pass">Contraseña</label>
+                <input id="login-pass" type="password" value={loginPassword} onChange={(e) => { setLoginPassword(e.target.value); setLoginFieldErrors((f) => ({ ...f, pass: undefined })); }} placeholder="Contraseña" className={loginFieldErrors.pass ? "input-error" : ""} />
+                {loginFieldErrors.pass && <p className="input-error-message">{loginFieldErrors.pass}</p>}
               </div>
               {loginError && <p className="error-banner" style={{ marginBottom: "1rem" }}>{loginError}</p>}
               <button type="submit" className="button primary full-width" disabled={loginSubmitting}>
@@ -464,6 +472,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
 function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [stockNameError, setStockNameError] = useState("");
   const [newName, setNewName] = useState("");
   const [newAnio, setNewAnio] = useState("");
   const [newKm, setNewKm] = useState("");
@@ -514,7 +523,8 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!newName.trim()) { setStockNameError("Marca y modelo obligatorio"); return; }
+    setStockNameError("");
     setAdding(true);
     try {
       await api.createVehicle(companyId, {
@@ -569,7 +579,8 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "end" }}>
               <div style={{ flex: 1, position: "relative" }}>
                 <label className="field-label required">Marca y modelo</label>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Escribe para buscar coincidencias..." autoFocus />
+                <input value={newName} onChange={(e) => { setNewName(e.target.value); setStockNameError(""); }} placeholder="Escribe para buscar coincidencias..." autoFocus className={stockNameError ? "input-error" : ""} />
+                {stockNameError && <p className="input-error-message">{stockNameError}</p>}
               </div>
             </div>
             <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
