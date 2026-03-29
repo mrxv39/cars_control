@@ -113,6 +113,7 @@ button {
   padding: 2rem;
   background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
   color: #f0f2f5;
+  transition: transform var(--transition-slow);
 }
 
 .sidebar-title {
@@ -208,12 +209,19 @@ button {
   text-align: left;
   background: rgba(255, 255, 255, 0.07);
   color: inherit;
+  transition: background var(--transition-normal), border-color var(--transition-normal);
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover:not(.active):not(.disabled) {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .nav-item.active {
-  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
-  box-shadow: 0 10px 22px rgba(29, 78, 216, 0.35);
+  background: rgba(255, 255, 255, 0.15);
+  border-left: 3px solid #fff;
   color: #fff;
+  font-weight: var(--font-semibold);
 }
 
 .nav-item.disabled {
