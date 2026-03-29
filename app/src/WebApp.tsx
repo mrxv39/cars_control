@@ -312,7 +312,7 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
       <input type="hidden" name="_captcha" value="false" />
       <input type="hidden" name="Vehiculo" value={vehicleName} />
       <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Contactar por este vehiculo</p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+      <div className="form-grid-2">
         <div>
           <label className="field-label">Nombre</label>
           <input name="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" required />
@@ -560,7 +560,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Escribe para buscar coincidencias..." autoFocus />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
+            <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
               <div>
                 <label className="field-label">Año</label>
                 <input type="number" value={newAnio} onChange={(e) => setNewAnio(e.target.value)} placeholder="2024" />
@@ -570,7 +570,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
                 <input type="number" value={newKm} onChange={(e) => setNewKm(e.target.value)} placeholder="50000" />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
+            <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
               <div>
                 <label className="field-label">Precio compra</label>
                 <input type="number" step="100" value={newPrecioCompra} onChange={(e) => setNewPrecioCompra(e.target.value)} placeholder="8000" />
@@ -580,7 +580,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
                 <input type="number" step="100" value={newPrecioVenta} onChange={(e) => setNewPrecioVenta(e.target.value)} placeholder="10500" />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
+            <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
               <div>
                 <label className="field-label">Combustible</label>
                 <select value={newFuel} onChange={(e) => setNewFuel(e.target.value)}>
@@ -860,14 +860,14 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
       <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "1.25rem", alignItems: "start" }}>
         <section className="panel" style={{ padding: "1.25rem" }}>
           <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehiculo</p>
-          <form onSubmit={(e) => void h.handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+          <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
             <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.65rem" }}>
+            <div className="form-grid-3">
               <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
               <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
               <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem" }}>
+            <div className="form-grid-2">
               <div><label className="field-label">Precio compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
               <div><label className="field-label">Precio venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
             </div>
@@ -935,17 +935,17 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
         </div>
         {activeTab === "datos" && (
           <div style={{ padding: "1.5rem" }}>
-            <form onSubmit={(e) => void h.handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+            <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
               <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+              <div className="form-grid-2">
                 <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
                 <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+              <div className="form-grid-2">
                 <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
                 <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+              <div className="form-grid-2">
                 <div><label className="field-label">Precio compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
                 <div><label className="field-label">Precio venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
               </div>
@@ -1008,17 +1008,17 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
         {/* Col 2: Form */}
         <section className="panel" style={{ padding: "1.25rem" }}>
           <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehiculo</p>
-          <form onSubmit={(e) => void h.handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+          <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
             <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+            <div className="form-grid-2">
               <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
               <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+            <div className="form-grid-2">
               <div><label className="field-label">P. Compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
               <div><label className="field-label">P. Venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+            <div className="form-grid-2">
               <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
               <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
             </div>
@@ -1284,7 +1284,7 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
       {showAdd && (
         <section className="panel" style={{ padding: "1.5rem", maxWidth: "400px", marginBottom: "1rem" }}>
           <p className="eyebrow" style={{ marginBottom: "1rem" }}>Nuevo proveedor</p>
-          <form onSubmit={(e) => void handleAdd(e)} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <form onSubmit={(e) => void handleAdd(e)} className="form-stack">
             <div>
               <label className="field-label">Nombre proveedor *</label>
               <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ej: Taller Perez" autoFocus required />
@@ -1297,7 +1297,7 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
               <label className="field-label">Persona de contacto</label>
               <input value={newContactPerson} onChange={(e) => setNewContactPerson(e.target.value)} placeholder="Juan Garcia" />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <div className="form-grid-2">
               <div>
                 <label className="field-label">Telefono</label>
                 <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="612 345 678" />
@@ -1551,7 +1551,7 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
       {INSPECTION_SECTIONS.map((section) => (
         <section key={section.title} className="panel" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>
           <p className="eyebrow">{section.title}</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1.5rem", marginTop: "0.5rem" }}>
+          <div className="form-grid-2" style={{ gap: "0.5rem 1.5rem", marginTop: "0.5rem" }}>
             {section.items.map((item) => {
               const state = items[item.key];
               return (
