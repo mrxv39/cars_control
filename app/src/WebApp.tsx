@@ -4,6 +4,7 @@ import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
 import ConfirmDialog from "./components/web/ConfirmDialog";
 import EmptyState from "./components/web/EmptyState";
+import Spinner from "./components/web/Spinner";
 import "./App.css";
 
 function useConfirmDialog() {
@@ -173,7 +174,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
         </div>
 
         {loading ? (
-          <p className="muted" style={{ textAlign: "center", padding: "3rem" }}>Cargando vehiculos...</p>
+          <Spinner size="lg" label="Cargando vehículos..." />
         ) : (
           <div className="catalog-grid">
             {filtered.map((v) => (
@@ -398,8 +399,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
     return (
       <main className="shell">
         <section className="panel status-panel" style={{ margin: "auto" }}>
-          <p className="eyebrow">Cars Control</p>
-          <h1>Cargando...</h1>
+          <Spinner size="lg" label="Cargando..." />
         </section>
       </main>
     );
