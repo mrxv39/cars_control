@@ -89,7 +89,7 @@ function WebApp() {
                 <input id="login-pass" type="password" value={loginPassword} onChange={(e) => { setLoginPassword(e.target.value); setLoginFieldErrors((f) => ({ ...f, pass: undefined })); }} placeholder="Contraseña" className={loginFieldErrors.pass ? "input-error" : ""} />
                 {loginFieldErrors.pass && <p className="input-error-message">{loginFieldErrors.pass}</p>}
               </div>
-              {loginError && <p className="error-banner" style={{ marginBottom: "1rem" }}>{loginError}</p>}
+              {loginError && <p className="error-banner" role="alert" style={{ marginBottom: "1rem" }}>{loginError}</p>}
               <button type="submit" className="button primary full-width" disabled={loginSubmitting}>
                 {loginSubmitting ? "Entrando..." : "Entrar"}
               </button>
@@ -187,7 +187,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
           <div className="catalog-grid">
             {filtered.map((v) => (
               <article key={v.id} className="catalog-card" onClick={() => setSelectedVehicle(v)}>
-                <CatalogThumb vehicleId={v.id} />
+                <CatalogThumb vehicleId={v.id} vehicleName={v.name} />
                 <div className="catalog-card-body">
                   <h3 className="catalog-card-title">{v.name}</h3>
                   <div className="catalog-card-specs">
@@ -219,7 +219,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
 // ============================================================
 // Catalog Thumbnail
 // ============================================================
-function CatalogThumb({ vehicleId }: { vehicleId: number }) {
+function CatalogThumb({ vehicleId, vehicleName }: { vehicleId: number; vehicleName?: string }) {
   const [url, setUrl] = useState<string | null>(null);
   React.useEffect(() => {
     void api.listVehiclePhotos(vehicleId).then((photos) => {
@@ -229,7 +229,7 @@ function CatalogThumb({ vehicleId }: { vehicleId: number }) {
 
   return (
     <div className="catalog-card-img">
-      {url ? <img src={url} alt="" /> : <div className="catalog-card-noimg">Sin foto</div>}
+      {url ? <img src={url} alt={vehicleName || "Foto del vehículo"} /> : <div className="catalog-card-noimg">Sin foto</div>}
     </div>
   );
 }
@@ -316,7 +316,7 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
   if (sent) {
     return (
       <div className="catalog-contact-form">
-        <p className="success-banner" style={{ textAlign: "center" }}>Mensaje enviado. Te contactaremos pronto.</p>
+        <p className="success-banner" role="status" style={{ textAlign: "center" }}>Mensaje enviado. Te contactaremos pronto.</p>
       </div>
     );
   }
@@ -649,10 +649,10 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
         </section>
       )}
 
-      <section className="stock-grid">
+      <section className="stock-grid" aria-live="polite">
         {filtered.map((v) => (
           <article key={v.id} className="vehicle-card vehicle-card-clickable" onClick={() => onSelect(v)}>
-            <VehicleThumb vehicleId={v.id} />
+            <VehicleThumb vehicleId={v.id} vehicleName={v.name} />
             <div className="vehicle-copy">
               <h3>{v.name}</h3>
               {(v.anio || v.km) && (
@@ -670,7 +670,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
 // ============================================================
 // Vehicle Thumbnail (loads from Supabase Storage)
 // ============================================================
-function VehicleThumb({ vehicleId }: { vehicleId: number }) {
+function VehicleThumb({ vehicleId, vehicleName }: { vehicleId: number; vehicleName?: string }) {
   const [url, setUrl] = useState<string | null>(null);
   React.useEffect(() => {
     void api.listVehiclePhotos(vehicleId).then((photos) => {
@@ -681,7 +681,7 @@ function VehicleThumb({ vehicleId }: { vehicleId: number }) {
   if (!url) return null;
   return (
     <div className="thumb-frame">
-      <img src={url} className="thumb-image" alt="" />
+      <img src={url} className="thumb-image" alt={vehicleName || "Foto del vehículo"} />
     </div>
   );
 }
@@ -905,7 +905,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
             </div>
             <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
             <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} /></div>
-            {h.success && <p className="success-banner">Guardado</p>}
+            {h.success && <p className="success-banner" role="status">Guardado</p>}
             <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar"}</button>
           </form>
         </section>
@@ -984,7 +984,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
                 <div><label className="field-label">Precio venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
               </div>
               <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} /></div>
-              {h.success && <p className="success-banner">Guardado</p>}
+              {h.success && <p className="success-banner" role="status">Guardado</p>}
               <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar"}</button>
             </form>
           </div>
@@ -1056,7 +1056,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
               <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
             </div>
             <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={2} /></div>
-            {h.success && <p className="success-banner">Guardado</p>}
+            {h.success && <p className="success-banner" role="status">Guardado</p>}
             <button type="submit" className="button primary" disabled={h.saving}>{h.saving ? "Guardando..." : "Guardar"}</button>
           </form>
         </section>
@@ -1110,7 +1110,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar lead..." />
         </section>
       )}
-      <section className="record-grid">
+      <section className="record-grid" aria-live="polite">
         {filtered.map((lead) => (
           <article key={lead.id} className="record-card panel">
             <div className="record-header">
@@ -1151,7 +1151,7 @@ function ClientsList({ clients, companyId: _companyId, onReload: _onReload }: { 
           <p className="muted">{clients.length} cliente{clients.length !== 1 ? "s" : ""}</p>
         </div>
       </header>
-      <section className="record-grid">
+      <section className="record-grid" aria-live="polite">
         {clients.map((c) => (
           <article key={c.id} className="record-card panel">
             <div className="record-header">
