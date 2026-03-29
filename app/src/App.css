@@ -1452,6 +1452,16 @@ select:focus-visible {
   box-shadow: var(--shadow-focus);
 }
 
+/* ── Lead status dots ── */
+
+.lead-status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.lead-status-dot.nuevo { background: #1d4ed8; }
+.lead-status-dot.contactado { background: #f59e0b; }
+.lead-status-dot.negociando { background: #ff6b00; }
+.lead-status-dot.cerrado { background: #16a34a; }
+.lead-status-dot.perdido { background: #dc2626; }
+.lead-status-dot.descartado { background: #64748b; }
+
 /* ── Breadcrumb ── */
 
 .breadcrumb {

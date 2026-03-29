@@ -859,7 +859,7 @@ function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
       {vehicleLeads.map((l) => (
         <div key={l.id} style={{ padding: "0.65rem 0.75rem", background: "#f8fafc", borderRadius: 10, border: "1px solid rgba(0,0,0,0.06)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{l.name}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}><span className={`lead-status-dot ${l.estado || "nuevo"}`} />{l.name}</span>
             <span className="muted" style={{ fontSize: "0.7rem" }}>{l.canal} · {l.estado}</span>
           </div>
           {l.phone && <p style={{ margin: "0.15rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>Tel: {l.phone}</p>}
@@ -1115,8 +1115,8 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
           <article key={lead.id} className="record-card panel">
             <div className="record-header">
               <div>
-                <p className="record-title">{lead.name}</p>
-                <p className="muted">{lead.phone || "Sin telefono"}</p>
+                <p className="record-title" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><span className={`lead-status-dot ${lead.estado || "nuevo"}`} />{lead.name}</p>
+                <p className="muted">{lead.phone || "Sin teléfono"}</p>
               </div>
               <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
                 {lead.canal === "coches.net" && <span className="badge badge-coches">coches.net</span>}
