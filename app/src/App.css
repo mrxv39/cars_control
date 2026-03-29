@@ -1396,6 +1396,15 @@ select {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+/* ── Containers & Headers ── */
+
+.page-container { max-width: 1200px; margin: 0 auto; padding: var(--space-xl); }
+.page-container-narrow { max-width: 420px; margin: var(--space-3xl) auto; padding: 0 var(--space-lg); }
+.page-container-medium { max-width: 800px; margin: 0 auto; width: 100%; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-lg); }
+.page-title { font-size: var(--text-2xl); font-weight: var(--font-bold); margin: 0; }
+.section-title { font-size: var(--text-xl); font-weight: var(--font-semibold); margin: 0 0 var(--space-lg); }
+
 /* ── Form layouts ── */
 
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }

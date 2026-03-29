@@ -54,7 +54,7 @@ function WebApp() {
     return (
       <div className="catalog-page">
         <CatalogHeader onLogin={() => setPage("login")} onCatalog={() => setPage("catalog")} isAdmin={false} />
-        <main style={{ maxWidth: 420, margin: "3rem auto", padding: "0 1rem" }}>
+        <main className="page-container-narrow">
           <section className="panel" style={{ padding: "2rem" }}>
             <p className="eyebrow">Acceso usuarios</p>
             <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesion</h2>
@@ -912,7 +912,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
     <>
       <VDHero vehicle={vehicle} onBack={onBack} />
       {h.mainPhoto && (
-        <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
+        <div className="page-container-medium">
           <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
             <img src={h.mainPhoto} alt={vehicle.name} style={{ width: "100%", display: "block", borderRadius: 24, maxHeight: 360, objectFit: "cover" }} />
           </section>
@@ -927,7 +927,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
           )}
         </div>
       )}
-      <section className="panel" style={{ maxWidth: 800, margin: "0 auto", width: "100%", overflow: "hidden" }}>
+      <section className="panel page-container-medium" style={{ overflow: "hidden" }}>
         <div style={{ display: "flex", gap: 0, borderBottom: "2px solid rgba(0,0,0,0.06)", padding: "0 1.5rem" }}>
           <button type="button" style={tabStyle("datos")} onClick={() => setActiveTab("datos")}>Datos</button>
           <button type="button" style={tabStyle("leads")} onClick={() => setActiveTab("leads")}>Leads{vehicleLeads.length > 0 && <span style={{ marginLeft: 6, background: "#dc2626", color: "#fff", fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: 8 }}>{vehicleLeads.length}</span>}</button>
