@@ -69,7 +69,7 @@ function WebApp() {
                 <input id="login-pass" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Contrasena" />
               </div>
               {loginError && <p className="error-banner" style={{ marginBottom: "1rem" }}>{loginError}</p>}
-              <button type="submit" className="button primary" style={{ width: "100%" }} disabled={loginSubmitting}>
+              <button type="submit" className="button primary full-width" disabled={loginSubmitting}>
                 {loginSubmitting ? "Entrando..." : "Entrar"}
               </button>
             </form>
@@ -322,7 +322,7 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
           <input name="Telefono" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="600 123 456" required />
         </div>
       </div>
-      <button type="submit" className="button primary" style={{ width: "100%", marginTop: "0.75rem" }}>
+      <button type="submit" className="button primary full-width" style={{ marginTop: "0.75rem" }}>
         Enviar consulta
       </button>
     </form>
@@ -414,7 +414,7 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
           ))}
         </nav>
         <div className="sidebar-tools panel">
-          <button type="button" className="button danger" onClick={onLogout} style={{ width: "100%" }}>
+          <button type="button" className="button danger full-width" onClick={onLogout}>
             Cerrar sesion
           </button>
         </div>
@@ -810,13 +810,13 @@ function VDFactura({ facturas, docFileRef, uploadingDoc, handleUploadDoc, handle
       {facturas.map((d) => (
         <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem", background: "#f8fafc", borderRadius: 8, marginBottom: "0.35rem" }}>
           <span style={{ flex: 1, fontSize: "0.85rem" }}>{d.file_name}</span>
-          <a href={d.url} target="_blank" rel="noopener noreferrer" className="button secondary" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}>Ver</a>
-          <button type="button" className="button danger" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }} onClick={() => void handleDeleteDoc(d)}>Eliminar</button>
+          <a href={d.url} target="_blank" rel="noopener noreferrer" className="button secondary xs">Ver</a>
+          <button type="button" className="button danger xs" onClick={() => void handleDeleteDoc(d)}>Eliminar</button>
         </div>
       ))}
       {facturas.length === 0 && <p className="muted" style={{ margin: "0 0 0.35rem", fontSize: "0.85rem" }}>No hay factura adjunta.</p>}
       <input ref={docFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: "none" }} onChange={(e) => void handleUploadDoc(e)} />
-      <button type="button" className="button secondary" onClick={() => docFileRef.current?.click()} disabled={uploadingDoc} style={{ fontSize: "0.8rem" }}>{uploadingDoc ? "Subiendo..." : "Adjuntar factura"}</button>
+      <button type="button" className="button secondary sm" onClick={() => docFileRef.current?.click()} disabled={uploadingDoc}>{uploadingDoc ? "Subiendo..." : "Adjuntar factura"}</button>
     </>
   );
 }
@@ -1094,7 +1094,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId: _companyId, onReload
             {lead.notes && <p className="record-notes">{lead.notes}</p>}
             {lead.canal === "coches.net" && (
               <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
-                className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
+                className="button secondary sm" style={{ textDecoration: "none", textAlign: "center" }}>
                 Responder en coches.net
               </a>
             )}
@@ -1336,7 +1336,7 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
                   <td className="sales-td">{s.contact_person || "-"}</td>
                   <td className="sales-td">{s.phone || "-"}</td>
                   <td className="sales-td">
-                    <button type="button" className="button danger" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }} onClick={() => void handleDelete(s.id, s.name)}>Eliminar</button>
+                    <button type="button" className="button danger xs" onClick={() => void handleDelete(s.id, s.name)}>Eliminar</button>
                   </td>
                 </tr>
               ))}
