@@ -1684,12 +1684,69 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
 // ============================================================
 // Leads List
 // ============================================================
+function LeadChat({ leadId, leadNotes }: { leadId: number; leadNotes?: string }) {
+  const [messages, setMessages] = useState<api.LeadMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    setLoading(true);
+    api.listLeadMessages(leadId)
+      .then((msgs) => setMessages(msgs))
+      .catch(() => setMessages([]))
+      .finally(() => setLoading(false));
+  }, [leadId]);
+
+  React.useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
+
+  if (loading) return <Spinner label="Cargando chat..." />;
+
+  if (messages.length === 0) {
+    if (leadNotes) {
+      return (
+        <div className="chat-container" ref={scrollRef}>
+          <div className="chat-bubble lead">
+            <div className="chat-sender">Mensaje original</div>
+            <div>{leadNotes}</div>
+          </div>
+        </div>
+      );
+    }
+    return <div className="chat-empty">Sin mensajes de conversación</div>;
+  }
+
+  const formatTime = (ts: string) => {
+    const d = new Date(ts);
+    const day = d.getDate();
+    const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+    const month = months[d.getMonth()];
+    const h = d.getHours().toString().padStart(2, "0");
+    const m = d.getMinutes().toString().padStart(2, "0");
+    return `${day} ${month}, ${h}:${m}`;
+  };
+
+  return (
+    <div className="chat-container" ref={scrollRef}>
+      {messages.map((msg) => (
+        <div key={msg.id} className={`chat-bubble ${msg.sender}`}>
+          <div className="chat-sender">{msg.sender_name}</div>
+          <div>{msg.content}</div>
+          <div className="chat-time">{formatTime(msg.timestamp)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
   const dialog = useConfirmDialog();
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "", estado: "", canal: "" });
   const [notesLeadId, setNotesLeadId] = useState<number | null>(null);
+  const [chatLeadId, setChatLeadId] = useState<number | null>(null);
   const [leadNotes, setLeadNotes] = useState<api.LeadNote[]>([]);
   const [newNote, setNewNote] = useState("");
   const [loadingNotes, setLoadingNotes] = useState(false);
@@ -1820,12 +1877,26 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
                     {notesLeadId === lead.id ? "Cerrar notas" : "Notas"}
                   </button>
                   {lead.canal === "coches.net" && (
-                    <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
-                      className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
-                      Responder en coches.net
-                    </a>
+                    <>
+                      <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => setChatLeadId(chatLeadId === lead.id ? null : lead.id)}>
+                        {chatLeadId === lead.id ? "Cerrar chat" : "💬 Chat"}
+                      </button>
+                      <a href="https://www.coches.net/concesionario/codinacars/" target="_blank" rel="noopener"
+                        className="button secondary" style={{ textDecoration: "none", textAlign: "center", fontSize: "0.85rem", padding: "0.5rem 0.8rem" }}>
+                        Responder en coches.net
+                      </a>
+                    </>
                   )}
                 </div>
+                {chatLeadId === lead.id && (
+                  <div style={{ marginTop: "0.75rem", borderRadius: 10, border: "1px solid rgba(0,0,0,0.06)", overflow: "hidden" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem", background: "rgba(0,0,0,0.02)", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                      <span className="badge badge-coches" style={{ fontSize: "0.68rem" }}>coches.net</span>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 600 }}>Conversación</span>
+                    </div>
+                    <LeadChat leadId={lead.id} leadNotes={lead.notes} />
+                  </div>
+                )}
                 {notesLeadId === lead.id && (
                   <div style={{ marginTop: "0.75rem", padding: "0.75rem", borderRadius: 10, background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.06)" }}>
                     <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>

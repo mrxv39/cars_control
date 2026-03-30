@@ -339,6 +339,30 @@ export async function deleteLeadNote(id: number): Promise<void> {
 }
 
 // ============================================================
+// Lead Messages (chat history)
+// ============================================================
+
+export interface LeadMessage {
+  id: number;
+  lead_id: number;
+  sender: "lead" | "dealer";
+  sender_name: string;
+  content: string;
+  timestamp: string;
+  source: string;
+}
+
+export async function listLeadMessages(leadId: number): Promise<LeadMessage[]> {
+  const { data, error } = await supabase
+    .from("lead_messages")
+    .select("*")
+    .eq("lead_id", leadId)
+    .order("timestamp", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// ============================================================
 // Clients
 // ============================================================
 
