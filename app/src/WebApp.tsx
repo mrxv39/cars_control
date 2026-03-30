@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, FormEvent } from "react";
+import React, { useState, useEffect, useCallback, useMemo, FormEvent } from "react";
 import * as api from "./lib/api";
 import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
@@ -9,7 +9,22 @@ import * as platformApi from "./lib/platform-api";
 import { exportToCSV } from "./lib/csv-export";
 import { usePagination } from "./hooks/usePagination";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import ConfirmDialog from "./components/web/ConfirmDialog";
+import EmptyState from "./components/web/EmptyState";
+import Spinner from "./components/web/Spinner";
 import "./App.css";
+
+function useConfirmDialog() {
+  const [state, setState] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  const onConfirmRef = React.useRef(state.onConfirm);
+  onConfirmRef.current = state.onConfirm;
+  const requestConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
+    setState({ open: true, title, message, onConfirm });
+  }, []);
+  const cancel = useCallback(() => setState((s) => ({ ...s, open: false })), []);
+  const confirm = useCallback(() => { onConfirmRef.current(); setState((s) => ({ ...s, open: false })); }, []);
+  return { confirmProps: { open: state.open, title: state.title, message: state.message, onConfirm: confirm, onCancel: cancel }, requestConfirm };
+}
 
 type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "reminders" | "revision";
 
@@ -39,6 +54,7 @@ function WebApp() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [loginFieldErrors, setLoginFieldErrors] = useState<{ user?: string; pass?: string }>({});
   const [oauthLoading, setOauthLoading] = useState(false);
 
   // Detectar callback de Google OAuth al cargar la página
@@ -84,6 +100,11 @@ function WebApp() {
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
+    const fieldErrors: { user?: string; pass?: string } = {};
+    if (!loginUsername.trim()) fieldErrors.user = "Usuario obligatorio";
+    if (!loginPassword) fieldErrors.pass = "Contraseña obligatoria";
+    if (Object.keys(fieldErrors).length > 0) { setLoginFieldErrors(fieldErrors); return; }
+    setLoginFieldErrors({});
     setLoginError(null);
     setLoginSubmitting(true);
     try {
@@ -95,7 +116,7 @@ function WebApp() {
       const msg = String(err);
       if (msg.includes("Usuario o contrasena")) setLoginError("Usuario o contraseña incorrectos.");
       else if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed")) setLoginError("Error de conexion. Comprueba tu internet.");
-      else setLoginError("Error al iniciar sesion. Intentalo de nuevo.");
+      else setLoginError("Error al iniciar sesión. Inténtalo de nuevo.");
     } finally {
       setLoginSubmitting(false);
     }
@@ -135,10 +156,10 @@ function WebApp() {
     return (
       <div className="catalog-page">
         <CatalogHeader onLogin={() => setPage("login")} onCatalog={() => setPage("catalog")} isAdmin={false} />
-        <main style={{ maxWidth: 420, margin: "3rem auto", padding: "0 1rem" }}>
+        <main className="page-container-narrow">
           <section className="panel" style={{ padding: "2rem" }}>
             <p className="eyebrow">Acceso usuarios</p>
-            <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesion</h2>
+            <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesión</h2>
             <p className="muted" style={{ marginBottom: "1.5rem" }}>Panel de gestion para usuarios autorizados.</p>
 
             {/* Google OAuth */}
@@ -166,20 +187,22 @@ function WebApp() {
             </button>
 
             <div style={{ textAlign: "center", marginBottom: "1.5rem", color: "#999", fontSize: "0.85rem" }}>
-              o con usuario y contrasena
+              o con usuario y contraseña
             </div>
 
             <form onSubmit={(e) => void handleLogin(e)}>
               <div style={{ marginBottom: "1rem" }}>
-                <label className="field-label" htmlFor="login-user">Usuario</label>
-                <input id="login-user" type="text" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="Usuario" autoFocus />
+                <label className="field-label required" htmlFor="login-user">Usuario</label>
+                <input id="login-user" type="text" className={loginFieldErrors.user ? "input-error" : ""} value={loginUsername} onChange={(e) => { setLoginUsername(e.target.value); setLoginFieldErrors((f) => ({ ...f, user: undefined })); }} placeholder="Usuario" autoFocus />
+                {loginFieldErrors.user && <p className="input-error-message">{loginFieldErrors.user}</p>}
               </div>
               <div style={{ marginBottom: "1rem" }}>
-                <label className="field-label" htmlFor="login-pass">Contrasena</label>
-                <input id="login-pass" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Contrasena" />
+                <label className="field-label required" htmlFor="login-pass">Contraseña</label>
+                <input id="login-pass" type="password" className={loginFieldErrors.pass ? "input-error" : ""} value={loginPassword} onChange={(e) => { setLoginPassword(e.target.value); setLoginFieldErrors((f) => ({ ...f, pass: undefined })); }} placeholder="Contraseña" />
+                {loginFieldErrors.pass && <p className="input-error-message">{loginFieldErrors.pass}</p>}
               </div>
-              {loginError && <p className="error-banner" style={{ marginBottom: "1rem" }}>{loginError}</p>}
-              <button type="submit" className="button primary" style={{ width: "100%" }} disabled={loginSubmitting}>
+              {loginError && <p className="error-banner" role="alert" style={{ marginBottom: "1rem" }}>{loginError}</p>}
+              <button type="submit" className="button primary full-width" disabled={loginSubmitting}>
                 {loginSubmitting ? "Entrando..." : "Entrar"}
               </button>
             </form>
@@ -260,7 +283,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
       <CatalogHeader onLogin={onLogin} onCatalog={() => setSelectedVehicle(null)} isAdmin={false} />
 
       <section className="catalog-hero-banner">
-        <h1>Vehiculos de ocasion</h1>
+        <h1>Vehículos de ocasión</h1>
         <p>Compraventa de coches en Molins de Rei, Barcelona</p>
       </section>
 
@@ -272,16 +295,16 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por marca, modelo, año..."
           />
-          <span className="muted">{filtered.length} vehiculo{filtered.length !== 1 ? "s" : ""}</span>
+          <span className="muted">{filtered.length} vehículo{filtered.length !== 1 ? "s" : ""}</span>
         </div>
 
         {loading ? (
-          <p className="muted" style={{ textAlign: "center", padding: "3rem" }}>Cargando vehiculos...</p>
+          <div style={{ textAlign: "center", padding: "3rem" }}><Spinner label="Cargando vehículos..." /></div>
         ) : (
           <div className="catalog-grid">
             {filtered.map((v) => (
               <article key={v.id} className="catalog-card" onClick={() => setSelectedVehicle(v)}>
-                <CatalogThumb vehicleId={v.id} />
+                <CatalogThumb vehicleId={v.id} vehicleName={v.name} />
                 <div className="catalog-card-body">
                   <h3 className="catalog-card-title">{v.name}</h3>
                   <div className="catalog-card-specs">
@@ -313,7 +336,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
 // ============================================================
 // Catalog Thumbnail
 // ============================================================
-function CatalogThumb({ vehicleId }: { vehicleId: number }) {
+function CatalogThumb({ vehicleId, vehicleName }: { vehicleId: number; vehicleName?: string }) {
   const [url, setUrl] = useState<string | null>(null);
   React.useEffect(() => {
     void api.listVehiclePhotos(vehicleId).then((photos) => {
@@ -323,7 +346,7 @@ function CatalogThumb({ vehicleId }: { vehicleId: number }) {
 
   return (
     <div className="catalog-card-img">
-      {url ? <img src={url} alt="" loading="lazy" /> : <div className="catalog-card-noimg">Sin foto</div>}
+      {url ? <img src={url} alt={vehicleName || ""} loading="lazy" /> : <div className="catalog-card-noimg">Sin foto</div>}
     </div>
   );
 }
@@ -410,7 +433,7 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
   if (sent) {
     return (
       <div className="catalog-contact-form">
-        <p className="success-banner" style={{ textAlign: "center" }}>Mensaje enviado. Te contactaremos pronto.</p>
+        <p className="success-banner" role="status" style={{ textAlign: "center" }}>Mensaje enviado. Te contactaremos pronto.</p>
       </div>
     );
   }
@@ -426,14 +449,14 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
       <input type="hidden" name="_template" value="table" />
       <input type="hidden" name="_captcha" value="false" />
       <input type="hidden" name="Vehiculo" value={vehicleName} />
-      <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Contactar por este vehiculo</p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+      <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Contactar por este vehículo</p>
+      <div className="form-grid-2">
         <div>
           <label className="field-label">Nombre</label>
           <input name="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" required />
         </div>
         <div>
-          <label className="field-label">Telefono</label>
+          <label className="field-label">Teléfono</label>
           <input name="Telefono" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="600 123 456" required />
         </div>
       </div>
@@ -504,7 +527,7 @@ function WebReminders({ leads, onReload }: { leads: api.Lead[]; onReload: () => 
           {sinContactoInicial.length > 0 && (
             <section className="panel" style={{ padding: "1.25rem" }}>
               <h3 style={{ margin: "0 0 1rem" }}>Leads nuevos sin primer contacto ({sinContactoInicial.length})</h3>
-              <div className="record-grid">
+              <div className="record-grid" aria-live="polite">
                 {sinContactoInicial.map((l) => (
                   <article key={l.id} className="record-card panel" style={{ borderLeft: "3px solid var(--color-primary, #1d4ed8)" }}>
                     <p className="record-title">{l.name}</p>
@@ -522,7 +545,7 @@ function WebReminders({ leads, onReload }: { leads: api.Lead[]; onReload: () => 
           {contactoAntiguo.length > 0 && (
             <section className="panel" style={{ padding: "1.25rem" }}>
               <h3 style={{ margin: "0 0 1rem" }}>Leads sin contacto hace 7+ dias ({contactoAntiguo.length})</h3>
-              <div className="record-grid">
+              <div className="record-grid" aria-live="polite">
                 {contactoAntiguo.map((l) => {
                   const dias = Math.floor((hoy.getTime() - new Date(l.fecha_contacto || "").getTime()) / (1000 * 60 * 60 * 24));
                   return (
@@ -580,7 +603,7 @@ function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
       )}
       {matchedVehicles.length > 0 && (
         <div>
-          <p style={{ padding: "0.5rem 1rem 0.25rem", margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.45)" }}>Vehiculos</p>
+          <p style={{ padding: "0.5rem 1rem 0.25rem", margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.45)" }}>Vehículos</p>
           {matchedVehicles.map((v) => (
             <button key={v.id} type="button" onClick={() => onSelect("vehicle", v.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 1rem", background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "0.88rem" }}>
               {v.name} <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>{v.anio || ""}</span>
@@ -749,7 +772,7 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseReco
         return (
           <section className="panel" style={{ padding: "1.25rem" }}>
             <p className="eyebrow">Informe de margen</p>
-            <h3 style={{ margin: "0.3rem 0 0.75rem" }}>Margen por vehiculo vendido</h3>
+            <h3 style={{ margin: "0.3rem 0 0.75rem" }}>Margen por vehículo vendido</h3>
             <div className="sales-stats-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)", marginBottom: "1rem" }}>
               <div className="panel sales-stat-card">
                 <p className="sales-stat-label">Margen total</p>
@@ -763,7 +786,7 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseReco
             <div className="sales-table-scroll">
               <table className="sales-table">
                 <thead><tr>
-                  <th className="sales-th">Vehiculo</th>
+                  <th className="sales-th">Vehículo</th>
                   <th className="sales-th sales-th-right">P. Compra</th>
                   <th className="sales-th sales-th-right">P. Venta</th>
                   <th className="sales-th sales-th-right">Gastos</th>
@@ -861,7 +884,7 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseReco
         <section className="panel setup-panel">
           <p className="eyebrow">Sin datos</p>
           <h2>Dashboard vacio</h2>
-          <p className="muted">Comienza por anadir vehiculos al stock y registrar los primeros leads.</p>
+          <p className="muted">Comienza por añadir vehículos al stock y registrar los primeros leads.</p>
         </section>
       )}
     </>
@@ -903,13 +926,13 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
     setLoading(true);
     try {
       const [v, allV, l, c, s, p, sup] = await Promise.all([
-        api.listVehicles(companyId),
-        api.listAllVehicles(companyId),
-        api.listLeads(companyId),
-        api.listClients(companyId),
-        api.listSalesRecords(companyId),
-        api.listPurchaseRecords(companyId),
-        api.listSuppliers(companyId),
+        api.listVehicles(companyId).catch(() => [] as api.Vehicle[]),
+        api.listAllVehicles(companyId).catch(() => [] as api.Vehicle[]),
+        api.listLeads(companyId).catch(() => [] as api.Lead[]),
+        api.listClients(companyId).catch(() => [] as api.Client[]),
+        api.listSalesRecords(companyId).catch(() => [] as api.SalesRecord[]),
+        api.listPurchaseRecords(companyId).catch(() => [] as api.PurchaseRecord[]),
+        api.listSuppliers(companyId).catch(() => [] as api.Supplier[]),
       ]);
       setVehicles(v);
       setAllVehicles(allV);
@@ -929,8 +952,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
     return (
       <main className="shell">
         <section className="panel status-panel" style={{ margin: "auto" }}>
-          <p className="eyebrow">Cars Control</p>
-          <h1>Cargando...</h1>
+          <Spinner size="lg" label="Cargando..." />
         </section>
       </main>
     );
@@ -957,7 +979,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
           <input
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
-            placeholder="Buscar vehiculos, leads, clientes..."
+            placeholder="Buscar vehículos, leads, clientes..."
             style={{ width: "100%", padding: "0.7rem 1rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "inherit", fontSize: "0.88rem" }}
           />
           {globalSearch.trim().length >= 2 && (
@@ -989,12 +1011,12 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         </nav>
         <div className="sidebar-tools panel">
           {onOpenPlatform && isSuperAdmin(session.user.role) && (
-            <button type="button" className="button secondary" onClick={onOpenPlatform} style={{ width: "100%", marginBottom: "0.5rem" }}>
+            <button type="button" className="button secondary full-width" onClick={onOpenPlatform} style={{ marginBottom: "0.5rem" }}>
               Panel plataforma
             </button>
           )}
-          <button type="button" className="button danger" onClick={onLogout} style={{ width: "100%" }}>
-            Cerrar sesion
+          <button type="button" className="button danger full-width" onClick={onLogout}>
+            Cerrar sesión
           </button>
         </div>
       </aside>
@@ -1027,7 +1049,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
 
       <FeedbackButton
         userName={session.user.full_name}
-        currentView={selectedVehicle ? "vehiculo: " + selectedVehicle.name : currentView}
+        currentView={selectedVehicle ? "vehículo: " + selectedVehicle.name : currentView}
         stock={vehicles}
         leads={leads}
         clients={clients}
@@ -1119,8 +1141,8 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
       <header className="hero">
         <div>
           <p className="eyebrow">Stock</p>
-          <h2>Vehiculos en stock</h2>
-          <p className="muted">{vehicles.length} vehiculo{vehicles.length !== 1 ? "s" : ""}</p>
+          <h2>Vehículos en stock</h2>
+          <p className="muted">{vehicles.length} vehículo{vehicles.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="hero-actions">
           <button type="button" className="button secondary" onClick={() => exportToCSV(vehicles.map(v => ({ Nombre: v.name, Año: v.anio, Km: v.km, Precio_compra: v.precio_compra, Precio_venta: v.precio_venta, Estado: v.estado, Combustible: v.fuel, Color: v.color })), "stock")}>
@@ -1130,7 +1152,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
             Update stock
           </button>
           <button type="button" className="button primary" onClick={() => setShowAdd(!showAdd)}>
-            {showAdd ? "Cancelar" : "Añadir vehiculo"}
+            {showAdd ? "Cancelar" : "Añadir vehículo"}
           </button>
         </div>
       </header>
@@ -1150,21 +1172,21 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
           <form onSubmit={(e) => void handleAdd(e)}>
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "end" }}>
               <div style={{ flex: 1, position: "relative" }}>
-                <label className="field-label">Marca y modelo</label>
+                <label className="field-label required">Marca y modelo</label>
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Escribe para buscar coincidencias..." autoFocus />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
+            <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
               <div>
                 <label className="field-label">Año</label>
                 <input type="number" value={newAnio} onChange={(e) => setNewAnio(e.target.value)} placeholder="2024" />
               </div>
               <div>
-                <label className="field-label">Kilometros</label>
+                <label className="field-label">Kilómetros</label>
                 <input type="number" value={newKm} onChange={(e) => setNewKm(e.target.value)} placeholder="50000" />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
+            <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
               <div>
                 <label className="field-label">Precio compra</label>
                 <input type="number" step="100" value={newPrecioCompra} onChange={(e) => setNewPrecioCompra(e.target.value)} placeholder="8000" />
@@ -1174,7 +1196,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
                 <input type="number" step="100" value={newPrecioVenta} onChange={(e) => setNewPrecioVenta(e.target.value)} placeholder="10500" />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "0.75rem" }}>
+            <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
               <div>
                 <label className="field-label">Combustible</label>
                 <select value={newFuel} onChange={(e) => setNewFuel(e.target.value)}>
@@ -1196,7 +1218,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
               <textarea value={newNotes} onChange={(e) => setNewNotes(e.target.value)} rows={2} placeholder="Observaciones..." />
             </div>
             <div style={{ marginTop: "0.75rem" }}>
-              <button type="submit" className="button primary" disabled={adding}>{adding ? "Añadiendo..." : "Añadir vehiculo"}</button>
+              <button type="submit" className="button primary" disabled={adding}>{adding ? "Añadiendo..." : "Añadir vehículo"}</button>
             </div>
             {suggestions.length > 0 && (
               <div className="suggestions-list">
@@ -1220,10 +1242,10 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
         </section>
       )}
 
-      <section className="stock-grid">
+      <section className="stock-grid" aria-live="polite">
         {filtered.map((v) => (
           <article key={v.id} className="vehicle-card vehicle-card-clickable" onClick={() => onSelect(v)}>
-            <VehicleThumb vehicleId={v.id} />
+            <VehicleThumb vehicleId={v.id} vehicleName={v.name} />
             <div className="vehicle-copy">
               <h3>{v.name}</h3>
               {(v.anio || v.km) && (
@@ -1241,7 +1263,7 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
 // ============================================================
 // Vehicle Thumbnail (loads from Supabase Storage)
 // ============================================================
-function VehicleThumb({ vehicleId }: { vehicleId: number }) {
+function VehicleThumb({ vehicleId, vehicleName }: { vehicleId: number; vehicleName?: string }) {
   const [url, setUrl] = useState<string | null>(null);
   React.useEffect(() => {
     void api.listVehiclePhotos(vehicleId).then((photos) => {
@@ -1252,7 +1274,7 @@ function VehicleThumb({ vehicleId }: { vehicleId: number }) {
   if (!url) return null;
   return (
     <div className="thumb-frame">
-      <img src={url} className="thumb-image" alt="" loading="lazy" />
+      <img src={url} className="thumb-image" alt={vehicleName || ""} loading="lazy" />
     </div>
   );
 }
@@ -1301,6 +1323,7 @@ function useVehicleDetail(vehicle: api.Vehicle) {
   const [success, setSuccess] = useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const docFileRef = React.useRef<HTMLInputElement>(null);
+  const dialog = useConfirmDialog();
 
   React.useEffect(() => { void loadPhotos(); void loadDocs(); }, [vehicle.id]);
 
@@ -1327,10 +1350,11 @@ function useVehicleDetail(vehicle: api.Vehicle) {
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
-  async function handleDeletePhoto(photo: api.VehiclePhoto) {
-    if (!confirm(`Eliminar ${photo.file_name}?`)) return;
-    await api.deleteVehiclePhoto(photo);
-    setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+  function handleDeletePhoto(photo: api.VehiclePhoto) {
+    dialog.requestConfirm("Eliminar foto", `Eliminar ${photo.file_name}?`, async () => {
+      await api.deleteVehiclePhoto(photo);
+      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    });
   }
 
   async function handleUploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1340,10 +1364,11 @@ function useVehicleDetail(vehicle: api.Vehicle) {
     finally { setUploadingDoc(false); if (docFileRef.current) docFileRef.current.value = ""; }
   }
 
-  async function handleDeleteDoc(doc: api.VehicleDocument) {
-    if (!confirm(`Eliminar ${doc.file_name}?`)) return;
-    await api.deleteVehicleDocument(doc);
-    setDocs((prev) => prev.filter((x) => x.id !== doc.id));
+  function handleDeleteDoc(doc: api.VehicleDocument) {
+    dialog.requestConfirm("Eliminar documento", `Eliminar ${doc.file_name}?`, async () => {
+      await api.deleteVehicleDocument(doc);
+      setDocs((prev) => prev.filter((x) => x.id !== doc.id));
+    });
   }
 
   const mainPhoto = selectedPhoto != null ? photos.find((p) => p.id === selectedPhoto)?.url : photos[0]?.url;
@@ -1351,21 +1376,25 @@ function useVehicleDetail(vehicle: api.Vehicle) {
   const facturas = docs.filter((d) => d.doc_type === "factura");
 
   return { form, setForm, photos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadingDoc, success,
-    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, loadPhotos };
+    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, loadPhotos, dialog };
 }
 
 // Shared: Hero header
-function VDHero({ vehicle, onBack }: { vehicle: api.Vehicle; onBack: () => void }) {
+function VDHero({ vehicle, onBack, onDelete, margin, leadsCount }: { vehicle: api.Vehicle; onBack: () => void; onDelete: () => void; margin?: number | null; leadsCount?: number }) {
   return (
     <header className="hero">
       <div>
-        <p className="eyebrow">Stock</p>
-        <h2>{vehicle.name}</h2>
+        <p className="breadcrumb"><span className="breadcrumb-link" onClick={onBack}>Stock</span> &rsaquo; {vehicle.name}</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+          <h2 style={{ margin: 0 }}>{vehicle.name}</h2>
+          {margin != null && <span className={`badge ${margin >= 0 ? "badge-success" : "badge-warning"}`}>Margen: {margin >= 0 ? "+" : ""}{margin.toLocaleString()}€</span>}
+          {leadsCount != null && leadsCount > 0 && <span className="badge badge-info">{leadsCount} lead{leadsCount !== 1 ? "s" : ""}</span>}
+        </div>
         <p className="muted">{[vehicle.anio, vehicle.km ? `${vehicle.km.toLocaleString()} km` : null, vehicle.estado].filter(Boolean).join(" · ")}</p>
       </div>
       <div className="hero-actions">
         <button type="button" className="button secondary" onClick={onBack}>Volver al stock</button>
-        <button type="button" className="button danger" onClick={async () => { if (!confirm(`Eliminar ${vehicle.name}?`)) return; await api.deleteVehicle(vehicle.id); onBack(); }}>Eliminar</button>
+        <button type="button" className="button danger" onClick={onDelete}>Eliminar</button>
       </div>
     </header>
   );
@@ -1404,26 +1433,26 @@ function VDFactura({ facturas, docFileRef, uploadingDoc, handleUploadDoc, handle
       {facturas.map((d) => (
         <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem", background: "#f8fafc", borderRadius: 8, marginBottom: "0.35rem" }}>
           <span style={{ flex: 1, fontSize: "0.85rem" }}>{d.file_name}</span>
-          <a href={d.url} target="_blank" rel="noopener noreferrer" className="button secondary" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}>Ver</a>
-          <button type="button" className="button danger" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }} onClick={() => void handleDeleteDoc(d)}>Eliminar</button>
+          <a href={d.url} target="_blank" rel="noopener noreferrer" className="button secondary xs">Ver</a>
+          <button type="button" className="button danger xs" onClick={() => void handleDeleteDoc(d)}>Eliminar</button>
         </div>
       ))}
       {facturas.length === 0 && <p className="muted" style={{ margin: "0 0 0.35rem", fontSize: "0.85rem" }}>No hay factura adjunta.</p>}
       <input ref={docFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: "none" }} onChange={(e) => void handleUploadDoc(e)} />
-      <button type="button" className="button secondary" onClick={() => docFileRef.current?.click()} disabled={uploadingDoc} style={{ fontSize: "0.8rem" }}>{uploadingDoc ? "Subiendo..." : "Adjuntar factura"}</button>
+      <button type="button" className="button secondary sm" onClick={() => docFileRef.current?.click()} disabled={uploadingDoc}>{uploadingDoc ? "Subiendo..." : "Adjuntar factura"}</button>
     </>
   );
 }
 
 // Shared: Leads sidebar/section
 function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
-  if (vehicleLeads.length === 0) return <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>Sin leads para este vehiculo.</p>;
+  if (vehicleLeads.length === 0) return <EmptyState title="Sin leads" description="Este vehículo no tiene leads asociados" />;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
       {vehicleLeads.map((l) => (
         <div key={l.id} style={{ padding: "0.65rem 0.75rem", background: "#f8fafc", borderRadius: 10, border: "1px solid rgba(0,0,0,0.06)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{l.name}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}><span className={`lead-status-dot ${l.estado || "nuevo"}`} />{l.name}</span>
             <span className="muted" style={{ fontSize: "0.7rem" }}>{l.canal} · {l.estado}</span>
           </div>
           {l.phone && <p style={{ margin: "0.15rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>Tel: {l.phone}</p>}
@@ -1439,9 +1468,11 @@ function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
 function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
   const h = useVehicleDetail(vehicle);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} />
+      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} margin={h.margin} leadsCount={vehicleLeads.length} />
+      <ConfirmDialog {...h.dialog.confirmProps} />
       {h.photos.length > 0 && (
         <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", padding: "0.25rem 0" }}>
           {h.photos.map((p) => (
@@ -1453,21 +1484,21 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
       )}
       <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "1.25rem", alignItems: "start" }}>
         <section className="panel" style={{ padding: "1.25rem" }}>
-          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehiculo</p>
-          <form onSubmit={(e) => void h.handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehículo</p>
+          <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
             <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.65rem" }}>
-              <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
+            <div className="form-grid-3">
+              <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
               <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
               <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem" }}>
+            <div className="form-grid-2">
               <div><label className="field-label">Precio compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
               <div><label className="field-label">Precio venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
             </div>
             <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
             <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} /></div>
-            {h.success && <p className="success-banner">Guardado</p>}
+            {h.success && <p className="success-banner" role="status">Guardado</p>}
             <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar"}</button>
           </form>
         </section>
@@ -1497,6 +1528,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
   const h = useVehicleDetail(vehicle);
   const [activeTab, setActiveTab] = useState<"datos" | "leads" | "documentos">("datos");
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   const tabStyle = (tab: typeof activeTab): React.CSSProperties => ({
     flex: "none", padding: "0.65rem 1.25rem", border: "none", background: "none", fontSize: "0.88rem", fontWeight: 600,
     color: activeTab === tab ? "#1d4ed8" : "#64748b", cursor: "pointer",
@@ -1504,7 +1536,8 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
   });
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} />
+      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} margin={h.margin} leadsCount={vehicleLeads.length} />
+      <ConfirmDialog {...h.dialog.confirmProps} />
       {h.mainPhoto && (
         <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
           <section className="panel" style={{ overflow: "hidden", padding: 0 }}>
@@ -1529,22 +1562,22 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
         </div>
         {activeTab === "datos" && (
           <div style={{ padding: "1.5rem" }}>
-            <form onSubmit={(e) => void h.handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+            <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
               <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+              <div className="form-grid-2">
                 <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
                 <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
-                <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
+              <div className="form-grid-2">
+                <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
                 <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+              <div className="form-grid-2">
                 <div><label className="field-label">Precio compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
                 <div><label className="field-label">Precio venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
               </div>
               <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} /></div>
-              {h.success && <p className="success-banner">Guardado</p>}
+              {h.success && <p className="success-banner" role="status">Guardado</p>}
               <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar"}</button>
             </form>
           </div>
@@ -1553,7 +1586,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
           <div style={{ padding: "1.5rem" }}>
             {vehicleLeads.length > 0 ? <VDLeads vehicleLeads={vehicleLeads} /> : (
               <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#475569", margin: "0 0 0.5rem" }}>Sin leads para este vehiculo</p>
+                <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#475569", margin: "0 0 0.5rem" }}>Sin leads para este vehículo</p>
                 <p className="muted" style={{ margin: 0 }}>Cuando un cliente contacte interesado en este coche, aparecera aqui.</p>
               </div>
             )}
@@ -1574,9 +1607,11 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
 function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
   const h = useVehicleDetail(vehicle);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} />
+      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} margin={h.margin} leadsCount={vehicleLeads.length} />
+      <ConfirmDialog {...h.dialog.confirmProps} />
       <div style={{ display: "grid", gridTemplateColumns: "35% 35% 30%", gap: "1.25rem" }}>
         {/* Col 1: Photo */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -1601,23 +1636,23 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
         </div>
         {/* Col 2: Form */}
         <section className="panel" style={{ padding: "1.25rem" }}>
-          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehiculo</p>
-          <form onSubmit={(e) => void h.handleSave(e)} style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehículo</p>
+          <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
             <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
-              <div><label className="field-label">Ano</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
+            <div className="form-grid-2">
+              <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
               <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+            <div className="form-grid-2">
               <div><label className="field-label">P. Compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
               <div><label className="field-label">P. Venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+            <div className="form-grid-2">
               <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
               <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
             </div>
             <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={2} /></div>
-            {h.success && <p className="success-banner">Guardado</p>}
+            {h.success && <p className="success-banner" role="status">Guardado</p>}
             <button type="submit" className="button primary" disabled={h.saving}>{h.saving ? "Guardando..." : "Guardar"}</button>
           </form>
         </section>
@@ -1650,6 +1685,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
 // Leads List
 // ============================================================
 function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
+  const dialog = useConfirmDialog();
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "", estado: "", canal: "" });
@@ -1696,26 +1732,29 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
     onReload();
   }
 
-  async function handleDeleteLead(id: number, name: string) {
-    if (!confirm(`¿Eliminar lead "${name}"? Esta acción no se puede deshacer.`)) return;
-    await api.deleteLead(id);
-    onReload();
+  function handleDeleteLead(id: number, name: string) {
+    dialog.requestConfirm("Eliminar lead", `¿Eliminar lead "${name}"? Esta acción no se puede deshacer.`, async () => {
+      await api.deleteLead(id);
+      onReload();
+    });
   }
 
-  async function convertToClient(lead: api.Lead) {
-    if (!confirm(`¿Convertir "${lead.name}" en cliente?`)) return;
-    const client = await api.createClient(companyId, {
-      name: lead.name,
-      phone: lead.phone,
-      email: lead.email,
-      notes: lead.notes,
-    } as Partial<api.Client>);
-    await api.updateLead(lead.id, { converted_client_id: client.id, estado: "cerrado" } as Partial<api.Lead>);
-    onReload();
+  function convertToClient(lead: api.Lead) {
+    dialog.requestConfirm("Convertir a cliente", `¿Convertir "${lead.name}" en cliente?`, async () => {
+      const client = await api.createClient(companyId, {
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email,
+        notes: lead.notes,
+      } as Partial<api.Client>);
+      await api.updateLead(lead.id, { converted_client_id: client.id, estado: "cerrado" } as Partial<api.Lead>);
+      onReload();
+    });
   }
 
   return (
     <>
+      <ConfirmDialog {...dialog.confirmProps} />
       <header className="hero">
         <div>
           <p className="eyebrow">Leads</p>
@@ -1736,7 +1775,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
         </section>
       )}
       <PaginationControls page={leadsPage} totalPages={leadsTotalPages} setPage={setLeadsPage} />
-      <section className="record-grid">
+      <section className="record-grid" aria-live="polite">
         {pagedLeads.map((lead) => (
           <article key={lead.id} className="record-card panel">
             {editingId === lead.id ? (
@@ -1758,14 +1797,14 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
               <>
                 <div className="record-header">
                   <div>
-                    <p className="record-title">{lead.name}</p>
+                    <p className="record-title" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><span className={`lead-status-dot ${lead.estado || "nuevo"}`} />{lead.name}</p>
                     <p className="muted">{lead.phone || "Sin telefono"}</p>
                   </div>
                   <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
                     {lead.canal === "coches.net" && <span className="badge badge-coches">coches.net</span>}
                     <span className="badge">{lead.estado}</span>
-                    <button type="button" className="button secondary" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => startEdit(lead)}>Editar</button>
-                    <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteLead(lead.id, lead.name)}>Eliminar</button>
+                    <button type="button" className="button secondary xs" onClick={() => startEdit(lead)}>Editar</button>
+                    <button type="button" className="button danger xs" onClick={() => void handleDeleteLead(lead.id, lead.name)}>Eliminar</button>
                   </div>
                 </div>
                 {lead.vehicle_interest && <p className="record-line">Interes: {lead.vehicle_interest}</p>}
@@ -1793,7 +1832,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
                       <input value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Añadir nota..." style={{ flex: 1, fontSize: "0.85rem", padding: "0.5rem 0.75rem" }} />
                       <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void addNote()} disabled={!newNote.trim()}>Añadir</button>
                     </div>
-                    {loadingNotes ? <p className="muted" style={{ margin: 0 }}>Cargando...</p> : (
+                    {loadingNotes ? <Spinner label="Cargando..." /> : (
                       leadNotes.length === 0 ? <p className="muted" style={{ margin: 0, fontSize: "0.82rem" }}>Sin notas</p> : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                           {leadNotes.map((n) => (
@@ -1802,7 +1841,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
                                 <p style={{ margin: 0, fontSize: "0.82rem" }}>{n.content}</p>
                                 <p className="muted" style={{ margin: "0.1rem 0 0", fontSize: "0.72rem" }}>{new Date(n.timestamp).toLocaleString("es-ES")}</p>
                               </div>
-                              <button type="button" className="button danger" aria-label="Eliminar nota" style={{ padding: "0.15rem 0.4rem", fontSize: "0.65rem", flexShrink: 0 }} onClick={() => void removeNote(n.id)}>✕</button>
+                              <button type="button" className="button danger xs" aria-label="Eliminar nota" style={{ flexShrink: 0 }} onClick={() => void removeNote(n.id)}>✕</button>
                             </div>
                           ))}
                         </div>
@@ -1824,6 +1863,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
 // Clients List
 // ============================================================
 function ClientsList({ clients, companyId: _companyId, onReload }: { clients: api.Client[]; companyId: number; onReload: () => void }) {
+  const dialog = useConfirmDialog();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", dni: "", notes: "" });
 
@@ -1839,14 +1879,16 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
     onReload();
   }
 
-  async function handleDeleteClient(id: number, name: string) {
-    if (!confirm(`¿Eliminar cliente "${name}"? Esta acción no se puede deshacer.`)) return;
-    await api.deleteClient(id);
-    onReload();
+  function handleDeleteClient(id: number, name: string) {
+    dialog.requestConfirm("Eliminar cliente", `¿Eliminar cliente "${name}"? Esta acción no se puede deshacer.`, async () => {
+      await api.deleteClient(id);
+      onReload();
+    });
   }
 
   return (
     <>
+      <ConfirmDialog {...dialog.confirmProps} />
       <header className="hero">
         <div>
           <p className="eyebrow">Clientes</p>
@@ -1861,7 +1903,7 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
           </div>
         )}
       </header>
-      <section className="record-grid">
+      <section className="record-grid" aria-live="polite">
         {clients.map((c) => (
           <article key={c.id} className="record-card panel">
             {editingId === c.id ? (
@@ -1885,8 +1927,8 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
                   </div>
                   <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
                     <span className="badge badge-success">Cliente</span>
-                    <button type="button" className="button secondary" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => startEdit(c)}>Editar</button>
-                    <button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteClient(c.id, c.name)}>Eliminar</button>
+                    <button type="button" className="button secondary xs" onClick={() => startEdit(c)}>Editar</button>
+                    <button type="button" className="button danger xs" onClick={() => void handleDeleteClient(c.id, c.name)}>Eliminar</button>
                   </div>
                 </div>
                 {c.dni && <p className="record-line">DNI: {c.dni}</p>}
@@ -1904,19 +1946,22 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
 // Sales List
 // ============================================================
 function SalesList({ records, vehicles, clients, companyId: _companyId, onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; onReload: () => void }) {
+  const dialog = useConfirmDialog();
   const vehicleMap = useMemo(() => new Map(vehicles.map((v) => [v.id, v])), [vehicles]);
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
   const total = useMemo(() => records.reduce((s, r) => s + r.price_final, 0), [records]);
   const { paged: pagedSales, page: salesPage, totalPages: salesTotalPages, setPage: setSalesPage } = usePagination(records);
 
-  async function handleDeleteSale(id: number, vehicleName: string) {
-    if (!confirm(`¿Eliminar registro de venta de "${vehicleName}"? Esta acción no se puede deshacer.`)) return;
-    await api.deleteSalesRecord(id);
-    onReload();
+  function handleDeleteSale(id: number, vehicleName: string) {
+    dialog.requestConfirm("Eliminar venta", `¿Eliminar registro de venta de "${vehicleName}"? Esta acción no se puede deshacer.`, async () => {
+      await api.deleteSalesRecord(id);
+      onReload();
+    });
   }
 
   return (
     <>
+      <ConfirmDialog {...dialog.confirmProps} />
       <header className="hero">
         <div>
           <p className="eyebrow">Ventas</p>
@@ -1936,7 +1981,7 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
           <div className="sales-table-scroll">
             <table className="sales-table">
               <thead><tr>
-                <th className="sales-th">Vehiculo</th>
+                <th className="sales-th">Vehículo</th>
                 <th className="sales-th">Cliente</th>
                 <th className="sales-th">Fecha</th>
                 <th className="sales-th sales-th-right">Precio</th>
@@ -1951,7 +1996,7 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
                       <td className="sales-td">{r.client_id ? clientMap.get(r.client_id)?.name || "—" : "—"}</td>
                       <td className="sales-td">{new Date(r.date).toLocaleDateString("es-ES")}</td>
                       <td className="sales-td sales-td-right"><span className="sales-price">{r.price_final.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
-                      <td className="sales-td"><button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeleteSale(r.id, vName)}>Eliminar</button></td>
+                      <td className="sales-td"><button type="button" className="button danger xs" onClick={() => void handleDeleteSale(r.id, vName)}>Eliminar</button></td>
                     </tr>
                   );
                 })}
@@ -1969,17 +2014,20 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
 // Purchases List
 // ============================================================
 function PurchasesList({ records, companyId: _companyId, onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
+  const dialog = useConfirmDialog();
   const total = useMemo(() => records.reduce((s, r) => s + r.purchase_price, 0), [records]);
   const { paged: pagedPurchases, page: purchasesPage, totalPages: purchasesTotalPages, setPage: setPurchasesPage } = usePagination(records);
 
-  async function handleDeletePurchase(id: number, supplierName: string) {
-    if (!confirm(`¿Eliminar registro de compra de "${supplierName}"? Esta acción no se puede deshacer.`)) return;
-    await api.deletePurchaseRecord(id);
-    onReload();
+  function handleDeletePurchase(id: number, supplierName: string) {
+    dialog.requestConfirm("Eliminar compra", `¿Eliminar registro de compra de "${supplierName}"? Esta acción no se puede deshacer.`, async () => {
+      await api.deletePurchaseRecord(id);
+      onReload();
+    });
   }
 
   return (
     <>
+      <ConfirmDialog {...dialog.confirmProps} />
       <header className="hero">
         <div>
           <p className="eyebrow">Compras y Gastos</p>
@@ -2014,7 +2062,7 @@ function PurchasesList({ records, companyId: _companyId, onReload }: { records: 
                     <td className="sales-td">{r.purchase_date}</td>
                     <td className="sales-td sales-td-right"><span className="sales-price">{r.purchase_price.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
                     <td className="sales-td"><span className="badge badge-info">{r.invoice_number || "—"}</span></td>
-                    <td className="sales-td"><button type="button" className="button danger" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }} onClick={() => void handleDeletePurchase(r.id, r.supplier_name)}>Eliminar</button></td>
+                    <td className="sales-td"><button type="button" className="button danger xs" onClick={() => void handleDeletePurchase(r.id, r.supplier_name)}>Eliminar</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -2031,6 +2079,7 @@ function PurchasesList({ records, companyId: _companyId, onReload }: { records: 
 // Suppliers List
 // ============================================================
 function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supplier[]; companyId: number; onReload: () => void }) {
+  const dialog = useConfirmDialog();
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newCif, setNewCif] = useState("");
@@ -2061,14 +2110,16 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
     }
   }
 
-  async function handleDelete(id: number, name: string) {
-    if (!confirm(`Eliminar proveedor "${name}"?`)) return;
-    await api.deleteSupplier(id);
-    onReload();
+  function handleDelete(id: number, name: string) {
+    dialog.requestConfirm("Eliminar proveedor", `Eliminar proveedor "${name}"?`, async () => {
+      await api.deleteSupplier(id);
+      onReload();
+    });
   }
 
   return (
     <>
+      <ConfirmDialog {...dialog.confirmProps} />
       <header className="hero">
         <div>
           <p className="eyebrow">Proveedores</p>
@@ -2090,9 +2141,9 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
       {showAdd && (
         <section className="panel" style={{ padding: "1.5rem", maxWidth: "400px", marginBottom: "1rem" }}>
           <p className="eyebrow" style={{ marginBottom: "1rem" }}>Nuevo proveedor</p>
-          <form onSubmit={(e) => void handleAdd(e)} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <form onSubmit={(e) => void handleAdd(e)} className="form-stack">
             <div>
-              <label className="field-label">Nombre proveedor *</label>
+              <label className="field-label required">Nombre proveedor</label>
               <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ej: Taller Perez" autoFocus required />
             </div>
             <div>
@@ -2103,9 +2154,9 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
               <label className="field-label">Persona de contacto</label>
               <input value={newContactPerson} onChange={(e) => setNewContactPerson(e.target.value)} placeholder="Juan Garcia" />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <div className="form-grid-2">
               <div>
-                <label className="field-label">Telefono</label>
+                <label className="field-label">Teléfono</label>
                 <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="612 345 678" />
               </div>
               <div>
@@ -2131,7 +2182,7 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
               <th className="sales-th">Proveedor</th>
               <th className="sales-th">CIF</th>
               <th className="sales-th">Contacto</th>
-              <th className="sales-th">Telefono</th>
+              <th className="sales-th">Teléfono</th>
               <th className="sales-th"></th>
             </tr></thead>
             <tbody>
@@ -2142,7 +2193,7 @@ function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supp
                   <td className="sales-td">{s.contact_person || "-"}</td>
                   <td className="sales-td">{s.phone || "-"}</td>
                   <td className="sales-td">
-                    <button type="button" className="button danger" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }} onClick={() => void handleDelete(s.id, s.name)}>Eliminar</button>
+                    <button type="button" className="button danger xs" onClick={() => void handleDelete(s.id, s.name)}>Eliminar</button>
                   </td>
                 </tr>
               ))}
@@ -2203,7 +2254,7 @@ const INSPECTION_SECTIONS: Array<{ title: string; items: Array<{ key: string; la
     items: [
       { key: "trans_embrague", label: "Embrague (si manual)" },
       { key: "trans_marchas", label: "Cambio de marchas" },
-      { key: "trans_dir_asistida", label: "Direccion asistida" },
+      { key: "trans_dir_asistida", label: "Dirección asistida" },
       { key: "trans_holguras", label: "Holguras en la direccion" },
     ],
   },
@@ -2293,7 +2344,7 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
   }
 
   async function handleSave() {
-    if (!selectedVehicleId) { setSaveMsg("Selecciona un vehiculo."); return; }
+    if (!selectedVehicleId) { setSaveMsg("Selecciona un vehículo."); return; }
     setSaving(true);
     setSaveMsg(null);
     try {
@@ -2330,20 +2381,20 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <p className="eyebrow">Inspeccion de vehiculo</p>
+      <p className="eyebrow">Inspección de vehículo</p>
       <h2 style={{ margin: "0.3rem 0 1rem" }}>Hoja de revision</h2>
 
       {/* Vehicle selector */}
       <section className="panel" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 300px" }}>
-            <label className="field-label">Vehiculo</label>
+            <label className="field-label">Vehículo</label>
             <select
               value={selectedVehicleId}
               onChange={(e) => setSelectedVehicleId(e.target.value ? Number(e.target.value) : "")}
-              style={{ width: "100%" }}
+              className="full-width"
             >
-              <option value="">-- Seleccionar vehiculo --</option>
+              <option value="">-- Seleccionar vehículo --</option>
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.name} {v.anio ? `(${v.anio})` : ""} {(v as any).matricula ? `- ${(v as any).matricula}` : ""}
@@ -2358,7 +2409,7 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
               value={inspectorName}
               onChange={(e) => setInspectorName(e.target.value)}
               placeholder="Nombre del inspector"
-              style={{ width: "100%" }}
+              className="full-width"
             />
           </div>
         </div>
@@ -2368,7 +2419,7 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
       {INSPECTION_SECTIONS.map((section) => (
         <section key={section.title} className="panel" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>
           <p className="eyebrow">{section.title}</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem 1.5rem", marginTop: "0.5rem" }}>
+          <div className="form-grid-2" style={{ gap: "0.5rem 1.5rem", marginTop: "0.5rem" }}>
             {section.items.map((item) => {
               const state = items[item.key];
               return (
