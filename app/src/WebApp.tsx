@@ -9,11 +9,13 @@ import "./App.css";
 
 function useConfirmDialog() {
   const [state, setState] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  const onConfirmRef = React.useRef(state.onConfirm);
+  onConfirmRef.current = state.onConfirm;
   const requestConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
     setState({ open: true, title, message, onConfirm });
   }, []);
   const cancel = useCallback(() => setState((s) => ({ ...s, open: false })), []);
-  const confirm = useCallback(() => { state.onConfirm(); setState((s) => ({ ...s, open: false })); }, [state.onConfirm]);
+  const confirm = useCallback(() => { onConfirmRef.current(); setState((s) => ({ ...s, open: false })); }, []);
   return { confirmProps: { open: state.open, title: state.title, message: state.message, onConfirm: confirm, onCancel: cancel }, requestConfirm };
 }
 
@@ -381,13 +383,13 @@ function AuthenticatedWebApp({ session, onLogout }: { session: api.LoginResult; 
     setLoading(true);
     try {
       const [v, allV, l, c, s, p, sup] = await Promise.all([
-        api.listVehicles(companyId),
-        api.listAllVehicles(companyId),
-        api.listLeads(companyId),
-        api.listClients(companyId),
-        api.listSalesRecords(companyId),
-        api.listPurchaseRecords(companyId),
-        api.listSuppliers(companyId),
+        api.listVehicles(companyId).catch(() => [] as api.Vehicle[]),
+        api.listAllVehicles(companyId).catch(() => [] as api.Vehicle[]),
+        api.listLeads(companyId).catch(() => [] as api.Lead[]),
+        api.listClients(companyId).catch(() => [] as api.Client[]),
+        api.listSalesRecords(companyId).catch(() => [] as api.SalesRecord[]),
+        api.listPurchaseRecords(companyId).catch(() => [] as api.PurchaseRecord[]),
+        api.listSuppliers(companyId).catch(() => [] as api.Supplier[]),
       ]);
       setVehicles(v);
       setAllVehicles(allV);
