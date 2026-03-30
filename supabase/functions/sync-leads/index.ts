@@ -19,7 +19,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 const COMPANY_ID = 1; // CodinaCars
+const DEALER_NAME = "Codina Cars";
 const COCHES_NET_SENDERS = ["coches.net", "adevinta", "noreply"];
+
+const MONTH_MAP: Record<string, number> = {
+  enero: 1, febrero: 2, marzo: 3, abril: 4,
+  mayo: 5, junio: 6, julio: 7, agosto: 8,
+  septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+};
 
 // ── Gmail API helpers ──────────────────────────────────────────────
 
@@ -109,7 +116,6 @@ function base64UrlDecode(data: string): string {
   try {
     return atob(base64);
   } catch {
-    // Handle non-latin characters
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
     return new TextDecoder("utf-8").decode(bytes);
   }
@@ -124,7 +130,6 @@ function getHeader(msg: GmailMessage, name: string): string {
 }
 
 function extractBody(payload: GmailMessage["payload"]): string {
-  // Try plain text first, then HTML
   const textPart = findPart(payload, "text/plain");
   if (textPart?.body?.data) {
     return base64UrlDecode(textPart.body.data);
@@ -133,11 +138,9 @@ function extractBody(payload: GmailMessage["payload"]): string {
   const htmlPart = findPart(payload, "text/html");
   if (htmlPart?.body?.data) {
     const html = base64UrlDecode(htmlPart.body.data);
-    // Strip HTML tags
     return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   }
 
-  // Fallback: top-level body
   if (payload.body?.data) {
     return base64UrlDecode(payload.body.data);
   }
@@ -157,6 +160,156 @@ function findPart(
     if (found) return found;
   }
   return null;
+}
+
+// ── Follow-up detection & conversation parsing ────────────────────
+
+function isFollowupEmail(body: string): boolean {
+  return /nuevo mensaje|nuevo De /i.test(body) || body.includes("Mensajes anteriores");
+}
+
+function parseSpanishTimestamp(dateStr: string): Date | null {
+  const m = dateStr.trim().match(/(\d{1,2})\s+(\w+),?\s+(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const [, day, monthName, hour, minute] = m;
+  const month = MONTH_MAP[monthName.toLowerCase()];
+  if (!month) return null;
+  const year = new Date().getFullYear();
+  return new Date(year, month - 1, parseInt(day), parseInt(hour), parseInt(minute));
+}
+
+interface ConversationMessage {
+  sender: "lead" | "dealer";
+  sender_name: string;
+  content: string;
+  timestamp: string;
+}
+
+function parseConversationMessages(body: string): ConversationMessage[] {
+  const messages: ConversationMessage[] = [];
+  const isDealerName = (name: string) =>
+    [DEALER_NAME.toLowerCase(), "codina cars", "codinacars"].includes(name.toLowerCase());
+
+  // 1. Parse the NEW message (after "nuevo De NAME")
+  const newMsgMatch = body.match(/nuevo\s+De\s+(.+?)\s*\n(.+?)(?=Mensajes anteriores|Responde|$)/is);
+  if (newMsgMatch) {
+    const senderName = newMsgMatch[1].trim();
+    let content = newMsgMatch[2].trim();
+    content = content.replace(/\s*Responde a este email.*/is, "").trim();
+    if (content) {
+      messages.push({
+        sender: isDealerName(senderName) ? "dealer" : "lead",
+        sender_name: senderName,
+        content,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  // 2. Parse "Mensajes anteriores"
+  const parts = body.split(/Mensajes anteriores/i);
+  if (parts.length > 1) {
+    const history = parts[1];
+    const blocks = history.split(/\n\s*([A-ZÀ-Ú][a-záéíóúñ]*(?:\s+[A-ZÀ-Ú][a-záéíóúñ]*)*|Codina Cars)\s*\n\s*(\d{1,2}\s+\w+,?\s+\d{1,2}:\d{2})\s*\n/);
+
+    let i = 1;
+    while (i + 2 < blocks.length) {
+      const senderName = blocks[i].trim();
+      const dateStr = blocks[i + 1].trim();
+      let content = blocks[i + 2].trim();
+      i += 3;
+
+      content = content.replace(/\s*Responde a este email.*/is, "").trim();
+      content = content.replace(/\s*Ver anuncio.*/is, "").trim();
+      if (!content) continue;
+
+      const ts = parseSpanishTimestamp(dateStr);
+      if (!ts) continue;
+
+      messages.push({
+        sender: isDealerName(senderName) ? "dealer" : "lead",
+        sender_name: senderName,
+        content,
+        timestamp: ts.toISOString(),
+      });
+    }
+  }
+
+  return messages;
+}
+
+async function findExistingLead(
+  sb: ReturnType<typeof createClient>,
+  body: string,
+): Promise<number | null> {
+  const nameMatch = body.match(/nuevo\s+De\s+(.+)/i);
+  const leadName = nameMatch ? nameMatch[1].trim() : null;
+
+  const vehicleMatch = body.match(/coches\.net\/[^\s]*?\/([a-z0-9-]+)-\d+\.htm/i);
+  const vehicleHint = vehicleMatch ? vehicleMatch[1].replace(/-/g, " ") : null;
+
+  if (leadName) {
+    const { data } = await sb
+      .from("leads")
+      .select("id")
+      .eq("company_id", COMPANY_ID)
+      .eq("canal", "coches.net")
+      .ilike("name", `%${leadName}%`);
+    if (data && data.length > 0) return data[0].id;
+  }
+
+  if (vehicleHint) {
+    const { data } = await sb
+      .from("leads")
+      .select("id")
+      .eq("company_id", COMPANY_ID)
+      .eq("canal", "coches.net")
+      .ilike("vehicle_interest", `%${vehicleHint.slice(0, 20)}%`);
+    if (data && data.length > 0) return data[0].id;
+  }
+
+  return null;
+}
+
+async function insertMessages(
+  sb: ReturnType<typeof createClient>,
+  leadId: number,
+  messages: ConversationMessage[],
+  gmailMessageId: string,
+): Promise<number> {
+  if (messages.length === 0) return 0;
+
+  const { data: existing } = await sb
+    .from("lead_messages")
+    .select("timestamp, sender, content")
+    .eq("lead_id", leadId);
+
+  const existingKeys = new Set(
+    (existing ?? []).map(
+      (e: { timestamp: string; sender: string; content: string }) =>
+        `${e.timestamp.slice(0, 16)}|${e.sender}|${e.content.slice(0, 50)}`
+    )
+  );
+
+  let inserted = 0;
+  for (const msg of messages) {
+    const key = `${msg.timestamp.slice(0, 16)}|${msg.sender}|${msg.content.slice(0, 50)}`;
+    if (existingKeys.has(key)) continue;
+
+    const { error } = await sb.from("lead_messages").insert({
+      lead_id: leadId,
+      company_id: COMPANY_ID,
+      sender: msg.sender,
+      sender_name: msg.sender_name,
+      content: msg.content,
+      timestamp: msg.timestamp,
+      source: "coches.net",
+      gmail_message_id: gmailMessageId,
+    });
+    if (!error) inserted++;
+  }
+
+  return inserted;
 }
 
 // ── Lead parsing (ported from Python) ──────────────────────────────
@@ -235,13 +388,10 @@ function parseCochesNetLead(subject: string, body: string): ParsedLead {
 // ── Main handler ───────────────────────────────────────────────────
 
 serve(async (req) => {
-  // Allow cron trigger via POST or manual via GET
-  // Verify authorization for non-Supabase callers
   const authHeader = req.headers.get("Authorization");
   const expectedKey = Deno.env.get("CRON_SECRET");
   if (expectedKey && req.method === "POST") {
     if (authHeader !== `Bearer ${expectedKey}`) {
-      // Allow Supabase service role calls (pg_cron uses service_role key)
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
       if (!supabaseServiceKey || authHeader !== `Bearer ${supabaseServiceKey}`) {
         return new Response("Unauthorized", { status: 401 });
@@ -255,7 +405,7 @@ serve(async (req) => {
 
     if (messageIds.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No new coches.net emails", created: 0 }),
+        JSON.stringify({ message: "No new coches.net emails", created: 0, messages_inserted: 0 }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
@@ -266,6 +416,7 @@ serve(async (req) => {
     );
 
     let created = 0;
+    let messagesInserted = 0;
     const logs: string[] = [];
 
     for (const msgId of messageIds) {
@@ -283,6 +434,27 @@ serve(async (req) => {
         continue;
       }
 
+      // Detect email type
+      if (isFollowupEmail(body)) {
+        logs.push("  TYPE: follow-up conversation");
+        const leadId = await findExistingLead(sb, body);
+        if (!leadId) {
+          logs.push("  SKIP: could not find existing lead for follow-up");
+          await markAsRead(token, msgId);
+          continue;
+        }
+
+        const convMessages = parseConversationMessages(body);
+        logs.push(`  Parsed ${convMessages.length} messages from conversation`);
+        const n = await insertMessages(sb, leadId, convMessages, msgId);
+        messagesInserted += n;
+        logs.push(`  Inserted ${n} new messages (deduped)`);
+        await markAsRead(token, msgId);
+        continue;
+      }
+
+      // Type 1: New lead
+      logs.push("  TYPE: new lead");
       const lead = parseCochesNetLead(subject, body);
       logs.push(`  Lead: ${lead.name} | ${lead.phone} | ${lead.vehicle_interest}`);
 
@@ -343,22 +515,34 @@ serve(async (req) => {
         leadData.vehicle_id = vehicle_id;
       }
 
-      const { error } = await sb.from("leads").insert(leadData);
+      const { data: insertedData, error } = await sb.from("leads").insert(leadData).select("id");
       if (error) {
         logs.push(`  ERROR inserting lead: ${error.message}`);
       } else {
         logs.push(`  CREATED lead: ${lead.name}`);
         created++;
+
+        // Insert first message into lead_messages
+        const newLeadId = insertedData?.[0]?.id;
+        if (newLeadId && lead.notes) {
+          const n = await insertMessages(sb, newLeadId, [{
+            sender: "lead",
+            sender_name: lead.name,
+            content: lead.notes.split("\n\n---\n")[0].replace("[coches.net] ", ""),
+            timestamp: new Date().toISOString(),
+          }], msgId);
+          messagesInserted += n;
+        }
       }
 
-      // Mark email as read
       await markAsRead(token, msgId);
     }
 
     return new Response(
       JSON.stringify({
-        message: `Done. Created ${created} new leads from ${messageIds.length} emails.`,
+        message: `Done. Created ${created} new leads, inserted ${messagesInserted} messages from ${messageIds.length} emails.`,
         created,
+        messages_inserted: messagesInserted,
         total_emails: messageIds.length,
         logs,
       }),
