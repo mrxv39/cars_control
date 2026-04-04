@@ -285,8 +285,8 @@
             <div class="paso-title">Checklist de preparacion (por vehiculo)</div>
             <div class="item">
                 <input type="checkbox" data-flujo="1" onchange="updateProgress()">
-                <div class="item-text">20 fotos minimo
-                    <span class="detail">Contador visual: 7/20 &#10060; o 22/20 &#9989;</span>
+                <div class="item-text">40 fotos minimo (cuando esta acabado de limpieza)
+                    <span class="detail">Contador visual: 7/40 &#10060; o 42/40 &#9989;</span>
                 </div>
             </div>
             <div class="item">
@@ -367,7 +367,9 @@
             </div>
             <div class="item">
                 <input type="checkbox" data-flujo="2" onchange="updateProgress()">
-                <div class="item-text">Recordatorio automatico si pasan X dias sin contacto</div>
+                <div class="item-text">Recordatorio automatico si pasan X dias sin contacto
+                    <span class="detail">Desactivable al pasar lead a "no compra"</span>
+                </div>
             </div>
         </div>
 
@@ -411,10 +413,11 @@
             </div>
             <div class="item">
                 <input type="checkbox" data-flujo="2" onchange="updateProgress()">
-                <div class="item-text">Se generan 3 documentos:
+                <div class="item-text">Se generan 4 documentos:
                     <span class="detail">1. CONTRATO DE COMPRAVENTA (precio, forma pago, garantia, datos ambas partes)<br>
                     2. MANDATO DE GESTORIA (autorizacion cambio nombre en Trafico)<br>
-                    3. FACTURA DE VENTA (REBU o IVA, numeracion correlativa, datos fiscales Ricard autonomo)</span>
+                    3. PROVISIONAL DE CIRCULACION (se pide a Gestoria Ruppmann — pendiente: automatizar?)<br>
+                    4. FACTURA DE VENTA (REBU o IVA, numeracion correlativa, datos fiscales Ricard autonomo)</span>
                 </div>
             </div>
         </div>
@@ -429,11 +432,11 @@
                 <span class="arrow">→</span>
                 <span class="estado-badge negociacion">EN NEGOCIACION</span>
                 <span class="arrow">→</span>
-                <span class="estado-badge cerrado">CERRADO (venta)</span>
+                <span class="estado-badge cerrado">COMPRA</span>
             </div>
             <div class="estado-flow" style="padding-top:4px;">
                 <span style="color:#484f58;margin-right:8px;">o bien →</span>
-                <span class="estado-badge perdido">PERDIDO (motivo: precio / financiacion / compro otro / no contesta)</span>
+                <span class="estado-badge perdido">NO COMPRA (motivo: precio / financiacion / compro otro / no contesta)</span>
             </div>
         </div>
 
@@ -509,7 +512,7 @@
     <div class="flujo-header" onclick="toggleFlujo('flujo4')">
         <div class="flujo-number">4</div>
         <div class="flujo-title">Impuestos (autonomo)</div>
-        <div class="flujo-progress" id="flujo4-progress">0/7</div>
+        <div class="flujo-progress" id="flujo4-progress">0/8</div>
     </div>
     <div class="flujo-body">
 
@@ -525,11 +528,19 @@
             </div>
             <div class="item">
                 <input type="checkbox" data-flujo="4" onchange="updateProgress()">
-                <div class="item-text">REBU: IVA solo sobre el margen (precio venta - precio compra)</div>
+                <div class="item-text">REBU: IVA solo sobre el margen (precio venta - precio compra)
+                    <span class="detail">~90% de facturas son REBU, pero puede ser tambien IVA 21%</span>
+                </div>
             </div>
             <div class="item">
                 <input type="checkbox" data-flujo="4" onchange="updateProgress()">
                 <div class="item-text">Plazos: T1 (1-20 abril), T2 (1-20 julio), T3 (1-20 octubre), T4 (1-30 enero)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="4" onchange="updateProgress()">
+                <div class="item-text">Modelo 349 (compras intracomunitarias)
+                    <span class="detail">Aplica a compras con CIF extranjero (ej: Auto1 = CIF aleman). Tendencia 2026: menos compras pero no descartado</span>
+                </div>
             </div>
         </div>
 
@@ -599,6 +610,12 @@
                     <td><input type="checkbox" data-flujo="docs" onchange="updateProgress()"></td>
                 </tr>
                 <tr>
+                    <td>Provisional de circulacion</td>
+                    <td>Cierre de venta</td>
+                    <td>Se pide a Gestoria Ruppmann (pendiente: automatizar?)</td>
+                    <td><input type="checkbox" data-flujo="docs" onchange="updateProgress()"></td>
+                </tr>
+                <tr>
                     <td>Factura de venta</td>
                     <td>Cierre de venta</td>
                     <td>REBU/IVA, numeracion, datos fiscales</td>
@@ -660,11 +677,11 @@
             <span class="arrow">→</span>
             <span class="estado-badge negociacion">EN NEGOCIACION</span>
             <span class="arrow">→</span>
-            <span class="estado-badge cerrado">CERRADO</span>
+            <span class="estado-badge cerrado">COMPRA</span>
         </div>
         <div class="estado-flow" style="padding-top:4px;">
             <span style="color:#484f58;margin-right:8px;">o bien →</span>
-            <span class="estado-badge perdido">PERDIDO</span>
+            <span class="estado-badge perdido">NO COMPRA</span>
         </div>
 
         <div class="comment-section">
@@ -682,7 +699,7 @@
             <div class="stat-label">Correctos</div>
         </div>
         <div class="stat">
-            <div class="stat-number yellow" id="total-pending">39</div>
+            <div class="stat-number yellow" id="total-pending">41</div>
             <div class="stat-label">Pendientes</div>
         </div>
         <div class="stat">

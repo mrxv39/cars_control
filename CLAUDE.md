@@ -54,6 +54,4 @@ supabase/functions/   — Edge functions (sync-leads)
 
 ## Pendiente
 
-- Sesión de trabajo con Ricard para completar flujo de trabajo (fecha por definir)
-- Flujo exacto COMPRA / NO COMPRA por detallar
 - Viabilidad de automatizar petición provisional circulación a Gestoría Ruppmann
