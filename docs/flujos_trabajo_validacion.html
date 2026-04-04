@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodinaCars — Validacion Flujos de Trabajo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 1.8em;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        .subtitle {
+            text-align: center;
+            color: #8b949e;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+        .instructions {
+            background: #1c2333;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .instructions strong { color: #58a6ff; }
+
+        /* Flujo */
+        .flujo {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .flujo-header {
+            background: #21262d;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .flujo-header:hover { background: #282e36; }
+        .flujo-number {
+            background: #58a6ff;
+            color: #0d1117;
+            font-weight: 700;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .flujo-title { font-size: 1.15em; font-weight: 600; }
+        .flujo-progress {
+            margin-left: auto;
+            font-size: 0.85em;
+            color: #8b949e;
+        }
+        .flujo-body { padding: 0 20px 20px; }
+
+        /* Paso */
+        .paso {
+            border-left: 2px solid #30363d;
+            margin-left: 15px;
+            padding: 16px 0 16px 20px;
+            position: relative;
+        }
+        .paso::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 20px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #30363d;
+        }
+        .paso.validated::before { background: #3fb950; }
+        .paso-title {
+            font-weight: 600;
+            font-size: 1em;
+            margin-bottom: 10px;
+            color: #c9d1d9;
+        }
+
+        /* Items */
+        .item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+        .item:hover { background: #1c2333; }
+        .item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: #3fb950;
+            flex-shrink: 0;
+        }
+        .item-text { flex: 1; line-height: 1.5; }
+        .item-text .detail {
+            display: block;
+            font-size: 0.85em;
+            color: #8b949e;
+            margin-top: 2px;
+        }
+
+        /* Comentarios */
+        .comment-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #21262d;
+        }
+        .comment-section label {
+            font-size: 0.85em;
+            color: #8b949e;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .comment-section textarea {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e1e4e8;
+            padding: 10px;
+            font-family: inherit;
+            font-size: 0.9em;
+            resize: vertical;
+            min-height: 60px;
+        }
+        .comment-section textarea:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+
+        /* Documentos */
+        .doc-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+        .doc-table th {
+            text-align: left;
+            padding: 8px 12px;
+            background: #21262d;
+            font-size: 0.85em;
+            color: #8b949e;
+        }
+        .doc-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #21262d;
+        }
+
+        /* Estados */
+        .estado-flow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 12px 0;
+        }
+        .estado-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .estado-badge.disponible { background: #1f6feb33; color: #58a6ff; }
+        .estado-badge.listo { background: #23863533; color: #3fb950; }
+        .estado-badge.reservado { background: #d2992233; color: #d29922; }
+        .estado-badge.vendido { background: #6e40c933; color: #a371f7; }
+        .estado-badge.nuevo { background: #1f6feb33; color: #58a6ff; }
+        .estado-badge.contactado { background: #d2992233; color: #d29922; }
+        .estado-badge.negociacion { background: #da363333; color: #f85149; }
+        .estado-badge.cerrado { background: #23863533; color: #3fb950; }
+        .estado-badge.perdido { background: #484f5833; color: #8b949e; }
+        .arrow { color: #484f58; font-size: 1.2em; }
+
+        /* Resumen */
+        .summary-bar {
+            position: sticky;
+            bottom: 0;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px 12px 0 0;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 30px;
+            z-index: 100;
+        }
+        .summary-stats { display: flex; gap: 24px; }
+        .stat { text-align: center; }
+        .stat-number { font-size: 1.4em; font-weight: 700; }
+        .stat-number.green { color: #3fb950; }
+        .stat-number.yellow { color: #d29922; }
+        .stat-number.red { color: #f85149; }
+        .stat-label { font-size: 0.75em; color: #8b949e; }
+
+        .btn-export {
+            background: #238636;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-export:hover { background: #2ea043; }
+
+        .separator { height: 1px; background: #21262d; margin: 16px 0; }
+
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .summary-bar { flex-direction: column; gap: 12px; }
+            .estado-flow { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>CodinaCars — Flujos de Trabajo</h1>
+<p class="subtitle">Validacion con Ricard — 3 de abril de 2026</p>
+
+<div class="instructions">
+    <strong>Ricard:</strong> Marca con <strong>&#10003;</strong> lo que esta correcto. Si algo no encaja, escribe tu comentario debajo de cada seccion. Al final pulsa <strong>"Exportar respuestas"</strong> para generar un resumen que me puedas enviar.
+</div>
+
+<!-- ==================== FLUJO 1 ==================== -->
+<div class="flujo" id="flujo1">
+    <div class="flujo-header" onclick="toggleFlujo('flujo1')">
+        <div class="flujo-number">1</div>
+        <div class="flujo-title">Entrada de vehiculo en stock</div>
+        <div class="flujo-progress" id="flujo1-progress">0/11</div>
+    </div>
+    <div class="flujo-body">
+
+        <div class="paso" id="paso-sync">
+            <div class="paso-title">Publicacion (lo primero)</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">Ricard compra el coche y lo sube a coches.net (fuera de la app)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">En la app: boton "Sincronizar stock"
+                    <span class="detail">Compara tienda coches.net CodinaCars vs stock local, muestra coches nuevos que faltan</span>
+                </div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">Importa con 1 click (fotos, precio, datos del anuncio)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">Estado inicial: DISPONIBLE — ya puede recibir leads</div>
+            </div>
+        </div>
+
+        <div class="paso" id="paso-checklist">
+            <div class="paso-title">Checklist de preparacion (por vehiculo)</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">20 fotos minimo
+                    <span class="detail">Contador visual: 7/20 &#10060; o 22/20 &#9989;</span>
+                </div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">Ficha tecnica (foto o PDF)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">Permiso de circulacion (foto o PDF)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">Factura de compra (foto o PDF)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">Reparaciones finalizadas (todas las tareas cerradas)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">Barra de progreso visible: 3/5 — cuando 5/5 = LISTO PARA VENTA</div>
+            </div>
+        </div>
+
+        <div class="paso" id="paso-gastos">
+            <div class="paso-title">Gastos y preparacion (en paralelo)</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="1" onchange="updateProgress()">
+                <div class="item-text">Cada gasto (taller, limpieza, ITV, neumaticos) se vincula al vehiculo
+                    <span class="detail">Coste total = compra + gastos. Margen esperado = precio venta - coste total (actualizado en vivo)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="comment-section">
+            <label>Comentarios de Ricard sobre este flujo:</label>
+            <textarea id="comment-flujo1" placeholder="Escribe aqui si falta algo o algo no encaja..."></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== FLUJO 2 ==================== -->
+<div class="flujo" id="flujo2">
+    <div class="flujo-header" onclick="toggleFlujo('flujo2')">
+        <div class="flujo-number">2</div>
+        <div class="flujo-title">Lead → Negociacion → Venta</div>
+        <div class="flujo-progress" id="flujo2-progress">0/14</div>
+    </div>
+    <div class="flujo-body">
+
+        <div class="paso">
+            <div class="paso-title">Entrada del lead</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Lead llega por: chat coches.net (sync automatico), llamada, WhatsApp, walk-in</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Se vincula al vehiculo que le interesa</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Estado inicial: NUEVO</div>
+            </div>
+        </div>
+
+        <div class="paso">
+            <div class="paso-title">Seguimiento</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Registrar cada contacto con fecha y canal
+                    <span class="detail">WhatsApp: "Le envie fotos" / Llamada: "Quiere venir el sabado" / Chat coches.net: "Pregunto precio"</span>
+                </div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Estado: CONTACTADO</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Recordatorio automatico si pasan X dias sin contacto</div>
+            </div>
+        </div>
+
+        <div class="paso">
+            <div class="paso-title">Negociacion</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Registrar ofertas y contraofertas
+                    <span class="detail">"Pide 14.500" → "Cliente ofrece 13.000" → "Contraoferta: 13.800"</span>
+                </div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Estado: EN NEGOCIACION</div>
+            </div>
+        </div>
+
+        <div class="paso">
+            <div class="paso-title">Reserva</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Cliente da senal → genera CONTRATO DE RESERVA
+                    <span class="detail">Datos: senal en euros, fecha expiracion, datos cliente, datos vehiculo</span>
+                </div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Vehiculo pasa a RESERVADO (vinculado al cliente)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Lead se convierte en Cliente (si no lo era ya)</div>
+            </div>
+        </div>
+
+        <div class="paso">
+            <div class="paso-title">Cierre de venta</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Forma de pago: efectivo, transferencia, financiacion (o combinacion)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="2" onchange="updateProgress()">
+                <div class="item-text">Se generan 3 documentos:
+                    <span class="detail">1. CONTRATO DE COMPRAVENTA (precio, forma pago, garantia, datos ambas partes)<br>
+                    2. MANDATO DE GESTORIA (autorizacion cambio nombre en Trafico)<br>
+                    3. FACTURA DE VENTA (REBU o IVA, numeracion correlativa, datos fiscales Ricard autonomo)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="separator"></div>
+        <div>
+            <div class="paso-title" style="margin-bottom:8px;">Estados del lead:</div>
+            <div class="estado-flow">
+                <span class="estado-badge nuevo">NUEVO</span>
+                <span class="arrow">→</span>
+                <span class="estado-badge contactado">CONTACTADO</span>
+                <span class="arrow">→</span>
+                <span class="estado-badge negociacion">EN NEGOCIACION</span>
+                <span class="arrow">→</span>
+                <span class="estado-badge cerrado">CERRADO (venta)</span>
+            </div>
+            <div class="estado-flow" style="padding-top:4px;">
+                <span style="color:#484f58;margin-right:8px;">o bien →</span>
+                <span class="estado-badge perdido">PERDIDO (motivo: precio / financiacion / compro otro / no contesta)</span>
+            </div>
+        </div>
+
+        <div class="comment-section">
+            <label>Comentarios de Ricard sobre este flujo:</label>
+            <textarea id="comment-flujo2" placeholder="Escribe aqui si falta algo o algo no encaja..."></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== FLUJO 3 ==================== -->
+<div class="flujo" id="flujo3">
+    <div class="flujo-header" onclick="toggleFlujo('flujo3')">
+        <div class="flujo-number">3</div>
+        <div class="flujo-title">Facturacion</div>
+        <div class="flujo-progress" id="flujo3-progress">0/7</div>
+    </div>
+    <div class="flujo-body">
+
+        <div class="paso">
+            <div class="paso-title">Facturas emitidas (ventas)</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="3" onchange="updateProgress()">
+                <div class="item-text">Datos vendedor: Ricard (nombre, NIF, direccion, num autonomo)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="3" onchange="updateProgress()">
+                <div class="item-text">Datos comprador: cliente (nombre, DNI/CIF, direccion)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="3" onchange="updateProgress()">
+                <div class="item-text">Tipos de factura: REBU (IVA sobre margen) o IVA normal (21%)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="3" onchange="updateProgress()">
+                <div class="item-text">Numeracion correlativa: F-2026-001, F-2026-002...</div>
+            </div>
+        </div>
+
+        <div class="paso">
+            <div class="paso-title">Facturas recibidas (compras y gastos)</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="3" onchange="updateProgress()">
+                <div class="item-text">Registrar factura proveedor: nombre, CIF, concepto, base imponible, IVA, total
+                    <span class="detail">Adjuntar documento: foto o PDF</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="paso">
+            <div class="paso-title">Libro de registros</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="3" onchange="updateProgress()">
+                <div class="item-text">Libro facturas emitidas + Libro facturas recibidas
+                    <span class="detail">Vista por mes / trimestre / ano</span>
+                </div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="3" onchange="updateProgress()">
+                <div class="item-text">Exportar CSV/Excel para gestoria</div>
+            </div>
+        </div>
+
+        <div class="comment-section">
+            <label>Comentarios de Ricard sobre este flujo:</label>
+            <textarea id="comment-flujo3" placeholder="Escribe aqui si falta algo o algo no encaja..."></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== FLUJO 4 ==================== -->
+<div class="flujo" id="flujo4">
+    <div class="flujo-header" onclick="toggleFlujo('flujo4')">
+        <div class="flujo-number">4</div>
+        <div class="flujo-title">Impuestos (autonomo)</div>
+        <div class="flujo-progress" id="flujo4-progress">0/7</div>
+    </div>
+    <div class="flujo-body">
+
+        <div class="paso">
+            <div class="paso-title">Cada trimestre</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="4" onchange="updateProgress()">
+                <div class="item-text">Modelo 303 (IVA): repercutido - soportado = a pagar o compensar</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="4" onchange="updateProgress()">
+                <div class="item-text">Modelo 130 (IRPF): 20% del beneficio trimestral</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="4" onchange="updateProgress()">
+                <div class="item-text">REBU: IVA solo sobre el margen (precio venta - precio compra)</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="4" onchange="updateProgress()">
+                <div class="item-text">Plazos: T1 (1-20 abril), T2 (1-20 julio), T3 (1-20 octubre), T4 (1-30 enero)</div>
+            </div>
+        </div>
+
+        <div class="paso">
+            <div class="paso-title">Cada ano</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="4" onchange="updateProgress()">
+                <div class="item-text">Modelo 390 (resumen anual IVA) + Modelo 100 (IRPF anual)</div>
+            </div>
+        </div>
+
+        <div class="paso">
+            <div class="paso-title">Dashboard fiscal</div>
+            <div class="item">
+                <input type="checkbox" data-flujo="4" onchange="updateProgress()">
+                <div class="item-text">Vista en la app: IVA acumulado, beneficio neto, IRPF estimado este trimestre</div>
+            </div>
+            <div class="item">
+                <input type="checkbox" data-flujo="4" onchange="updateProgress()">
+                <div class="item-text">Alerta: "Faltan X dias para presentar 303/130"
+                    <span class="detail">Boton: Exportar todo para gestoria (CSV/Excel formato estandar)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="comment-section">
+            <label>Comentarios de Ricard sobre este flujo:</label>
+            <textarea id="comment-flujo4" placeholder="Escribe aqui si falta algo o algo no encaja..."></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== DOCUMENTOS ==================== -->
+<div class="flujo" id="flujo-docs">
+    <div class="flujo-header" onclick="toggleFlujo('flujo-docs')">
+        <div class="flujo-number" style="background:#a371f7;">D</div>
+        <div class="flujo-title">Documentos que genera la app</div>
+        <div class="flujo-progress" id="flujo-docs-progress"></div>
+    </div>
+    <div class="flujo-body">
+        <table class="doc-table">
+            <thead>
+                <tr>
+                    <th>Documento</th>
+                    <th>Cuando</th>
+                    <th>Datos clave</th>
+                    <th style="width:50px;">OK?</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Contrato de reserva</td>
+                    <td>Cliente da senal</td>
+                    <td>Senal, expiracion, vehiculo, cliente</td>
+                    <td><input type="checkbox" data-flujo="docs" onchange="updateProgress()"></td>
+                </tr>
+                <tr>
+                    <td>Contrato de compraventa</td>
+                    <td>Cierre de venta</td>
+                    <td>Precio, forma pago, garantia, ambas partes</td>
+                    <td><input type="checkbox" data-flujo="docs" onchange="updateProgress()"></td>
+                </tr>
+                <tr>
+                    <td>Mandato de gestoria</td>
+                    <td>Cierre de venta</td>
+                    <td>Autorizacion cambio nombre Trafico</td>
+                    <td><input type="checkbox" data-flujo="docs" onchange="updateProgress()"></td>
+                </tr>
+                <tr>
+                    <td>Factura de venta</td>
+                    <td>Cierre de venta</td>
+                    <td>REBU/IVA, numeracion, datos fiscales</td>
+                    <td><input type="checkbox" data-flujo="docs" onchange="updateProgress()"></td>
+                </tr>
+                <tr>
+                    <td>Libro facturas emitidas</td>
+                    <td>Continuo</td>
+                    <td>Todas las ventas</td>
+                    <td><input type="checkbox" data-flujo="docs" onchange="updateProgress()"></td>
+                </tr>
+                <tr>
+                    <td>Libro facturas recibidas</td>
+                    <td>Continuo</td>
+                    <td>Todas las compras/gastos</td>
+                    <td><input type="checkbox" data-flujo="docs" onchange="updateProgress()"></td>
+                </tr>
+                <tr>
+                    <td>Exportacion gestoria</td>
+                    <td>Trimestral</td>
+                    <td>CSV/Excel para 303, 130, REBU</td>
+                    <td><input type="checkbox" data-flujo="docs" onchange="updateProgress()"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="comment-section">
+            <label>Comentarios de Ricard sobre los documentos:</label>
+            <textarea id="comment-docs" placeholder="Falta algun documento? Algun dato que no este?"></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== ESTADOS ==================== -->
+<div class="flujo" id="flujo-estados">
+    <div class="flujo-header" onclick="toggleFlujo('flujo-estados')">
+        <div class="flujo-number" style="background:#d29922;">E</div>
+        <div class="flujo-title">Estados del vehiculo y del lead</div>
+    </div>
+    <div class="flujo-body">
+        <div class="paso-title" style="margin-bottom:8px;">Ciclo de vida del vehiculo:</div>
+        <div class="estado-flow">
+            <span class="estado-badge disponible">DISPONIBLE</span>
+            <span class="arrow">→</span>
+            <span class="estado-badge listo">LISTO PARA VENTA (5/5)</span>
+            <span class="arrow">→</span>
+            <span class="estado-badge reservado">RESERVADO</span>
+            <span class="arrow">→</span>
+            <span class="estado-badge vendido">VENDIDO</span>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="paso-title" style="margin-bottom:8px;">Ciclo de vida del lead:</div>
+        <div class="estado-flow">
+            <span class="estado-badge nuevo">NUEVO</span>
+            <span class="arrow">→</span>
+            <span class="estado-badge contactado">CONTACTADO</span>
+            <span class="arrow">→</span>
+            <span class="estado-badge negociacion">EN NEGOCIACION</span>
+            <span class="arrow">→</span>
+            <span class="estado-badge cerrado">CERRADO</span>
+        </div>
+        <div class="estado-flow" style="padding-top:4px;">
+            <span style="color:#484f58;margin-right:8px;">o bien →</span>
+            <span class="estado-badge perdido">PERDIDO</span>
+        </div>
+
+        <div class="comment-section">
+            <label>Comentarios de Ricard sobre los estados:</label>
+            <textarea id="comment-estados" placeholder="Falta algun estado? Sobra alguno?"></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== BARRA RESUMEN ==================== -->
+<div class="summary-bar">
+    <div class="summary-stats">
+        <div class="stat">
+            <div class="stat-number green" id="total-ok">0</div>
+            <div class="stat-label">Correctos</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number yellow" id="total-pending">39</div>
+            <div class="stat-label">Pendientes</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number" id="total-percent" style="color:#58a6ff;">0%</div>
+            <div class="stat-label">Validado</div>
+        </div>
+    </div>
+    <button class="btn-export" onclick="exportResults()">Exportar respuestas</button>
+</div>
+
+<script>
+    function toggleFlujo(id) {
+        const body = document.querySelector('#' + id + ' .flujo-body');
+        body.style.display = body.style.display === 'none' ? 'block' : 'block';
+    }
+
+    function updateProgress() {
+        const flujos = ['1', '2', '3', '4', 'docs'];
+        let totalOk = 0;
+        let totalAll = 0;
+
+        flujos.forEach(f => {
+            const checks = document.querySelectorAll('input[data-flujo="' + f + '"]');
+            const checked = Array.from(checks).filter(c => c.checked).length;
+            totalOk += checked;
+            totalAll += checks.length;
+
+            const el = document.getElementById('flujo' + f + '-progress');
+            if (el) el.textContent = checked + '/' + checks.length;
+        });
+
+        document.getElementById('total-ok').textContent = totalOk;
+        document.getElementById('total-pending').textContent = totalAll - totalOk;
+        document.getElementById('total-percent').textContent = Math.round((totalOk / totalAll) * 100) + '%';
+    }
+
+    function exportResults() {
+        let output = '=== VALIDACION FLUJOS CODINACARS ===\n';
+        output += 'Fecha: ' + new Date().toLocaleDateString('es-ES') + '\n\n';
+
+        const flujoNames = {
+            '1': 'FLUJO 1: Entrada de vehiculo',
+            '2': 'FLUJO 2: Lead a Venta',
+            '3': 'FLUJO 3: Facturacion',
+            '4': 'FLUJO 4: Impuestos',
+            'docs': 'DOCUMENTOS'
+        };
+
+        ['1', '2', '3', '4', 'docs'].forEach(f => {
+            const checks = document.querySelectorAll('input[data-flujo="' + f + '"]');
+            const checked = Array.from(checks).filter(c => c.checked).length;
+            output += '--- ' + flujoNames[f] + ' (' + checked + '/' + checks.length + ') ---\n';
+
+            checks.forEach((c, i) => {
+                const text = c.closest('.item, tr').querySelector('.item-text, td')?.textContent?.trim() || 'Item ' + (i+1);
+                const firstLine = text.split('\n')[0].substring(0, 80);
+                output += (c.checked ? '[OK] ' : '[  ] ') + firstLine + '\n';
+            });
+
+            const commentId = f === 'docs' ? 'comment-docs' : 'comment-flujo' + f;
+            const comment = document.getElementById(commentId)?.value?.trim();
+            if (comment) output += '\nCOMENTARIO: ' + comment + '\n';
+            output += '\n';
+        });
+
+        const estadosComment = document.getElementById('comment-estados')?.value?.trim();
+        if (estadosComment) output += '--- ESTADOS ---\nCOMENTARIO: ' + estadosComment + '\n\n';
+
+        const totalChecks = document.querySelectorAll('input[type="checkbox"]');
+        const totalChecked = Array.from(totalChecks).filter(c => c.checked).length;
+        output += '=== RESUMEN: ' + totalChecked + '/' + totalChecks.length + ' validados (' + Math.round((totalChecked/totalChecks.length)*100) + '%) ===\n';
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(output).then(() => {
+            alert('Copiado al portapapeles. Pegalo en WhatsApp o donde quieras.');
+        }).catch(() => {
+            // Fallback
+            const w = window.open('', '_blank');
+            w.document.write('<pre style="font-family:monospace;padding:20px;background:#111;color:#eee;">' + output + '</pre>');
+        });
+    }
+
+    // Init
+    updateProgress();
+</script>
+
+</body>
+</html>
