@@ -144,6 +144,166 @@ export async function login(username: string, password: string): Promise<LoginRe
 }
 
 // ============================================================
+// Importador coches.net
+// ============================================================
+// Doc: docs/import_coches_net.md
+
+export interface ImportPreview {
+  listing: Array<{
+    externalId: string;
+    url: string;
+    make: string;
+    model: string;
+    year: number | null;
+    km: number | null;
+    price: number | null;
+    fuelType: string | null;
+    hp: number | null;
+    imgUrl: string | null;
+  }>;
+  newDetails: Array<{
+    externalId: string | null;
+    url: string;
+    name: string;
+    make: string;
+    model: string;
+    version: string | null;
+    year: number | null;
+    km: number | null;
+    price: number | null;
+    fuelType: string | null;
+    hp: number | null;
+    color: string | null;
+    transmission: string | null;
+    doors: number | null;
+    seats: number | null;
+    bodyType: string | null;
+    displacement: number | null;
+    emissionsCo2: string | null;
+    environmentalLabel: string | null;
+    description: string | null;
+    equipment: string[];
+    photoUrls: string[];
+    videoUrls: string[];
+  }>;
+  removedExternalIds: string[];
+  fetchedAt: string;
+}
+
+export async function listKnownExternalIds(companyId: number): Promise<string[]> {
+  // Trae los external_ids ya importados para este company.
+  const { data, error } = await supabase
+    .from("vehicle_listings")
+    .select("external_id, vehicles!inner(company_id)")
+    .eq("external_source", "coches_net")
+    .eq("vehicles.company_id", companyId);
+  if (error) throw new Error(error.message);
+  return (data || []).map((r: any) => r.external_id);
+}
+
+export async function fetchCochesNetPreview(dealerUrl: string, knownExternalIds: string[]): Promise<ImportPreview> {
+  // Llama a la edge function. La función supabase-js maneja headers de auth.
+  const { data, error } = await supabase.functions.invoke("import-coches-net", {
+    body: { dealerUrl, knownExternalIds },
+  });
+  if (error) throw new Error(error.message);
+  return data as ImportPreview;
+}
+
+export async function importCochesNetVehicles(
+  companyId: number,
+  details: ImportPreview["newDetails"],
+): Promise<{ created: number }> {
+  let created = 0;
+  for (const d of details) {
+    if (!d.externalId) continue;
+    // 1. Insert en vehicles
+    const { data: vehicle, error: vErr } = await supabase
+      .from("vehicles")
+      .insert({
+        company_id: companyId,
+        name: `${d.make} ${d.model}`.trim(),
+        version: d.version,
+        anio: d.year,
+        km: d.km,
+        precio_venta: d.price,
+        fuel: d.fuelType,
+        cv: d.hp ? String(d.hp) : null,
+        color: d.color,
+        transmission: d.transmission,
+        doors: d.doors,
+        seats: d.seats,
+        body_type: d.bodyType,
+        displacement: d.displacement,
+        emissions_co2: d.emissionsCo2,
+        environmental_label: d.environmentalLabel,
+        description: d.description,
+        equipment: d.equipment.length ? d.equipment : null,
+        estado: "disponible",
+      })
+      .select("id")
+      .single();
+    if (vErr || !vehicle) {
+      console.error("Error creando vehicle", d.name, vErr);
+      continue;
+    }
+    // 2. Insert en vehicle_listings
+    await supabase.from("vehicle_listings").insert({
+      vehicle_id: vehicle.id,
+      external_source: "coches_net",
+      external_id: d.externalId,
+      external_url: d.url,
+    });
+    // 3. Insert en vehicle_videos (si hay)
+    if (d.videoUrls.length > 0) {
+      await supabase.from("vehicle_videos").insert(
+        d.videoUrls.map((url) => ({
+          vehicle_id: vehicle.id,
+          url,
+          provider: url.includes("youtu") ? "youtube" : "mp4",
+        })),
+      );
+    }
+    // 4. Fotos: por ahora solo guardamos source_url referenciando coches.net.
+    //    La descarga real a Supabase Storage se hará en una fase posterior
+    //    (es más pesada y mejor en background).
+    if (d.photoUrls.length > 0) {
+      await supabase.from("vehicle_photos").insert(
+        d.photoUrls.map((url) => ({
+          vehicle_id: vehicle.id,
+          file_name: url.split("/").pop() || "photo.jpg",
+          storage_path: "",
+          source_url: url,
+        })),
+      );
+    }
+    created++;
+  }
+  return { created };
+}
+
+export async function markVehiclesNeedsReview(companyId: number, externalIds: string[]): Promise<number> {
+  if (externalIds.length === 0) return 0;
+  // Buscar los vehicles afectados via vehicle_listings
+  const { data: listings } = await supabase
+    .from("vehicle_listings")
+    .select("vehicle_id, vehicles!inner(company_id)")
+    .eq("external_source", "coches_net")
+    .in("external_id", externalIds)
+    .eq("vehicles.company_id", companyId);
+  const vehicleIds = (listings || []).map((l: any) => l.vehicle_id);
+  if (vehicleIds.length === 0) return 0;
+  await supabase.from("vehicles").update({ needs_review: true }).in("id", vehicleIds);
+  // Marcar los listings como removidos
+  await supabase
+    .from("vehicle_listings")
+    .update({ removed_at: new Date().toISOString() })
+    .eq("external_source", "coches_net")
+    .in("external_id", externalIds);
+  return vehicleIds.length;
+}
+
+// ============================================================
 // Profile / Company updates
 // ============================================================
 

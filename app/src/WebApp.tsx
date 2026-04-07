@@ -965,7 +965,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
           />
         )}
         {currentView === "stock" && !selectedVehicle && (
-          <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
+          <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} dealerWebsite={session.company.website || ""} onSelect={setSelectedVehicle} onReload={loadAll} />
         )}
         {currentView === "stock" && selectedVehicle && (
           <VehicleDetail vehicle={selectedVehicle} suppliers={suppliers} leads={leads} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
@@ -1193,7 +1193,53 @@ const REQUIRED_DOC_TYPES = ["ficha_tecnica", "permiso_circulacion", "itv", "fact
 type StockSortKey = "dias" | "leads_pendientes" | "margen" | "recientes";
 type StockFilterKey = "todos" | "pendientes" | "leads_pendientes" | "listos" | "sin_precio";
 
-function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
+function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, dealerWebsite, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; dealerWebsite: string; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
+  const [importPreview, setImportPreview] = useState<api.ImportPreview | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [selectedToImport, setSelectedToImport] = useState<Set<string>>(new Set());
+
+  async function handleImport() {
+    if (!dealerWebsite) {
+      setImportError("Define la web de la empresa primero (Empresa → Web)");
+      return;
+    }
+    setImportError(null);
+    setImporting(true);
+    try {
+      const known = await api.listKnownExternalIds(companyId);
+      const preview = await api.fetchCochesNetPreview(dealerWebsite, known);
+      setImportPreview(preview);
+      // Por defecto, seleccionar todos los nuevos
+      setSelectedToImport(new Set(preview.newDetails.map((d) => d.externalId || "").filter(Boolean)));
+    } catch (e: any) {
+      setImportError(e.message || "Error consultando coches.net");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function confirmImport() {
+    if (!importPreview) return;
+    setImporting(true);
+    try {
+      const toCreate = importPreview.newDetails.filter((d) => d.externalId && selectedToImport.has(d.externalId));
+      const { created } = await api.importCochesNetVehicles(companyId, toCreate);
+      // Marcar removidos como necesitar revisión
+      if (importPreview.removedExternalIds.length > 0) {
+        await api.markVehiclesNeedsReview(companyId, importPreview.removedExternalIds);
+      }
+      setImportPreview(null);
+      setSelectedToImport(new Set());
+      await onReload();
+      alert(`Importación completada: ${created} coches nuevos.`);
+    } catch (e: any) {
+      setImportError(e.message || "Error importando");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<StockSortKey>("dias");
   const [filterKey, setFilterKey] = useState<StockFilterKey>("todos");
@@ -1374,8 +1420,8 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, o
           <button type="button" className="button secondary" onClick={() => exportToCSV(vehicles.map(v => ({ Nombre: v.name, Año: v.anio, Km: v.km, Precio_compra: v.precio_compra, Precio_venta: v.precio_venta, Estado: v.estado, Combustible: v.fuel, Color: v.color })), "stock")}>
             Exportar CSV
           </button>
-          <button type="button" className="button secondary" onClick={() => window.open("https://www.coches.net/concesionario/codinacars/", "_blank")}>
-            Update stock
+          <button type="button" className="button secondary" onClick={() => void handleImport()} disabled={importing}>
+            {importing ? "Importando..." : "Importar de coches.net"}
           </button>
           <button type="button" className="button primary" onClick={() => setShowAdd(!showAdd)}>
             {showAdd ? "Cancelar" : "Añadir vehículo"}
@@ -1512,6 +1558,94 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, o
           />
         ))}
       </section>
+
+      {importError && (
+        <div className="modal-overlay" onClick={() => setImportError(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "440px" }}>
+            <h3 style={{ margin: 0, color: "#b91c1c" }}>Error</h3>
+            <p>{importError}</p>
+            <div className="form-actions">
+              <button type="button" className="button primary" onClick={() => setImportError(null)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importPreview && (
+        <div className="modal-overlay" onClick={() => !importing && setImportPreview(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "780px", maxHeight: "85vh", overflowY: "auto" }}>
+            <h3 style={{ margin: "0 0 0.5rem" }}>Importar desde coches.net</h3>
+            <p className="muted" style={{ margin: "0 0 1rem", fontSize: "0.85rem" }}>
+              {importPreview.listing.length} coches en el perfil ·
+              {" "}{importPreview.newDetails.length} nuevos detectados ·
+              {" "}{importPreview.removedExternalIds.length} ya no aparecen
+            </p>
+
+            {importPreview.newDetails.length > 0 ? (
+              <>
+                <h4 style={{ margin: "0.75rem 0 0.5rem" }}>Nuevos coches</h4>
+                <p className="muted" style={{ fontSize: "0.78rem", margin: "0 0 0.5rem" }}>
+                  Marca los que quieras importar (todos por defecto)
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {importPreview.newDetails.map((d) => {
+                    const id = d.externalId || "";
+                    const checked = selectedToImport.has(id);
+                    return (
+                      <label key={id} style={{ display: "flex", gap: "0.75rem", padding: "0.5rem", border: "1px solid #e5e5e5", borderRadius: "8px", cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = new Set(selectedToImport);
+                            if (e.target.checked) next.add(id);
+                            else next.delete(id);
+                            setSelectedToImport(next);
+                          }}
+                        />
+                        {d.photoUrls[0] && (
+                          <img src={d.photoUrls[0]} alt="" style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 4 }} />
+                        )}
+                        <div style={{ flex: 1 }}>
+                          <strong>{d.name}</strong>
+                          <div className="muted" style={{ fontSize: "0.78rem" }}>
+                            {[d.year, d.km ? `${d.km.toLocaleString()} km` : null, d.fuelType, d.transmission, d.color].filter(Boolean).join(" · ")}
+                          </div>
+                          <div className="muted" style={{ fontSize: "0.78rem" }}>
+                            {d.photoUrls.length} fotos · {d.equipment.length} equipamientos
+                            {d.videoUrls.length > 0 && ` · ${d.videoUrls.length} vídeos`}
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: "bold" }}>{d.price?.toLocaleString("es-ES")} €</div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="muted">No hay coches nuevos en coches.net.</p>
+            )}
+
+            {importPreview.removedExternalIds.length > 0 && (
+              <>
+                <h4 style={{ margin: "1rem 0 0.5rem", color: "#b45309" }}>Ya no aparecen en coches.net</h4>
+                <p className="muted" style={{ fontSize: "0.78rem", margin: 0 }}>
+                  Estos {importPreview.removedExternalIds.length} coches se marcarán para revisión.
+                </p>
+              </>
+            )}
+
+            <div className="form-actions" style={{ marginTop: "1rem" }}>
+              <button type="button" className="button secondary" onClick={() => setImportPreview(null)} disabled={importing}>
+                Cancelar
+              </button>
+              <button type="button" className="button primary" onClick={() => void confirmImport()} disabled={importing || selectedToImport.size === 0}>
+                {importing ? "Importando..." : `Importar ${selectedToImport.size} coches`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
