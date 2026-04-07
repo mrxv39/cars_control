@@ -26,7 +26,7 @@ function useConfirmDialog() {
   return { confirmProps: { open: state.open, title: state.title, message: state.message, onConfirm: confirm, onCancel: cancel }, requestConfirm };
 }
 
-type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "reminders" | "revision";
+type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision";
 
 function WebApp() {
   const [page, setPage] = useState<"catalog" | "login" | "register" | "admin" | "platform">(() => {
@@ -485,89 +485,6 @@ function PaginationControls({ page, totalPages, setPage }: { page: number; total
   );
 }
 
-// ── Reminders ──
-function WebReminders({ leads, onReload }: { leads: api.Lead[]; onReload: () => void }) {
-  const hoy = new Date();
-  const hace7Dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-  const leadsSinSeguimiento = leads.filter((l) => {
-    if (["cerrado", "perdido", "vendido", "descartado"].includes(l.estado || "")) return false;
-    if (!l.fecha_contacto) return true;
-    return new Date(l.fecha_contacto) < hace7Dias;
-  });
-
-  const sinContactoInicial = leadsSinSeguimiento.filter((l) => !l.fecha_contacto);
-  const contactoAntiguo = leadsSinSeguimiento.filter((l) => l.fecha_contacto);
-
-  async function marcarContactado(leadId: number) {
-    await api.updateLead(leadId, { fecha_contacto: hoy.toISOString().slice(0, 10) } as Partial<api.Lead>);
-    onReload();
-  }
-
-  return (
-    <>
-      <header className="hero">
-        <div>
-          <p className="eyebrow">Recordatorios</p>
-          <h2>Leads que necesitan seguimiento</h2>
-          <p className="muted">{leadsSinSeguimiento.length} lead{leadsSinSeguimiento.length !== 1 ? "s" : ""} requieren atencion</p>
-        </div>
-        <div className="hero-actions">
-          <button type="button" className="button primary" onClick={onReload}>Recargar</button>
-        </div>
-      </header>
-
-      {leadsSinSeguimiento.length === 0 ? (
-        <section className="panel setup-panel">
-          <h2>Todos los leads estan al dia</h2>
-          <p className="muted">No hay leads sin seguimiento hace mas de 7 dias.</p>
-        </section>
-      ) : (
-        <>
-          {sinContactoInicial.length > 0 && (
-            <section className="panel" style={{ padding: "1.25rem" }}>
-              <h3 style={{ margin: "0 0 1rem" }}>Leads nuevos sin primer contacto ({sinContactoInicial.length})</h3>
-              <div className="record-grid" aria-live="polite">
-                {sinContactoInicial.map((l) => (
-                  <article key={l.id} className="record-card panel" style={{ borderLeft: "3px solid var(--color-primary, #1d4ed8)" }}>
-                    <p className="record-title">{l.name}</p>
-                    <p className="muted">{l.phone || "Sin telefono"}</p>
-                    {l.canal && <span className="badge">{l.canal}</span>}
-                    <button type="button" className="button primary" style={{ marginTop: "0.5rem", fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => marcarContactado(l.id)}>
-                      Marcar como contactado
-                    </button>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {contactoAntiguo.length > 0 && (
-            <section className="panel" style={{ padding: "1.25rem" }}>
-              <h3 style={{ margin: "0 0 1rem" }}>Leads sin contacto hace 7+ dias ({contactoAntiguo.length})</h3>
-              <div className="record-grid" aria-live="polite">
-                {contactoAntiguo.map((l) => {
-                  const dias = Math.floor((hoy.getTime() - new Date(l.fecha_contacto || "").getTime()) / (1000 * 60 * 60 * 24));
-                  return (
-                    <article key={l.id} className="record-card panel" style={{ borderLeft: "3px solid var(--color-warning, #f59e0b)" }}>
-                      <p className="record-title">{l.name}</p>
-                      <p className="muted">{l.phone || "Sin telefono"}</p>
-                      <p className="muted" style={{ fontWeight: 600, color: "var(--color-warning, #f59e0b)" }}>Sin contacto: {dias} dias</p>
-                      <button type="button" className="button secondary" style={{ marginTop: "0.5rem", fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => marcarContactado(l.id)}>
-                        Marcar como contactado
-                      </button>
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-        </>
-      )}
-    </>
-  );
-}
-
 // ── Global Search Results ──
 function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
   query: string;
@@ -899,7 +816,8 @@ const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
   { key: "suppliers", label: "Proveedores" },
   { key: "leads", label: "Leads" },
   { key: "clients", label: "Clientes" },
-  { key: "reminders", label: "Recordatorios" },
+  // Recordatorios eliminado (sesión Ricard 2026-04-04): los recordatorios
+  // ahora son inline en stock/leads (chips de checklist).
   { key: "revision", label: "Revision" },
 ];
 
@@ -1043,7 +961,6 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         {currentView === "sales" && <SalesList records={salesRecords} vehicles={vehicles} clients={clients} companyId={companyId} onReload={loadAll} />}
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}
         {currentView === "suppliers" && <SuppliersList suppliers={suppliers} companyId={companyId} onReload={loadAll} />}
-        {currentView === "reminders" && <WebReminders leads={leads} onReload={loadAll} />}
         {currentView === "revision" && <RevisionSheet vehicles={allVehicles} companyId={companyId} />}
       </section>
 
@@ -1869,9 +1786,12 @@ function LeadChat({ leadId, leadNotes }: { leadId: number; leadNotes?: string })
   );
 }
 
+type LeadFilter = "todos" | "sin_contestar" | "activos" | "cerrados";
+
 function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
   const dialog = useConfirmDialog();
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<LeadFilter>("todos");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "", estado: "", canal: "" });
   const [notesLeadId, setNotesLeadId] = useState<number | null>(null);
@@ -1899,11 +1819,32 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
     await api.deleteLeadNote(noteId);
     if (notesLeadId) setLeadNotes(await api.listLeadNotes(notesLeadId));
   }
+  // Filtros validados con Ricard 2026-04-04 (§6.ter del plan):
+  // - sin_contestar: leads en estado nuevo / sin contactar (los más urgentes)
+  // - activos: cualquier lead que no esté cerrado/perdido/descartado
+  // - cerrados: histórico de leads ya finalizados
   const filtered = useMemo(() => {
-    if (!search.trim()) return leads;
-    const q = search.toLowerCase();
-    return leads.filter((l) => [l.name, l.phone, l.vehicle_interest].some((v) => v.toLowerCase().includes(q)));
-  }, [leads, search]);
+    let list = leads;
+    if (filter === "sin_contestar") {
+      list = list.filter((l) => !l.estado || l.estado === "nuevo");
+    } else if (filter === "activos") {
+      list = list.filter((l) => !["cerrado", "perdido", "descartado", "vendido"].includes(l.estado || ""));
+    } else if (filter === "cerrados") {
+      list = list.filter((l) => ["cerrado", "perdido", "descartado", "vendido"].includes(l.estado || ""));
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((l) => [l.name, l.phone, l.vehicle_interest].some((v) => v.toLowerCase().includes(q)));
+    }
+    return list;
+  }, [leads, search, filter]);
+
+  const counts = useMemo(() => ({
+    todos: leads.length,
+    sin_contestar: leads.filter((l) => !l.estado || l.estado === "nuevo").length,
+    activos: leads.filter((l) => !["cerrado", "perdido", "descartado", "vendido"].includes(l.estado || "")).length,
+    cerrados: leads.filter((l) => ["cerrado", "perdido", "descartado", "vendido"].includes(l.estado || "")).length,
+  }), [leads]);
   const { paged: pagedLeads, page: leadsPage, totalPages: leadsTotalPages, setPage: setLeadsPage } = usePagination(filtered);
 
   function startEdit(lead: api.Lead) {
@@ -1957,6 +1898,27 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
       </header>
       {leads.length > 0 && (
         <section className="panel filter-panel">
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
+            {(["sin_contestar", "activos", "todos", "cerrados"] as LeadFilter[]).map((key) => {
+              const labels: Record<LeadFilter, string> = {
+                todos: "Todos",
+                sin_contestar: "Sin contestar",
+                activos: "Activos",
+                cerrados: "Cerrados",
+              };
+              const isActive = filter === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`button ${isActive ? "primary" : "secondary"} xs`}
+                  onClick={() => setFilter(key)}
+                >
+                  {labels[key]} <span style={{ opacity: 0.7, marginLeft: "0.25rem" }}>({counts[key]})</span>
+                </button>
+              );
+            })}
+          </div>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar lead..." />
         </section>
       )}
