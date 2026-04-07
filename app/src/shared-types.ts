@@ -80,6 +80,7 @@ export interface User {
   company_id: number;
   full_name: string;
   username: string;
+  email: string;
   role: string;
   active: boolean;
 }

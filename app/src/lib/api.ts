@@ -108,7 +108,7 @@ export async function login(username: string, password: string): Promise<LoginRe
   // 1. Buscar usuario por username (sin comparar hash en la query)
   const { data: user, error: userErr } = await supabase
     .from("users")
-    .select("id, company_id, full_name, username, password_hash, role, active")
+    .select("id, company_id, full_name, username, email, password_hash, role, active")
     .eq("username", username)
     .eq("active", true)
     .single();
@@ -138,7 +138,7 @@ export async function login(username: string, password: string): Promise<LoginRe
   if (compErr || !company) throw new Error("Empresa no encontrada.");
 
   return {
-    user: { id: user.id, company_id: user.company_id, full_name: user.full_name, username: user.username, role: user.role, active: user.active },
+    user: { id: user.id, company_id: user.company_id, full_name: user.full_name, username: user.username, email: user.email || "", role: user.role, active: user.active },
     company,
   };
 }
@@ -147,7 +147,7 @@ export async function login(username: string, password: string): Promise<LoginRe
 // Profile / Company updates
 // ============================================================
 
-export async function updateUser(userId: number, fields: { full_name?: string; username?: string }): Promise<void> {
+export async function updateUser(userId: number, fields: { full_name?: string; username?: string; email?: string }): Promise<void> {
   const { error } = await supabase.from("users").update(fields).eq("id", userId);
   if (error) throw new Error(error.message);
 }

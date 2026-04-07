@@ -1001,6 +1001,8 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
 function ProfileView({ session }: { session: api.LoginResult }) {
   const [fullName, setFullName] = useState(session.user.full_name);
   const [username, setUsername] = useState(session.user.username);
+  // Si el usuario aún no tiene email propio, prefijar con el de la empresa
+  const [email, setEmail] = useState(session.user.email || session.company.email || "");
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1010,13 +1012,14 @@ function ProfileView({ session }: { session: api.LoginResult }) {
     e.preventDefault();
     setSaving(true); setMsg(null);
     try {
-      await api.updateUser(session.user.id, { full_name: fullName, username });
+      await api.updateUser(session.user.id, { full_name: fullName, username, email });
       // Actualizar la sesión guardada en localStorage para reflejar los cambios sin re-login
       const stored = localStorage.getItem("cc_session");
       if (stored) {
         const parsed = JSON.parse(stored);
         parsed.user.full_name = fullName;
         parsed.user.username = username;
+        parsed.user.email = email;
         localStorage.setItem("cc_session", JSON.stringify(parsed));
       }
       setMsg({ kind: "ok", text: "Perfil actualizado. Recarga para ver los cambios en la barra lateral." });
@@ -1063,6 +1066,10 @@ function ProfileView({ session }: { session: api.LoginResult }) {
           <div>
             <label className="field-label">Nombre de usuario</label>
             <input value={username} onChange={(e) => setUsername(e.target.value)} required />
+          </div>
+          <div>
+            <label className="field-label">Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@empresa.com" />
           </div>
           <div className="form-actions">
             <button type="submit" className="button primary" disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</button>

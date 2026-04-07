@@ -71,6 +71,7 @@ export async function linkOAuthSession(): Promise<LoginResult | null> {
       company_id: row.user_company_id,
       full_name: row.user_full_name,
       username: row.user_username,
+      email: row.user_email || "",
       role: row.user_role,
       active: row.user_active,
     },
