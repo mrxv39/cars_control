@@ -823,7 +823,7 @@ const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
 
 function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: api.LoginResult; onLogout: () => void; onOpenPlatform?: () => void }) {
   const companyId = session.company.id;
-  const [currentView, setCurrentView] = useState<ViewKey>("dashboard");
+  const [currentView, setCurrentView] = useState<ViewKey>("stock");
   const [vehicles, setVehicles] = useState<api.Vehicle[]>([]);
   const [allVehicles, setAllVehicles] = useState<api.Vehicle[]>([]);
   const [leads, setLeads] = useState<api.Lead[]>([]);
@@ -987,10 +987,17 @@ const MIN_PHOTOS = 40;
 const REQUIRED_DOC_TYPES = ["ficha_tecnica", "permiso_circulacion", "itv", "factura_compra"];
 
 type StockSortKey = "dias" | "leads_pendientes" | "margen" | "recientes";
+type StockFilterKey = "todos" | "pendientes" | "leads_pendientes" | "listos" | "sin_precio";
 
 function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<StockSortKey>("dias");
+  const [filterKey, setFilterKey] = useState<StockFilterKey>("todos");
+  // Mapas precargados para poder filtrar/ordenar a nivel de lista por
+  // contadores de fotos y documentos (no se puede esperar al fetch
+  // perezoso de cada StockRow para filtrar a este nivel).
+  const [photoCountMap, setPhotoCountMap] = useState<Map<number, number>>(new Map());
+  const [docTypesMap, setDocTypesMap] = useState<Map<number, Set<string>>>(new Map());
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAnio, setNewAnio] = useState("");
@@ -1001,6 +1008,29 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, o
   const [newColor, setNewColor] = useState("");
   const [newNotes, setNewNotes] = useState("");
   const [adding, setAdding] = useState(false);
+
+  // Precarga fotos+docs de todos los vehículos para poder filtrar/ordenar
+  // a nivel de lista (Promise.all paraleliza, OK para 100 coches).
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const ids = vehicles.map((v) => v.id);
+      const [photoResults, docResults] = await Promise.all([
+        Promise.all(ids.map((id) => api.listVehiclePhotos(id).catch(() => []))),
+        Promise.all(ids.map((id) => api.listVehicleDocuments(id).catch(() => []))),
+      ]);
+      if (cancelled) return;
+      const pMap = new Map<number, number>();
+      const dMap = new Map<number, Set<string>>();
+      ids.forEach((id, i) => {
+        pMap.set(id, photoResults[i].length);
+        dMap.set(id, new Set(docResults[i].map((d) => d.doc_type).filter(Boolean)));
+      });
+      setPhotoCountMap(pMap);
+      setDocTypesMap(dMap);
+    })();
+    return () => { cancelled = true; };
+  }, [vehicles]);
 
   // Mapa vehicle_id → fecha de compra más antigua (para "días en stock")
   const purchaseDateByVehicle = useMemo(() => {
@@ -1034,8 +1064,26 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, o
     return { unanswered, total };
   }, [leads]);
 
+  // Helper: ¿está el coche "completo" (40+ fotos, 4 docs)?
+  function isComplete(v: api.Vehicle): boolean {
+    const photos = photoCountMap.get(v.id) ?? 0;
+    const docs = docTypesMap.get(v.id);
+    if (photos < MIN_PHOTOS) return false;
+    if (!docs) return false;
+    return REQUIRED_DOC_TYPES.every((t) => docs.has(t));
+  }
+
   const filtered = useMemo(() => {
     let list = vehicles;
+    if (filterKey === "pendientes") {
+      list = list.filter((v) => !isComplete(v));
+    } else if (filterKey === "leads_pendientes") {
+      list = list.filter((v) => (leadCounts.unanswered.get(v.id) || 0) > 0);
+    } else if (filterKey === "listos") {
+      list = list.filter((v) => isComplete(v));
+    } else if (filterKey === "sin_precio") {
+      list = list.filter((v) => !v.precio_venta);
+    }
     const q = search.toLowerCase().trim();
     if (q) {
       list = list.filter((v) =>
@@ -1069,7 +1117,15 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, o
       // recientes
       return b.id - a.id;
     });
-  }, [vehicles, leads, search, sortBy, purchaseDateByVehicle, leadCounts]);
+  }, [vehicles, leads, search, sortBy, filterKey, purchaseDateByVehicle, leadCounts, photoCountMap, docTypesMap]);
+
+  const filterCounts = useMemo(() => ({
+    todos: vehicles.length,
+    pendientes: vehicles.filter((v) => !isComplete(v)).length,
+    leads_pendientes: vehicles.filter((v) => (leadCounts.unanswered.get(v.id) || 0) > 0).length,
+    listos: vehicles.filter((v) => isComplete(v)).length,
+    sin_precio: vehicles.filter((v) => !v.precio_venta).length,
+  }), [vehicles, leadCounts, photoCountMap, docTypesMap]);
 
   const suggestions = useMemo(() => {
     const q = newName.toLowerCase().trim();
@@ -1124,23 +1180,46 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, o
       </header>
 
       <section className="panel filter-panel">
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "nowrap" }}>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por marca, modelo, año..."
+            placeholder="Buscar..."
             className="sales-search"
-            style={{ flex: "1 1 240px" }}
+            style={{ flex: "0 0 33%", minWidth: 0 }}
           />
-          <label className="field-label" style={{ margin: 0 }}>Ordenar:</label>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as StockSortKey)} style={{ minWidth: "180px" }}>
-            <option value="dias">Más días en stock</option>
-            <option value="leads_pendientes">Más leads pendientes</option>
-            <option value="margen">Más margen</option>
-            <option value="recientes">Más recientes</option>
+          {([
+            { key: "pendientes", label: "Pendientes" },
+            { key: "leads_pendientes", label: "Con leads" },
+            { key: "listos", label: "Listos" },
+            { key: "sin_precio", label: "Sin precio" },
+          ] as { key: StockFilterKey; label: string }[]).map(({ key, label }) => {
+            const active = filterKey === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`button ${active ? "primary" : "secondary"} xs`}
+                style={{ whiteSpace: "nowrap" }}
+                // Click sobre filtro activo lo desactiva (vuelve a "todos")
+                onClick={() => setFilterKey(active ? "todos" : key)}
+              >
+                {label} <span style={{ opacity: 0.7, marginLeft: "0.25rem" }}>({filterCounts[key]})</span>
+              </button>
+            );
+          })}
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as StockSortKey)} style={{ flex: "0 0 auto" }}>
+            <option value="dias">↓ Días en stock</option>
+            <option value="leads_pendientes">↓ Leads pendientes</option>
+            <option value="margen">↓ Margen</option>
+            <option value="recientes">↓ Recientes</option>
           </select>
         </div>
-        {search && <p className="muted" style={{ margin: "0.5rem 0 0" }}>{filtered.length} resultado{filtered.length !== 1 ? "s" : ""}</p>}
+        {(search || filterKey !== "todos") && (
+          <p className="muted" style={{ margin: "0.4rem 0 0", fontSize: "0.78rem" }}>
+            {filtered.length} de {vehicles.length}
+          </p>
+        )}
       </section>
 
       {showAdd && (
@@ -1275,6 +1354,15 @@ function StockRow({ vehicle, days, leadsPendientes, onSelect }: {
 
   return (
     <article className={`stock-row stock-row-${heat}`} onClick={onSelect}>
+      <div className="stock-row-title">
+        <h3>{vehicle.name}</h3>
+        {vehicle.estado && vehicle.estado !== "disponible" && (
+          <span className="badge" style={{
+            background: vehicle.estado === "reservado" ? "#f59e0b" : vehicle.estado === "vendido" ? "#22c55e" : "#6b7280",
+            color: "#fff", fontSize: "0.7rem", padding: "2px 8px", borderRadius: 6,
+          }}>{vehicle.estado}</span>
+        )}
+      </div>
       <div className="stock-row-thumb">
         {thumbUrl ? (
           <img src={thumbUrl} alt={vehicle.name} loading="lazy" />
@@ -1283,17 +1371,8 @@ function StockRow({ vehicle, days, leadsPendientes, onSelect }: {
         )}
       </div>
       <div className="stock-row-main">
-        <div className="stock-row-title">
-          <h3>{vehicle.name}</h3>
-          {vehicle.estado && vehicle.estado !== "disponible" && (
-            <span className="badge" style={{
-              background: vehicle.estado === "reservado" ? "#f59e0b" : vehicle.estado === "vendido" ? "#22c55e" : "#6b7280",
-              color: "#fff", fontSize: "0.7rem", padding: "2px 8px", borderRadius: 6,
-            }}>{vehicle.estado}</span>
-          )}
-        </div>
         {(vehicle.anio || vehicle.km) && (
-          <p className="muted" style={{ margin: "0.2rem 0 0" }}>
+          <p className="muted" style={{ margin: "0", fontSize: "0.78rem" }}>
             {[vehicle.anio, vehicle.km ? `${vehicle.km.toLocaleString()} km` : null].filter(Boolean).join(" · ")}
           </p>
         )}
@@ -1318,7 +1397,7 @@ function StockRow({ vehicle, days, leadsPendientes, onSelect }: {
         {vehicle.precio_venta ? (
           <span className="vehicle-price">{vehicle.precio_venta.toLocaleString("es-ES")} €</span>
         ) : (
-          <span className="muted">Sin precio</span>
+          <span className="muted" style={{ fontSize: "0.78rem" }}>Sin precio</span>
         )}
       </div>
     </article>

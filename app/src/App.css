@@ -362,16 +362,20 @@ select:focus-visible {
 
 /* ===== Stock list compacto (validado Ricard 2026-04-04) ===== */
 .stock-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.5rem;
 }
 .stock-row {
   display: grid;
-  grid-template-columns: 84px 1fr auto;
-  gap: 1rem;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "title title"
+    "thumb main"
+    "price price";
+  gap: 0.4rem 0.75rem;
   align-items: center;
-  padding: 0.7rem 1rem;
+  padding: 0.5rem 0.7rem;
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border-light, rgba(0, 0, 0, 0.08));
   border-left: 4px solid var(--color-text-muted, #6b7280);
@@ -388,8 +392,9 @@ select:focus-visible {
 .stock-row-error { border-left-color: #dc2626; }
 
 .stock-row-thumb {
-  width: 84px;
-  height: 64px;
+  grid-area: thumb;
+  width: 203px;
+  aspect-ratio: 4 / 3;
   border-radius: var(--radius-sm, 6px);
   overflow: hidden;
   background: rgba(0, 0, 0, 0.04);
@@ -407,14 +412,30 @@ select:focus-visible {
   opacity: 0.4;
 }
 
-.stock-row-main { min-width: 0; }
+.stock-row-main {
+  grid-area: main;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+}
+.stock-row-title { grid-area: title; }
+.stock-row-price {
+  grid-area: price;
+  text-align: right;
+  margin-top: 0.25rem;
+}
+.stock-row-price .vehicle-price {
+  font-size: var(--text-base, 0.95rem);
+  font-weight: var(--font-bold, 700);
+}
 .stock-row-main h3 {
   margin: 0;
   font-size: var(--text-base, 0.95rem);
   font-weight: var(--font-semibold, 600);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25;
+  word-break: break-word;
 }
 .stock-row-title {
   display: flex;
@@ -448,19 +469,10 @@ select:focus-visible {
 .stock-chip.neutral { background: rgba(0, 0, 0, 0.06); }
 .stock-chip.muted   { opacity: 0.6; }
 
-.stock-row-price {
-  text-align: right;
-  white-space: nowrap;
-}
-.stock-row-price .vehicle-price {
-  font-size: var(--text-lg, 1.1rem);
+.stock-row-title .vehicle-price {
+  font-size: var(--text-sm, 0.85rem);
   font-weight: var(--font-bold, 700);
-}
-
-@media (max-width: 640px) {
-  .stock-row { grid-template-columns: 64px 1fr; }
-  .stock-row-thumb { width: 64px; height: 48px; }
-  .stock-row-price { grid-column: 1 / -1; text-align: left; padding-left: 80px; }
+  margin-left: auto;
 }
 
 .record-grid {
@@ -495,7 +507,12 @@ select:focus-visible {
 }
 
 .filter-panel {
-  padding: 1rem 1.15rem;
+  padding: 0.5rem 0.75rem;
+}
+.filter-panel input,
+.filter-panel select {
+  padding: 0.4rem 0.6rem;
+  font-size: var(--text-sm, 0.85rem);
 }
 
 .vehicle-card {
