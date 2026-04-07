@@ -1103,6 +1103,7 @@ function CompanyView({ session }: { session: api.LoginResult }) {
   const [address, setAddress] = useState(session.company.address || "");
   const [phone, setPhone] = useState(session.company.phone || "");
   const [email, setEmail] = useState(session.company.email || "");
+  const [website, setWebsite] = useState(session.company.website || "");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -1111,12 +1112,12 @@ function CompanyView({ session }: { session: api.LoginResult }) {
     setSaving(true); setMsg(null);
     try {
       await api.updateCompany(session.company.id, {
-        trade_name: tradeName, legal_name: legalName, cif, address, phone, email,
+        trade_name: tradeName, legal_name: legalName, cif, address, phone, email, website,
       });
       const stored = localStorage.getItem("cc_session");
       if (stored) {
         const parsed = JSON.parse(stored);
-        parsed.company = { ...parsed.company, trade_name: tradeName, legal_name: legalName, cif, address, phone, email };
+        parsed.company = { ...parsed.company, trade_name: tradeName, legal_name: legalName, cif, address, phone, email, website };
         localStorage.setItem("cc_session", JSON.stringify(parsed));
       }
       setMsg({ kind: "ok", text: "Datos de empresa actualizados. Recarga para ver los cambios en la barra lateral." });
@@ -1164,6 +1165,10 @@ function CompanyView({ session }: { session: api.LoginResult }) {
           <div>
             <label className="field-label">Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Web</label>
+            <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://www.coches.net/concesionario/..." />
           </div>
           <div>
             <label className="field-label">Dirección</label>

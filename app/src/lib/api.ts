@@ -166,6 +166,7 @@ export async function updateCompany(companyId: number, fields: Partial<{
   address: string;
   phone: string;
   email: string;
+  website: string;
 }>): Promise<void> {
   const { error } = await supabase.from("companies").update(fields).eq("id", companyId);
   if (error) throw new Error(error.message);

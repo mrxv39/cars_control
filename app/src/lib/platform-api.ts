@@ -83,6 +83,7 @@ export async function linkOAuthSession(): Promise<LoginResult | null> {
       address: row.company_address,
       phone: row.company_phone,
       email: row.company_email,
+      website: row.company_website || "",
       created_at: "",
     },
   };

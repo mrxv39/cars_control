@@ -72,6 +72,7 @@ export interface Company {
   address: string;
   phone: string;
   email: string;
+  website: string;
   created_at: string;
 }
 
