@@ -55,3 +55,8 @@ supabase/functions/   — Edge functions (sync-leads)
 ## Pendiente
 
 - Viabilidad de automatizar petición provisional circulación a Gestoría Ruppmann
+
+## Sesiones de validación
+
+- `docs/flujos_trabajo_validacion.html` — validación inicial 2026-04-03
+- `docs/flujos_sesion_2026-04-04.md` — nuevas funcionalidades sesión 2026-04-04 (bot leads, rediseño stock, autocompletado reparaciones, seguro por días, formulario financiación)

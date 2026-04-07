@@ -1033,7 +1033,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
           />
         )}
         {currentView === "stock" && !selectedVehicle && (
-          <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
+          <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} onSelect={setSelectedVehicle} onReload={loadAll} />
         )}
         {currentView === "stock" && selectedVehicle && (
           <VehicleDetail vehicle={selectedVehicle} suppliers={suppliers} leads={leads} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
@@ -1062,8 +1062,18 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
 // ============================================================
 // Stock List
 // ============================================================
-function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
+// Mínimo de fotos validado con Ricard (sesión 2026-04-04): un coche está
+// "listo" para ser publicado/vendido cuando tiene al menos 40 fotos.
+const MIN_PHOTOS = 40;
+// Tipos de documento que cuentan para el checklist de "coche completo"
+// (validado en docs/flujos_sesion_2026-04-04.md §2)
+const REQUIRED_DOC_TYPES = ["ficha_tecnica", "permiso_circulacion", "itv", "factura_compra"];
+
+type StockSortKey = "dias" | "leads_pendientes" | "margen" | "recientes";
+
+function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<StockSortKey>("dias");
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAnio, setNewAnio] = useState("");
@@ -1075,6 +1085,38 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
   const [newNotes, setNewNotes] = useState("");
   const [adding, setAdding] = useState(false);
 
+  // Mapa vehicle_id → fecha de compra más antigua (para "días en stock")
+  const purchaseDateByVehicle = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const p of purchaseRecords) {
+      if (p.expense_type !== "COMPRA_VEHICULO" || !p.vehicle_id || !p.purchase_date) continue;
+      const existing = map.get(p.vehicle_id);
+      if (!existing || p.purchase_date < existing) map.set(p.vehicle_id, p.purchase_date);
+    }
+    return map;
+  }, [purchaseRecords]);
+
+  function daysInStock(vehicleId: number): number | null {
+    const date = purchaseDateByVehicle.get(vehicleId);
+    if (!date) return null;
+    const ms = Date.now() - new Date(date).getTime();
+    if (Number.isNaN(ms)) return null;
+    return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+  }
+
+  const leadCounts = useMemo(() => {
+    const unanswered = new Map<number, number>();
+    const total = new Map<number, number>();
+    for (const l of leads) {
+      if (!l.vehicle_id) continue;
+      total.set(l.vehicle_id, (total.get(l.vehicle_id) || 0) + 1);
+      if (l.estado === "nuevo" || !l.estado) {
+        unanswered.set(l.vehicle_id, (unanswered.get(l.vehicle_id) || 0) + 1);
+      }
+    }
+    return { unanswered, total };
+  }, [leads]);
+
   const filtered = useMemo(() => {
     let list = vehicles;
     const q = search.toLowerCase().trim();
@@ -1084,26 +1126,33 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
           .some((field) => field.toLowerCase().includes(q))
       );
     }
-    // Sort: 1) leads sin respuesta, 2) más leads, 3) más antiguos
-    const unanswered = new Map<number, number>();
-    const totalLeads = new Map<number, number>();
-    for (const l of leads) {
-      if (!l.vehicle_id) continue;
-      totalLeads.set(l.vehicle_id, (totalLeads.get(l.vehicle_id) || 0) + 1);
-      if (l.estado === "nuevo" || !l.estado) {
-        unanswered.set(l.vehicle_id, (unanswered.get(l.vehicle_id) || 0) + 1);
-      }
-    }
     return [...list].sort((a, b) => {
-      const ua = unanswered.get(a.id) || 0;
-      const ub = unanswered.get(b.id) || 0;
-      if (ua !== ub) return ub - ua;
-      const la = totalLeads.get(a.id) || 0;
-      const lb = totalLeads.get(b.id) || 0;
-      if (la !== lb) return lb - la;
-      return a.id - b.id;
+      if (sortBy === "dias") {
+        const da = daysInStock(a.id);
+        const db = daysInStock(b.id);
+        // Sin fecha → al final
+        if (da === null && db === null) return a.id - b.id;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return db - da; // más antiguos primero
+      }
+      if (sortBy === "leads_pendientes") {
+        const ua = leadCounts.unanswered.get(a.id) || 0;
+        const ub = leadCounts.unanswered.get(b.id) || 0;
+        if (ua !== ub) return ub - ua;
+        const la = leadCounts.total.get(a.id) || 0;
+        const lb = leadCounts.total.get(b.id) || 0;
+        return lb - la;
+      }
+      if (sortBy === "margen") {
+        const ma = (a.precio_venta || 0) - (a.precio_compra || 0);
+        const mb = (b.precio_venta || 0) - (b.precio_compra || 0);
+        return mb - ma;
+      }
+      // recientes
+      return b.id - a.id;
     });
-  }, [vehicles, leads, search]);
+  }, [vehicles, leads, search, sortBy, purchaseDateByVehicle, leadCounts]);
 
   const suggestions = useMemo(() => {
     const q = newName.toLowerCase().trim();
@@ -1158,12 +1207,22 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
       </header>
 
       <section className="panel filter-panel">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por marca, modelo, año..."
-          className="sales-search"
-        />
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por marca, modelo, año..."
+            className="sales-search"
+            style={{ flex: "1 1 240px" }}
+          />
+          <label className="field-label" style={{ margin: 0 }}>Ordenar:</label>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as StockSortKey)} style={{ minWidth: "180px" }}>
+            <option value="dias">Más días en stock</option>
+            <option value="leads_pendientes">Más leads pendientes</option>
+            <option value="margen">Más margen</option>
+            <option value="recientes">Más recientes</option>
+          </select>
+        </div>
         {search && <p className="muted" style={{ margin: "0.5rem 0 0" }}>{filtered.length} resultado{filtered.length !== 1 ? "s" : ""}</p>}
       </section>
 
@@ -1242,18 +1301,15 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
         </section>
       )}
 
-      <section className="stock-grid" aria-live="polite">
+      <section className="stock-list" aria-live="polite">
         {filtered.map((v) => (
-          <article key={v.id} className="vehicle-card vehicle-card-clickable" onClick={() => onSelect(v)}>
-            <VehicleThumb vehicleId={v.id} vehicleName={v.name} />
-            <div className="vehicle-copy">
-              <h3>{v.name}</h3>
-              {(v.anio || v.km) && (
-                <p className="muted">{[v.anio, v.km ? `${v.km.toLocaleString()} km` : null].filter(Boolean).join(" · ")}</p>
-              )}
-              {v.precio_venta && <p className="vehicle-price">{v.precio_venta.toLocaleString("es-ES")} €</p>}
-            </div>
-          </article>
+          <StockRow
+            key={v.id}
+            vehicle={v}
+            days={daysInStock(v.id)}
+            leadsPendientes={leadCounts.unanswered.get(v.id) || 0}
+            onSelect={() => onSelect(v)}
+          />
         ))}
       </section>
     </>
@@ -1261,21 +1317,94 @@ function StockList({ vehicles, allVehicles, leads, companyId, onSelect, onReload
 }
 
 // ============================================================
-// Vehicle Thumbnail (loads from Supabase Storage)
+// Stock Row — fila compacta con checklist (fotos, docs, días)
 // ============================================================
-function VehicleThumb({ vehicleId, vehicleName }: { vehicleId: number; vehicleName?: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  React.useEffect(() => {
-    void api.listVehiclePhotos(vehicleId).then((photos) => {
-      if (photos.length > 0) setUrl(photos[0].url);
-    });
-  }, [vehicleId]);
+// Validado con Ricard 2026-04-04: la vista de stock debe mostrar de un vistazo
+// qué le falta a cada coche, no la foto grande. Foto grande es para el cliente.
+function StockRow({ vehicle, days, leadsPendientes, onSelect }: {
+  vehicle: api.Vehicle;
+  days: number | null;
+  leadsPendientes: number;
+  onSelect: () => void;
+}) {
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  const [photoCount, setPhotoCount] = useState<number | null>(null);
+  const [docTypes, setDocTypes] = useState<Set<string> | null>(null);
 
-  if (!url) return null;
+  React.useEffect(() => {
+    let cancelled = false;
+    void api.listVehiclePhotos(vehicle.id).then((photos) => {
+      if (cancelled) return;
+      setPhotoCount(photos.length);
+      if (photos.length > 0) setThumbUrl(photos[0].url);
+    });
+    void api.listVehicleDocuments(vehicle.id).then((docs) => {
+      if (cancelled) return;
+      setDocTypes(new Set(docs.map((d) => d.doc_type).filter(Boolean)));
+    }).catch(() => { if (!cancelled) setDocTypes(new Set()); });
+    return () => { cancelled = true; };
+  }, [vehicle.id]);
+
+  const photosOk = (photoCount ?? 0) >= MIN_PHOTOS;
+  const photosClass = photoCount === null ? "stock-chip muted" : photosOk ? "stock-chip ok" : (photoCount === 0 ? "stock-chip error" : "stock-chip warn");
+  const docsHave = docTypes ? REQUIRED_DOC_TYPES.filter((t) => docTypes.has(t)).length : 0;
+  const docsOk = docsHave === REQUIRED_DOC_TYPES.length;
+  const docsClass = docTypes === null ? "stock-chip muted" : docsOk ? "stock-chip ok" : (docsHave === 0 ? "stock-chip error" : "stock-chip warn");
+
+  // Mapa de calor global de la fila
+  const heat: "ok" | "warn" | "error" =
+    photoCount === 0 || docsHave === 0 ? "error" :
+    !photosOk || !docsOk ? "warn" : "ok";
+
   return (
-    <div className="thumb-frame">
-      <img src={url} className="thumb-image" alt={vehicleName || ""} loading="lazy" />
-    </div>
+    <article className={`stock-row stock-row-${heat}`} onClick={onSelect}>
+      <div className="stock-row-thumb">
+        {thumbUrl ? (
+          <img src={thumbUrl} alt={vehicle.name} loading="lazy" />
+        ) : (
+          <div className="stock-row-thumb-empty">📷</div>
+        )}
+      </div>
+      <div className="stock-row-main">
+        <div className="stock-row-title">
+          <h3>{vehicle.name}</h3>
+          {vehicle.estado && vehicle.estado !== "disponible" && (
+            <span className="badge" style={{
+              background: vehicle.estado === "reservado" ? "#f59e0b" : vehicle.estado === "vendido" ? "#22c55e" : "#6b7280",
+              color: "#fff", fontSize: "0.7rem", padding: "2px 8px", borderRadius: 6,
+            }}>{vehicle.estado}</span>
+          )}
+        </div>
+        {(vehicle.anio || vehicle.km) && (
+          <p className="muted" style={{ margin: "0.2rem 0 0" }}>
+            {[vehicle.anio, vehicle.km ? `${vehicle.km.toLocaleString()} km` : null].filter(Boolean).join(" · ")}
+          </p>
+        )}
+        <div className="stock-chips">
+          <span className={photosClass} title={`${photoCount ?? "?"} fotos (mínimo ${MIN_PHOTOS})`}>
+            📷 {photoCount ?? "…"}/{MIN_PHOTOS}
+          </span>
+          <span className={docsClass} title="Ficha técnica, permiso de circulación, ITV, factura de compra">
+            📄 {docsHave}/{REQUIRED_DOC_TYPES.length}
+          </span>
+          <span className="stock-chip neutral" title="Días desde la fecha de compra">
+            ⏱ {days === null ? "—" : `${days}d`}
+          </span>
+          {leadsPendientes > 0 && (
+            <span className="stock-chip info" title="Leads sin contestar">
+              💬 {leadsPendientes}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="stock-row-price">
+        {vehicle.precio_venta ? (
+          <span className="vehicle-price">{vehicle.precio_venta.toLocaleString("es-ES")} €</span>
+        ) : (
+          <span className="muted">Sin precio</span>
+        )}
+      </div>
+    </article>
   );
 }
 
