@@ -26,7 +26,7 @@ function useConfirmDialog() {
   return { confirmProps: { open: state.open, title: state.title, message: state.message, onConfirm: confirm, onCancel: cancel }, requestConfirm };
 }
 
-type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision";
+type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision" | "profile" | "company";
 
 function WebApp() {
   const [page, setPage] = useState<"catalog" | "login" | "register" | "admin" | "platform">(() => {
@@ -890,8 +890,22 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       <aside className={`sidebar ${mobileMenuOpen ? "sidebar-open" : ""}`}>
         <div>
           <p className="eyebrow">Cars Control</p>
-          <h1 className="sidebar-title">{session.company.trade_name}</h1>
-          <p className="muted">{session.user.full_name} ({session.user.role})</p>
+          <button
+            type="button"
+            className="sidebar-link"
+            onClick={() => { setCurrentView("company"); setMobileMenuOpen(false); }}
+            title="Editar datos de empresa"
+          >
+            <h1 className="sidebar-title">{session.company.trade_name}</h1>
+          </button>
+          <button
+            type="button"
+            className="sidebar-link"
+            onClick={() => { setCurrentView("profile"); setMobileMenuOpen(false); }}
+            title="Editar mi perfil"
+          >
+            <p className="muted" style={{ margin: 0 }}>{session.user.full_name} ({session.user.role})</p>
+          </button>
         </div>
         <div style={{ position: "relative" }}>
           <input
@@ -962,6 +976,8 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}
         {currentView === "suppliers" && <SuppliersList suppliers={suppliers} companyId={companyId} onReload={loadAll} />}
         {currentView === "revision" && <RevisionSheet vehicles={allVehicles} companyId={companyId} />}
+        {currentView === "profile" && <ProfileView session={session} />}
+        {currentView === "company" && <CompanyView session={session} />}
       </section>
 
       <FeedbackButton
@@ -979,6 +995,182 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
 // ============================================================
 // Stock List
 // ============================================================
+// ============================================================
+// Profile / Company views
+// ============================================================
+function ProfileView({ session }: { session: api.LoginResult }) {
+  const [fullName, setFullName] = useState(session.user.full_name);
+  const [username, setUsername] = useState(session.user.username);
+  const [pw1, setPw1] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  async function saveProfile(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true); setMsg(null);
+    try {
+      await api.updateUser(session.user.id, { full_name: fullName, username });
+      // Actualizar la sesión guardada en localStorage para reflejar los cambios sin re-login
+      const stored = localStorage.getItem("cc_session");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.user.full_name = fullName;
+        parsed.user.username = username;
+        localStorage.setItem("cc_session", JSON.stringify(parsed));
+      }
+      setMsg({ kind: "ok", text: "Perfil actualizado. Recarga para ver los cambios en la barra lateral." });
+    } catch (err: any) {
+      setMsg({ kind: "err", text: err.message || "Error guardando perfil" });
+    } finally { setSaving(false); }
+  }
+
+  async function changePassword(e: FormEvent) {
+    e.preventDefault();
+    if (pw1.length < 6) { setMsg({ kind: "err", text: "La contraseña debe tener al menos 6 caracteres" }); return; }
+    if (pw1 !== pw2) { setMsg({ kind: "err", text: "Las contraseñas no coinciden" }); return; }
+    setSaving(true); setMsg(null);
+    try {
+      await api.updateUserPassword(session.user.id, pw1);
+      setPw1(""); setPw2("");
+      setMsg({ kind: "ok", text: "Contraseña actualizada correctamente" });
+    } catch (err: any) {
+      setMsg({ kind: "err", text: err.message || "Error cambiando contraseña" });
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <>
+      <header className="hero">
+        <div>
+          <p className="eyebrow">Mi cuenta</p>
+          <h2>Perfil de usuario</h2>
+          <p className="muted">Rol: {session.user.role}</p>
+        </div>
+      </header>
+      {msg && (
+        <section className="panel" style={{ padding: "0.75rem 1rem", marginBottom: "1rem", background: msg.kind === "ok" ? "var(--color-bg-success, #f0fdf4)" : "var(--color-bg-error, #fef2f2)" }}>
+          <p style={{ margin: 0, color: msg.kind === "ok" ? "#15803d" : "#b91c1c" }}>{msg.text}</p>
+        </section>
+      )}
+      <section className="panel" style={{ padding: "1.25rem", maxWidth: "560px" }}>
+        <h3 style={{ margin: "0 0 1rem" }}>Datos personales</h3>
+        <form onSubmit={(e) => void saveProfile(e)} className="form-stack">
+          <div>
+            <label className="field-label">Nombre completo</label>
+            <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+          </div>
+          <div>
+            <label className="field-label">Nombre de usuario</label>
+            <input value={username} onChange={(e) => setUsername(e.target.value)} required />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="button primary" disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</button>
+          </div>
+        </form>
+      </section>
+      <section className="panel" style={{ padding: "1.25rem", maxWidth: "560px", marginTop: "1rem" }}>
+        <h3 style={{ margin: "0 0 1rem" }}>Cambiar contraseña</h3>
+        <form onSubmit={(e) => void changePassword(e)} className="form-stack">
+          <div>
+            <label className="field-label">Nueva contraseña</label>
+            <input type="password" value={pw1} onChange={(e) => setPw1(e.target.value)} autoComplete="new-password" required />
+          </div>
+          <div>
+            <label className="field-label">Repetir contraseña</label>
+            <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" required />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="button primary" disabled={saving}>{saving ? "Cambiando..." : "Cambiar contraseña"}</button>
+          </div>
+        </form>
+      </section>
+    </>
+  );
+}
+
+function CompanyView({ session }: { session: api.LoginResult }) {
+  const [tradeName, setTradeName] = useState(session.company.trade_name);
+  const [legalName, setLegalName] = useState(session.company.legal_name || "");
+  const [cif, setCif] = useState(session.company.cif || "");
+  const [address, setAddress] = useState(session.company.address || "");
+  const [phone, setPhone] = useState(session.company.phone || "");
+  const [email, setEmail] = useState(session.company.email || "");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true); setMsg(null);
+    try {
+      await api.updateCompany(session.company.id, {
+        trade_name: tradeName, legal_name: legalName, cif, address, phone, email,
+      });
+      const stored = localStorage.getItem("cc_session");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.company = { ...parsed.company, trade_name: tradeName, legal_name: legalName, cif, address, phone, email };
+        localStorage.setItem("cc_session", JSON.stringify(parsed));
+      }
+      setMsg({ kind: "ok", text: "Datos de empresa actualizados. Recarga para ver los cambios en la barra lateral." });
+    } catch (err: any) {
+      setMsg({ kind: "err", text: err.message || "Error guardando empresa" });
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <>
+      <header className="hero">
+        <div>
+          <p className="eyebrow">Empresa</p>
+          <h2>Datos de la empresa</h2>
+          <p className="muted">Estos datos se usarán en facturas, contratos y documentos generados por la app.</p>
+        </div>
+      </header>
+      {msg && (
+        <section className="panel" style={{ padding: "0.75rem 1rem", marginBottom: "1rem", background: msg.kind === "ok" ? "var(--color-bg-success, #f0fdf4)" : "var(--color-bg-error, #fef2f2)" }}>
+          <p style={{ margin: 0, color: msg.kind === "ok" ? "#15803d" : "#b91c1c" }}>{msg.text}</p>
+        </section>
+      )}
+      <section className="panel" style={{ padding: "1.25rem", maxWidth: "720px" }}>
+        <form onSubmit={(e) => void save(e)} className="form-stack">
+          <div className="form-grid-2">
+            <div>
+              <label className="field-label required">Nombre comercial</label>
+              <input value={tradeName} onChange={(e) => setTradeName(e.target.value)} required />
+            </div>
+            <div>
+              <label className="field-label">Razón social</label>
+              <input value={legalName} onChange={(e) => setLegalName(e.target.value)} />
+            </div>
+          </div>
+          <div className="form-grid-2">
+            <div>
+              <label className="field-label">CIF / NIF</label>
+              <input value={cif} onChange={(e) => setCif(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label">Teléfono</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="field-label">Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Dirección</label>
+            <input value={address} onChange={(e) => setAddress(e.target.value)} />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="button primary" disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</button>
+          </div>
+        </form>
+      </section>
+    </>
+  );
+}
+
 // Mínimo de fotos validado con Ricard (sesión 2026-04-04): un coche está
 // "listo" para ser publicado/vendido cuando tiene al menos 40 fotos.
 const MIN_PHOTOS = 40;

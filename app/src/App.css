@@ -360,6 +360,21 @@ select:focus-visible {
   gap: 1rem;
 }
 
+/* Botones-link en el header del sidebar (acceso a perfil/empresa) */
+.sidebar-link {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  width: 100%;
+  display: block;
+}
+.sidebar-link:hover .sidebar-title,
+.sidebar-link:hover p { opacity: 0.85; text-decoration: underline; }
+.sidebar-link .sidebar-title { margin: 0; }
+
 /* ===== Stock list compacto (validado Ricard 2026-04-04) ===== */
 .stock-list {
   display: grid;

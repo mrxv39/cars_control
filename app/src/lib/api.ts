@@ -144,6 +144,34 @@ export async function login(username: string, password: string): Promise<LoginRe
 }
 
 // ============================================================
+// Profile / Company updates
+// ============================================================
+
+export async function updateUser(userId: number, fields: { full_name?: string; username?: string }): Promise<void> {
+  const { error } = await supabase.from("users").update(fields).eq("id", userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateUserPassword(userId: number, newPassword: string): Promise<void> {
+  const { hashPassword } = await import("./hash");
+  const password_hash = await hashPassword(newPassword);
+  const { error } = await supabase.from("users").update({ password_hash }).eq("id", userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateCompany(companyId: number, fields: Partial<{
+  trade_name: string;
+  legal_name: string;
+  cif: string;
+  address: string;
+  phone: string;
+  email: string;
+}>): Promise<void> {
+  const { error } = await supabase.from("companies").update(fields).eq("id", companyId);
+  if (error) throw new Error(error.message);
+}
+
+// ============================================================
 // Vehicles
 // ============================================================
 
