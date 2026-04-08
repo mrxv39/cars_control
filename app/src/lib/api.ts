@@ -114,6 +114,13 @@ export interface VehiclePhoto {
   vehicle_id: number;
   file_name: string;
   url: string;
+  /**
+   * URL transformada (~400px, calidad 70) para listados/thumbnails.
+   * Requiere Storage transforms (plan Pro). Si no hay storage_path
+   * (foto importada de coches.net con source_url), es null y el caller
+   * debe caer a `url`.
+   */
+  thumbUrl: string | null;
   is_primary?: boolean;
 }
 
@@ -549,6 +556,14 @@ export async function listVehiclePhotos(vehicleId: number): Promise<VehiclePhoto
     url: p.storage_path
       ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path).data.publicUrl
       : (p.source_url || ""),
+    // Thumb redimensionado para listados (Storage transforms, plan Pro).
+    // Reduce ~9× el peso del listado de stock. Solo aplicable a fotos en Storage;
+    // las importadas de coches.net no se pueden transformar.
+    thumbUrl: p.storage_path
+      ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path, {
+          transform: { width: 400, quality: 70 },
+        }).data.publicUrl
+      : null,
   }));
 }
 
@@ -758,6 +773,74 @@ export async function updateSupplier(id: number, input: Partial<Supplier>): Prom
 export async function deleteSupplier(id: number): Promise<void> {
   const { error } = await supabase.from("suppliers").delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+// ============================================================
+// Vehicle list summary (resúmenes batch para el listado de Stock)
+// ============================================================
+
+/**
+ * Resumen ligero de fotos para muchos vehículos en UNA sola query.
+ * Se usa en el listado de Stock para mostrar el contador de fotos
+ * y la miniatura, sin tener que hacer N queries (una por coche).
+ *
+ * Devuelve, por vehicle_id: cantidad de fotos y URL miniatura
+ * (transformada a 400px si está en Storage; si no, source_url externo).
+ */
+export async function getStockPhotoSummary(
+  vehicleIds: number[],
+): Promise<Map<number, { count: number; thumbUrl: string | null }>> {
+  const result = new Map<number, { count: number; thumbUrl: string | null }>();
+  if (vehicleIds.length === 0) return result;
+  const { data, error } = await supabase
+    .from("vehicle_photos")
+    .select("vehicle_id, storage_path, source_url, is_primary, created_at")
+    .in("vehicle_id", vehicleIds)
+    .order("is_primary", { ascending: false })
+    .order("created_at");
+  if (error) throw new Error(error.message);
+  for (const row of data || []) {
+    const entry = result.get(row.vehicle_id) ?? { count: 0, thumbUrl: null };
+    entry.count += 1;
+    // El primer registro por vehículo (gracias al ORDER BY is_primary DESC, created_at)
+    // es la foto principal: úsala como miniatura del listado.
+    if (entry.thumbUrl === null) {
+      if (row.storage_path) {
+        entry.thumbUrl = supabase.storage
+          .from("vehicle-photos")
+          .getPublicUrl(row.storage_path, { transform: { width: 400, quality: 70 } })
+          .data.publicUrl;
+      } else if (row.source_url) {
+        entry.thumbUrl = row.source_url;
+      }
+    }
+    result.set(row.vehicle_id, entry);
+  }
+  return result;
+}
+
+/**
+ * Resumen ligero de documentos para muchos vehículos en UNA sola query.
+ * Solo trae `vehicle_id` y `doc_type` — NO genera signed URLs (innecesarias
+ * para el listado, que solo muestra checkmarks de qué docs faltan).
+ */
+export async function getStockDocSummary(
+  vehicleIds: number[],
+): Promise<Map<number, Set<string>>> {
+  const result = new Map<number, Set<string>>();
+  if (vehicleIds.length === 0) return result;
+  const { data, error } = await supabase
+    .from("vehicle_documents")
+    .select("vehicle_id, doc_type")
+    .in("vehicle_id", vehicleIds);
+  if (error) throw new Error(error.message);
+  for (const row of data || []) {
+    if (!row.doc_type) continue;
+    const entry = result.get(row.vehicle_id) ?? new Set<string>();
+    entry.add(row.doc_type);
+    result.set(row.vehicle_id, entry);
+  }
+  return result;
 }
 
 // ============================================================

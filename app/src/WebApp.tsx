@@ -1286,6 +1286,7 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
   // contadores de fotos y documentos (no se puede esperar al fetch
   // perezoso de cada StockRow para filtrar a este nivel).
   const [photoCountMap, setPhotoCountMap] = useState<Map<number, number>>(new Map());
+  const [photoFirstUrlMap, setPhotoFirstUrlMap] = useState<Map<number, string>>(new Map());
   const [docTypesMap, setDocTypesMap] = useState<Map<number, Set<string>>>(new Map());
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
@@ -1298,25 +1299,27 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
   const [newNotes, setNewNotes] = useState("");
   const [adding, setAdding] = useState(false);
 
-  // Precarga fotos+docs de todos los vehículos para poder filtrar/ordenar
-  // a nivel de lista (Promise.all paraleliza, OK para 100 coches).
+  // Precarga resúmenes de fotos+docs de todos los vehículos en DOS queries
+  // batched (.in()) en lugar de 2N queries individuales. Validado 2026-04-08:
+  // con 30 coches pasamos de ~60 round-trips a 2.
   React.useEffect(() => {
     let cancelled = false;
     void (async () => {
       const ids = vehicles.map((v) => v.id);
-      const [photoResults, docResults] = await Promise.all([
-        Promise.all(ids.map((id) => api.listVehiclePhotos(id).catch(() => []))),
-        Promise.all(ids.map((id) => api.listVehicleDocuments(id).catch(() => []))),
+      const [photoSummary, docSummary] = await Promise.all([
+        api.getStockPhotoSummary(ids).catch(() => new Map()),
+        api.getStockDocSummary(ids).catch(() => new Map()),
       ]);
       if (cancelled) return;
       const pMap = new Map<number, number>();
-      const dMap = new Map<number, Set<string>>();
-      ids.forEach((id, i) => {
-        pMap.set(id, photoResults[i].length);
-        dMap.set(id, new Set(docResults[i].map((d) => d.doc_type).filter(Boolean)));
-      });
+      const uMap = new Map<number, string>();
+      for (const [id, info] of photoSummary) {
+        pMap.set(id, info.count);
+        if (info.thumbUrl) uMap.set(id, info.thumbUrl);
+      }
       setPhotoCountMap(pMap);
-      setDocTypesMap(dMap);
+      setPhotoFirstUrlMap(uMap);
+      setDocTypesMap(docSummary);
     })();
     return () => { cancelled = true; };
   }, [vehicles]);
@@ -1593,6 +1596,9 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
             vehicle={v}
             days={daysInStock(v.id)}
             leadsPendientes={leadCounts.unanswered.get(v.id) || 0}
+            photoCount={photoCountMap.get(v.id) ?? null}
+            thumbUrl={photoFirstUrlMap.get(v.id) ?? null}
+            docTypes={docTypesMap.get(v.id) ?? null}
             onSelect={() => onSelect(v)}
           />
         ))}
@@ -1694,29 +1700,15 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
 // ============================================================
 // Validado con Ricard 2026-04-04: la vista de stock debe mostrar de un vistazo
 // qué le falta a cada coche, no la foto grande. Foto grande es para el cliente.
-function StockRow({ vehicle, days, leadsPendientes, onSelect }: {
+function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTypes, onSelect }: {
   vehicle: api.Vehicle;
   days: number | null;
   leadsPendientes: number;
+  photoCount: number | null;
+  thumbUrl: string | null;
+  docTypes: Set<string> | null;
   onSelect: () => void;
 }) {
-  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
-  const [photoCount, setPhotoCount] = useState<number | null>(null);
-  const [docTypes, setDocTypes] = useState<Set<string> | null>(null);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    void api.listVehiclePhotos(vehicle.id).then((photos) => {
-      if (cancelled) return;
-      setPhotoCount(photos.length);
-      if (photos.length > 0) setThumbUrl(photos[0].url);
-    });
-    void api.listVehicleDocuments(vehicle.id).then((docs) => {
-      if (cancelled) return;
-      setDocTypes(new Set(docs.map((d) => d.doc_type).filter(Boolean)));
-    }).catch(() => { if (!cancelled) setDocTypes(new Set()); });
-    return () => { cancelled = true; };
-  }, [vehicle.id]);
 
   const photosOk = (photoCount ?? 0) >= MIN_PHOTOS;
   const photosClass = photoCount === null ? "stock-chip muted" : photosOk ? "stock-chip ok" : (photoCount === 0 ? "stock-chip error" : "stock-chip warn");

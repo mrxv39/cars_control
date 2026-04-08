@@ -94,6 +94,43 @@ si añades patrones nuevos aquí, actualízalos también allí.
 ## Pendiente
 
 - Viabilidad de automatizar petición provisional circulación a Gestoría Ruppmann
+- Descargar fotos importadas de coches.net (`source_url`) a Storage propio para
+  poder transformarlas (~5 MB de bandwidth en el listado de Stock vienen de ahí)
+- Lazy-load real con IntersectionObserver en el listado de Stock (mejora TTI
+  aunque no `Finish`)
+
+## Performance — reglas para el listado de Stock
+
+Validado 2026-04-08 tras llevar `StockTab` de **12.6s a 4.7s** de carga:
+
+### Regla N+1: prohibido en vistas de listado
+
+NUNCA hagas `Promise.all(ids.map((id) => api.fooByVehicle(id)))` en una vista
+de listado. Con 30 coches eso son 30 round-trips serializados por las 6
+conexiones HTTP del navegador. Usa siempre **una sola query batched con `.in()`**
+y agrupa client-side.
+
+Patrones aprobados:
+- `getStockPhotoSummary(ids)` — fotos en bulk para el listado (ver `api.ts`)
+- `getStockDocSummary(ids)` — solo `vehicle_id` + `doc_type`, SIN signed URLs
+  (las URLs solo se generan en la vista de detalle, donde sí se usan)
+
+### Regla: las cards de un listado NO hacen fetch propio
+
+Las filas (`StockRow`, similares) deben recibir todo lo que pintan **por props**
+desde el padre que ya hizo el preload batch. Si una card monta su propio
+`useEffect` con `fetch...` por vehículo, multiplicas el N+1.
+
+### Thumbnails con Storage Transforms (plan Pro)
+
+`vehicle-photos` está en plan Pro de Supabase, con transforms habilitados.
+Para el listado usar siempre `getPublicUrl(path, { transform: { width: 400, quality: 70 } })`.
+Reduce el peso ~9× (779 KB → 86 KB típico). Para vista detalle se sirve el original.
+El campo `VehiclePhoto.thumbUrl` ya hace esta transformación; el listado usa `thumbUrl`,
+el detalle usa `url`.
+
+Las fotos de coches.net importadas (`source_url`) NO se pueden transformar
+porque son externas — `thumbUrl` es null en ese caso y el caller cae al original.
 
 ## Convenciones de fotos del vehículo
 
@@ -113,3 +150,4 @@ Validado Ricard 2026-04-08:
 - `docs/flujos_trabajo_validacion.html` — validación inicial 2026-04-03
 - `docs/flujos_sesion_2026-04-04.md` — nuevas funcionalidades sesión 2026-04-04 (bot leads, rediseño stock, autocompletado reparaciones, seguro por días, formulario financiación)
 - Sesión 2026-04-08: import zip stock, fusión coches.net+zip, foto principal, fix privacidad RGPD
+- Sesión 2026-04-08 (perf): listado de Stock 12.6s → 4.7s — batch queries `.in()` + thumbnails Storage Transforms
