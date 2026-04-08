@@ -95,7 +95,21 @@ si añades patrones nuevos aquí, actualízalos también allí.
 
 - Viabilidad de automatizar petición provisional circulación a Gestoría Ruppmann
 
+## Convenciones de fotos del vehículo
+
+Validado Ricard 2026-04-08:
+
+- **Foto principal** del coche en el listado de stock = la frontal-lateral 3/4
+  (3/4 frontal con lateral izquierdo). NO una random.
+- En la BD: `vehicle_photos.is_primary boolean`. Solo una `true` por vehículo.
+- El listado usa la primaria si existe (`ORDER BY is_primary DESC, created_at`).
+- En la ficha del vehículo, cada foto tiene un botón ★/☆ para marcar como principal.
+- Heurística automática al importar del zip de Ricard: si hay un archivo
+  llamado `1.jpg` / `1.jpeg`, se marca como principal (Ricard suele numerar
+  así su foto hero).
+
 ## Sesiones de validación
 
 - `docs/flujos_trabajo_validacion.html` — validación inicial 2026-04-03
 - `docs/flujos_sesion_2026-04-04.md` — nuevas funcionalidades sesión 2026-04-04 (bot leads, rediseño stock, autocompletado reparaciones, seguro por días, formulario financiación)
+- Sesión 2026-04-08: import zip stock, fusión coches.net+zip, foto principal, fix privacidad RGPD
