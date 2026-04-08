@@ -91,6 +91,68 @@ si añades patrones nuevos aquí, actualízalos también allí.
 5. **Si encuentras un archivo sensible mal ubicado**: borrarlo del bucket público
    inmediatamente, moverlo al privado, avisar al usuario.
 
+## 🔴 SEGURIDAD — datos bancarios (bank_transactions)
+
+> Migración 012 (2026-04-08) introduce las tablas `bank_accounts`,
+> `bank_transactions` y `bank_category_rules` para integrar CaixaBank.
+> Estos datos son **personales sensibles del mismo nivel que los DNIs**.
+
+### Reglas absolutas
+
+1. **NUNCA** crear endpoint público que devuelva `bank_transactions` (ni siquiera
+   un campo individual: descripción, importe, contraparte). Todo el acceso
+   pasa por la app autenticada y filtra por `company_id` desde la sesión.
+2. **NUNCA** logear descripciones completas de movimientos en producción.
+   Las descripciones contienen contrapartes (nombres de personas, conceptos
+   privados). En logs, hashear o truncar a 8 chars + `…`.
+3. **NUNCA** usar `getPublicUrl()` o exponer `bank_*` por Storage.
+4. **NUNCA** incluir `bank_transactions` en exports masivos genéricos
+   (`select * from ...`). Si hace falta exportar para gestoría, debe ser una
+   acción explícita del usuario, filtrada por fecha, y registrada.
+5. **Las RLS policies actuales** (`company_id = 1`) son permisivas a nivel
+   cliente como el resto del proyecto. Cuando se haga el endurecimiento global
+   de RLS, las tablas `bank_*` deben ser de las primeras en migrar a un
+   modelo basado en `auth.uid()`.
+6. **Cuenta personal de Ricard** (`bank_accounts.is_personal=true`):
+   - SE IMPORTA pero NO se incluye en cómputos fiscales (303/130/390/100)
+   - Hacienda **rechaza** mezclar gastos personales con la actividad de autónomo
+   - El dashboard fiscal y los modelos deben filtrar `is_personal=false` por defecto
+7. **Renovación PSD2 (Fase 3 GoCardless):** el consentimiento expira cada
+   **90 días**. Es un límite legal, no se puede saltar. Banner de aviso
+   obligatorio desde 7 días antes de `consent_expires_at`.
+
+### Reglas de negocio bancarias (validado con Ricard 2026-04-08)
+
+Ricard opera **EXCLUSIVAMENTE con CaixaBank** y tiene **3 cuentas**:
+
+1. **Personal** (`is_personal=true`, `account_type=checking`): uso particular.
+   Excluida del cómputo fiscal.
+2. **Autónomo** (`is_personal=false`, `account_type=checking`): cuenta operativa
+   real de CodinaCars. Aquí entran las compras (Auto1, talleres), las ventas,
+   los pagos a Hacienda, las cuotas de autónomo (TGSS), seguros, ITV.
+3. **Póliza CodinaCars** (`is_personal=false`, `account_type=credit_line`):
+   línea de crédito del negocio. NO es cuenta corriente al uso, los movimientos
+   son disposiciones y reintegros. **Posible riesgo:** GoCardless puede no
+   soportarla en Fase 3 (verificar).
+
+### Importación de extractos
+
+- **Fase 1 (actual):** parser N43 manual en `scripts/import_n43.py`.
+  Ricard descarga el fichero Norma 43 (Cuaderno 43 CSB) desde el área cliente
+  CaixaBank y lo importa con:
+  ```
+  python scripts/import_n43.py --account-id 2 --file extracto.n43
+  ```
+  Variables de entorno requeridas: `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+  (NO la anon key — el upsert respeta RLS, así que necesita service role).
+  El parser es idempotente: re-importar el mismo fichero NO duplica filas
+  gracias al `external_id = sha1(account+date+amount+ref+raw_lines)`.
+- **Fase 3 (futura):** edge function `sync-bank-caixa` vía GoCardless Bank
+  Account Data (agregador PSD2 europeo, gratis, soporta CaixaBank).
+- **Categorización automática:** las reglas viven en `bank_category_rules`
+  (16 reglas seed creadas en migration 012), aplicadas en orden de prioridad.
+  Cuando Ricard recategoriza algo a mano, se ofrecerá "crear regla" en Fase 2.
+
 ## Pendiente
 
 - Viabilidad de automatizar petición provisional circulación a Gestoría Ruppmann
@@ -98,6 +160,13 @@ si añades patrones nuevos aquí, actualízalos también allí.
   poder transformarlas (~5 MB de bandwidth en el listado de Stock vienen de ahí)
 - Lazy-load real con IntersectionObserver en el listado de Stock (mejora TTI
   aunque no `Finish`)
+- **Banco Fase 0** (validar con Ricard): registrar cuenta en
+  bankaccountdata.gocardless.com (gratis), confirmar que CaixaBank Particular
+  + Negocios + Póliza están soportados, profundidad histórica de cada uno
+- **Banco Fase 2**: UI de reconciliación (vincular movimiento ↔ compra/venta),
+  editor de categoría inline, "aprender regla"
+- **Banco Fase 3**: edge function `sync-bank-caixa` con GoCardless, cron diario,
+  banner renovación PSD2 (consentimiento expira cada 90 días)
 
 ## Performance — reglas para el listado de Stock
 
@@ -151,3 +220,4 @@ Validado Ricard 2026-04-08:
 - `docs/flujos_sesion_2026-04-04.md` — nuevas funcionalidades sesión 2026-04-04 (bot leads, rediseño stock, autocompletado reparaciones, seguro por días, formulario financiación)
 - Sesión 2026-04-08: import zip stock, fusión coches.net+zip, foto principal, fix privacidad RGPD
 - Sesión 2026-04-08 (perf): listado de Stock 12.6s → 4.7s — batch queries `.in()` + thumbnails Storage Transforms
+- Sesión 2026-04-08 (banco Fase 1): integración CaixaBank — migración 012 (bank_accounts/transactions/category_rules), parser N43 + 16 tests, BankList read-only, 3 cuentas Ricard sembradas (Personal/Autónomo/Póliza), 16 reglas categorización inicial. Plan completo en `~/.claude/plans/wondrous-tumbling-firefly.md`

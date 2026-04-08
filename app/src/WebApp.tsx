@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, FormEvent } from "rea
 import * as api from "./lib/api";
 import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
+import { BankList } from "./components/BankList";
 import { isSuperAdmin } from "./lib/platform-types";
 import { PlatformLayout } from "./components/platform/PlatformLayout";
 import { RegistrationPage } from "./components/platform/RegistrationPage";
@@ -26,7 +27,7 @@ function useConfirmDialog() {
   return { confirmProps: { open: state.open, title: state.title, message: state.message, onConfirm: confirm, onCancel: cancel }, requestConfirm };
 }
 
-type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "revision" | "profile" | "company";
+type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "bank" | "revision" | "profile" | "company";
 
 function WebApp() {
   const [page, setPage] = useState<"catalog" | "login" | "register" | "admin" | "platform">(() => {
@@ -813,6 +814,7 @@ const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
   { key: "stock", label: "Stock" },
   { key: "sales", label: "Ventas" },
   { key: "purchases", label: "Compras" },
+  { key: "bank", label: "Banco" },
   { key: "suppliers", label: "Proveedores" },
   { key: "leads", label: "Leads" },
   { key: "clients", label: "Clientes" },
@@ -974,6 +976,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         {currentView === "clients" && <ClientsList clients={clients} companyId={companyId} onReload={loadAll} />}
         {currentView === "sales" && <SalesList records={salesRecords} vehicles={vehicles} clients={clients} companyId={companyId} onReload={loadAll} />}
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}
+        {currentView === "bank" && <BankList companyId={companyId} />}
         {currentView === "suppliers" && <SuppliersList suppliers={suppliers} companyId={companyId} onReload={loadAll} />}
         {currentView === "revision" && <RevisionSheet vehicles={allVehicles} companyId={companyId} />}
         {currentView === "profile" && <ProfileView session={session} />}

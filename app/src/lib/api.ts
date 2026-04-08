@@ -920,3 +920,144 @@ export async function deleteVehicleInspection(id: number): Promise<void> {
   const { error } = await supabase.from("vehicle_inspections").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+// ============================================================
+// Bank integration (CaixaBank) - Fase 1: lectura + reconciliación
+// ============================================================
+// Validado 2026-04-08. Ricard tiene 3 cuentas (Personal, Autónomo, Póliza).
+// La importación inicial se hace por N43 vía script Python; estas funciones
+// son solo lectura y reconciliación desde la app web. Para detalles, ver
+// CLAUDE.md sección "SEGURIDAD - datos bancarios".
+
+export interface BankAccount {
+  id: number;
+  company_id: number;
+  alias: string;
+  iban: string | null;
+  bank_name: string;
+  account_type: "checking" | "credit_line";
+  is_personal: boolean;
+  provider: "gocardless" | "n43_manual";
+  external_id: string | null;
+  consent_expires_at: string | null;
+  last_synced_at: string | null;
+  created_at: string;
+}
+
+export interface BankTransaction {
+  id: number;
+  bank_account_id: number;
+  external_id: string;
+  booking_date: string;
+  value_date: string | null;
+  amount: number;
+  currency: string;
+  counterparty_name: string;
+  description: string;
+  balance_after: number | null;
+  category: string;
+  linked_sale_id: number | null;
+  linked_purchase_id: number | null;
+  reviewed_by_user: boolean;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BankCategoryRule {
+  id: number;
+  company_id: number;
+  pattern: string;
+  category: string;
+  default_expense_type: string | null;
+  priority: number;
+  active: boolean;
+}
+
+export interface BankTransactionFilters {
+  fromDate?: string;
+  toDate?: string;
+  category?: string;
+  onlyUnlinked?: boolean;
+  onlyUnreviewed?: boolean;
+  search?: string;
+}
+
+export async function listBankAccounts(companyId: number): Promise<BankAccount[]> {
+  const { data, error } = await supabase
+    .from("bank_accounts")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("id");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function listBankTransactions(
+  bankAccountId: number,
+  filters: BankTransactionFilters = {},
+  limit = 500,
+): Promise<BankTransaction[]> {
+  let q = supabase
+    .from("bank_transactions")
+    .select("*")
+    .eq("bank_account_id", bankAccountId)
+    .order("booking_date", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit);
+  if (filters.fromDate) q = q.gte("booking_date", filters.fromDate);
+  if (filters.toDate) q = q.lte("booking_date", filters.toDate);
+  if (filters.category) q = q.eq("category", filters.category);
+  if (filters.onlyUnlinked) {
+    q = q.is("linked_sale_id", null).is("linked_purchase_id", null);
+  }
+  if (filters.onlyUnreviewed) q = q.eq("reviewed_by_user", false);
+  if (filters.search) q = q.ilike("description", `%${filters.search}%`);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function updateBankTransactionCategory(
+  id: number,
+  category: string,
+  reviewed = true,
+): Promise<void> {
+  const { error } = await supabase
+    .from("bank_transactions")
+    .update({ category, reviewed_by_user: reviewed })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function linkTransactionToPurchase(
+  transactionId: number,
+  purchaseId: number | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("bank_transactions")
+    .update({ linked_purchase_id: purchaseId, reviewed_by_user: true })
+    .eq("id", transactionId);
+  if (error) throw new Error(error.message);
+}
+
+export async function linkTransactionToSale(
+  transactionId: number,
+  saleId: number | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("bank_transactions")
+    .update({ linked_sale_id: saleId, reviewed_by_user: true })
+    .eq("id", transactionId);
+  if (error) throw new Error(error.message);
+}
+
+export async function listBankCategoryRules(companyId: number): Promise<BankCategoryRule[]> {
+  const { data, error } = await supabase
+    .from("bank_category_rules")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("priority");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
