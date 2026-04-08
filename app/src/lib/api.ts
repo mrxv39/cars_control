@@ -545,7 +545,8 @@ export async function listVehiclePhotos(vehicleId: number): Promise<VehiclePhoto
     .select("*")
     .eq("vehicle_id", vehicleId)
     .order("is_primary", { ascending: false })
-    .order("created_at");
+    .order("created_at")
+    .order("id"); // tiebreaker (ver getStockPhotoSummary)
   if (error) throw new Error(error.message);
 
   return (data || []).map((p) => ({
@@ -794,10 +795,15 @@ export async function getStockPhotoSummary(
   if (vehicleIds.length === 0) return result;
   const { data, error } = await supabase
     .from("vehicle_photos")
-    .select("vehicle_id, storage_path, source_url, is_primary, created_at")
+    .select("vehicle_id, storage_path, source_url, is_primary, created_at, id")
     .in("vehicle_id", vehicleIds)
     .order("is_primary", { ascending: false })
-    .order("created_at");
+    .order("created_at")
+    // Desempate determinista: cuando varias fotos comparten created_at
+    // (típico en imports masivos de coches.net) sin id como tiebreaker
+    // Postgres devuelve filas en orden físico y la batch + per-vehicle
+    // queries pueden divergir mostrando fotos distintas por vehículo.
+    .order("id");
   if (error) throw new Error(error.message);
   for (const row of data || []) {
     const entry = result.get(row.vehicle_id) ?? { count: 0, thumbUrl: null };
@@ -808,7 +814,7 @@ export async function getStockPhotoSummary(
       if (row.storage_path) {
         entry.thumbUrl = supabase.storage
           .from("vehicle-photos")
-          .getPublicUrl(row.storage_path, { transform: { width: 400, quality: 70 } })
+          .getPublicUrl(row.storage_path, { transform: { width: 400, quality: 70, resize: "contain" } })
           .data.publicUrl;
       } else if (row.source_url) {
         entry.thumbUrl = row.source_url;

@@ -1805,8 +1805,11 @@ function VehicleDetail(props: VDProps) {
   );
 }
 
-// Shared hooks for all vehicle detail layouts
-function useVehicleDetail(vehicle: api.Vehicle) {
+// Shared hooks for all vehicle detail layouts.
+// `onReload` (opcional): si se pasa, se invoca tras acciones que cambian el
+// resumen del listado de Stock (marcar foto principal, subir/borrar foto)
+// para forzar al padre a recargar `vehicles` y refrescar `photoFirstUrlMap`.
+function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
   const [form, setForm] = useState(vehicle);
   const [photos, setPhotos] = useState<api.VehiclePhoto[]>([]);
   const [docs, setDocs] = useState<api.VehicleDocument[]>([]);
@@ -1840,7 +1843,11 @@ function useVehicleDetail(vehicle: api.Vehicle) {
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files; if (!files) return;
     setUploading(true);
-    try { for (let i = 0; i < files.length; i++) await api.uploadVehiclePhoto(vehicle.id, files[i]); await loadPhotos(); }
+    try {
+      for (let i = 0; i < files.length; i++) await api.uploadVehiclePhoto(vehicle.id, files[i]);
+      await loadPhotos();
+      onReload?.();
+    }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
@@ -1848,12 +1855,16 @@ function useVehicleDetail(vehicle: api.Vehicle) {
     dialog.requestConfirm("Eliminar foto", `Eliminar ${photo.file_name}?`, async () => {
       await api.deleteVehiclePhoto(photo);
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      onReload?.();
     });
   }
 
   async function handleSetPrimary(photo: api.VehiclePhoto) {
     await api.setPrimaryPhoto(vehicle.id, photo.id);
     await loadPhotos();
+    // Notifica al padre para que recargue `vehicles` → StockList re-fetchea
+    // su `photoFirstUrlMap` y al volver al listado se ve la nueva primary.
+    onReload?.();
   }
 
   async function handleUploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1979,8 +1990,8 @@ function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
 }
 
 // ── PROPOSAL A: Sidebar layout ──
-function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
-  const h = useVehicleDetail(vehicle);
+function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps) {
+  const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
@@ -2282,8 +2293,8 @@ function VehicleSpecs({ vehicle }: { vehicle: api.Vehicle }) {
 }
 
 // ── PROPOSAL B: Tabs layout ──
-function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
-  const h = useVehicleDetail(vehicle);
+function VehicleDetailB({ vehicle, suppliers, leads, onBack, onReload }: VDProps) {
+  const h = useVehicleDetail(vehicle, onReload);
   const [activeTab, setActiveTab] = useState<"datos" | "leads" | "documentos">("datos");
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
@@ -2362,8 +2373,8 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
 }
 
 // ── PROPOSAL C: Dashboard layout ──
-function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
-  const h = useVehicleDetail(vehicle);
+function VehicleDetailC({ vehicle, suppliers, leads, onBack, onReload }: VDProps) {
+  const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
