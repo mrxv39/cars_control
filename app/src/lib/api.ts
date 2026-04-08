@@ -114,6 +114,14 @@ export interface VehiclePhoto {
   vehicle_id: number;
   file_name: string;
   url: string;
+  is_primary?: boolean;
+}
+
+export async function setPrimaryPhoto(vehicleId: number, photoId: number): Promise<void> {
+  // Sólo una foto puede ser principal por coche.
+  await supabase.from("vehicle_photos").update({ is_primary: false }).eq("vehicle_id", vehicleId);
+  const { error } = await supabase.from("vehicle_photos").update({ is_primary: true }).eq("id", photoId);
+  if (error) throw new Error(error.message);
 }
 
 // ============================================================
@@ -522,10 +530,14 @@ export async function deleteVehicle(id: number): Promise<void> {
 // ============================================================
 
 export async function listVehiclePhotos(vehicleId: number): Promise<VehiclePhoto[]> {
+  // Foto principal primero (validado Ricard 2026-04-08): la "primaria" es la
+  // foto frontal-lateral 3/4 que Ricard usa como hero. Si no hay primaria
+  // marcada, fallback a orden de subida.
   const { data, error } = await supabase
     .from("vehicle_photos")
     .select("*")
     .eq("vehicle_id", vehicleId)
+    .order("is_primary", { ascending: false })
     .order("created_at");
   if (error) throw new Error(error.message);
 

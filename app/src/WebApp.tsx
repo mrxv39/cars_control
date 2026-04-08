@@ -1859,6 +1859,11 @@ function useVehicleDetail(vehicle: api.Vehicle) {
     });
   }
 
+  async function handleSetPrimary(photo: api.VehiclePhoto) {
+    await api.setPrimaryPhoto(vehicle.id, photo.id);
+    await loadPhotos();
+  }
+
   async function handleUploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
     setUploadingDoc(true);
@@ -1878,7 +1883,7 @@ function useVehicleDetail(vehicle: api.Vehicle) {
   const facturas = docs.filter((d) => d.doc_type === "factura");
 
   return { form, setForm, photos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadingDoc, success,
-    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, loadPhotos, dialog };
+    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleSetPrimary, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, loadPhotos, dialog };
 }
 
 // Shared: Hero header
@@ -1903,11 +1908,11 @@ function VDHero({ vehicle, onBack, onDelete, margin, leadsCount }: { vehicle: ap
 }
 
 // Shared: Photos gallery
-function VDPhotos({ photos, fileRef, uploading, handleUpload, handleDeletePhoto, setSelectedPhoto }: { photos: api.VehiclePhoto[]; fileRef: React.RefObject<HTMLInputElement | null>; uploading: boolean; handleUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; handleDeletePhoto: (p: api.VehiclePhoto) => void; setSelectedPhoto: (id: number) => void }) {
+function VDPhotos({ photos, fileRef, uploading, handleUpload, handleDeletePhoto, handleSetPrimary, setSelectedPhoto }: { photos: api.VehiclePhoto[]; fileRef: React.RefObject<HTMLInputElement | null>; uploading: boolean; handleUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; handleDeletePhoto: (p: api.VehiclePhoto) => void; handleSetPrimary?: (p: api.VehiclePhoto) => void; setSelectedPhoto: (id: number) => void }) {
   return (
     <section className="panel" style={{ padding: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <div><p className="eyebrow">Fotografias</p><p className="muted" style={{ margin: 0 }}>{photos.length} foto{photos.length !== 1 ? "s" : ""}</p></div>
+        <div><p className="eyebrow">Fotografias</p><p className="muted" style={{ margin: 0 }}>{photos.length} foto{photos.length !== 1 ? "s" : ""} · click en ⭐ para marcar como principal</p></div>
         <div>
           <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => void handleUpload(e)} style={{ display: "none" }} />
           <button type="button" className="button primary" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? "Subiendo..." : "Subir fotos"}</button>
@@ -1916,8 +1921,23 @@ function VDPhotos({ photos, fileRef, uploading, handleUpload, handleDeletePhoto,
       {photos.length > 0 ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "0.75rem" }}>
           {photos.map((p) => (
-            <div key={p.id} style={{ position: "relative" }}>
+            <div key={p.id} style={{ position: "relative", border: p.is_primary ? "3px solid #f59e0b" : "3px solid transparent", borderRadius: 14 }}>
               <img src={p.url} loading="lazy" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12, cursor: "pointer" }} onClick={() => setSelectedPhoto(p.id)} />
+              {handleSetPrimary && (
+                <button
+                  type="button"
+                  onClick={() => void handleSetPrimary(p)}
+                  title={p.is_primary ? "Foto principal" : "Marcar como principal"}
+                  style={{
+                    position: "absolute", top: 6, left: 6,
+                    background: p.is_primary ? "#f59e0b" : "rgba(0,0,0,0.6)",
+                    color: "#fff", border: "none", borderRadius: 8,
+                    padding: "4px 8px", fontSize: "0.85rem", cursor: "pointer", fontWeight: 700,
+                  }}
+                >
+                  {p.is_primary ? "★" : "☆"}
+                </button>
+              )}
               <button type="button" onClick={() => void handleDeletePhoto(p)} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 8, padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}>X</button>
             </div>
           ))}
@@ -2020,7 +2040,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
           </section>
         </div>
       </div>
-      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} setSelectedPhoto={h.setSelectedPhoto} />
+      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
       <VehicleSpecs vehicle={vehicle} />
       <VehicleListingsLink vehicle={vehicle} />
       <VehicleDocsList vehicle={vehicle} />
@@ -2341,7 +2361,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack }: VDProps) {
         {activeTab === "documentos" && (
           <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "2rem" }}>
             <div><VDFactura facturas={h.facturas} docFileRef={h.docFileRef} uploadingDoc={h.uploadingDoc} handleUploadDoc={h.handleUploadDoc} handleDeleteDoc={h.handleDeleteDoc} /></div>
-            <div><VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} setSelectedPhoto={h.setSelectedPhoto} /></div>
+            <div><VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} /></div>
           </div>
         )}
       </section>
@@ -2422,7 +2442,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack }: VDProps) {
           </section>
         </div>
       </div>
-      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} setSelectedPhoto={h.setSelectedPhoto} />
+      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
     </>
   );
 }
