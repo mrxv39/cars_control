@@ -41,6 +41,22 @@ export interface Vehicle extends VehicleBase {
   color: string;
   notes: string;
   supplier_id: number | null;
+  // Campos importados de coches.net (sesión Ricard 2026-04-07)
+  version?: string | null;
+  doors?: number | null;
+  seats?: number | null;
+  body_type?: string | null;
+  displacement?: number | null;
+  emissions_co2?: string | null;
+  environmental_label?: string | null;
+  description?: string | null;
+  equipment?: string[] | null;
+  warranty?: string | null;
+  city?: string | null;
+  province?: string | null;
+  needs_review?: boolean | null;
+  plate?: string | null;
+  vin?: string | null;
 }
 
 export interface VehicleDocument {
@@ -181,10 +197,13 @@ export interface ImportPreview {
     displacement: number | null;
     emissionsCo2: string | null;
     environmentalLabel: string | null;
+    warranty: string | null;
     description: string | null;
     equipment: string[];
     photoUrls: string[];
     videoUrls: string[];
+    city?: string | null;
+    province?: string | null;
   }>;
   removedExternalIds: string[];
   fetchedAt: string;
@@ -202,11 +221,25 @@ export async function listKnownExternalIds(companyId: number): Promise<string[]>
 }
 
 export async function fetchCochesNetPreview(dealerUrl: string, knownExternalIds: string[]): Promise<ImportPreview> {
-  // Llama a la edge function. La función supabase-js maneja headers de auth.
   const { data, error } = await supabase.functions.invoke("import-coches-net", {
     body: { dealerUrl, knownExternalIds },
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Intentar leer el cuerpo de la respuesta para más detalle
+    try {
+      const ctx = (error as any).context;
+      if (ctx && typeof ctx.text === "function") {
+        const text = await ctx.text();
+        throw new Error(`Edge function error: ${text}`);
+      }
+    } catch (innerErr) {
+      if (innerErr instanceof Error && innerErr.message.startsWith("Edge function error")) throw innerErr;
+    }
+    throw new Error(error.message);
+  }
+  if (data && data.ok === false) {
+    throw new Error(data.error || "Unknown edge function error");
+  }
   return data as ImportPreview;
 }
 
@@ -218,11 +251,13 @@ export async function importCochesNetVehicles(
   for (const d of details) {
     if (!d.externalId) continue;
     // 1. Insert en vehicles
+    // Nombre completo: marca + modelo + versión (validado Ricard 2026-04-08)
+    const fullName = [d.make, d.model, d.version].filter(Boolean).join(" ").trim();
     const { data: vehicle, error: vErr } = await supabase
       .from("vehicles")
       .insert({
         company_id: companyId,
-        name: `${d.make} ${d.model}`.trim(),
+        name: fullName,
         version: d.version,
         anio: d.year,
         km: d.km,
@@ -239,6 +274,9 @@ export async function importCochesNetVehicles(
         environmental_label: d.environmentalLabel,
         description: d.description,
         equipment: d.equipment.length ? d.equipment : null,
+        warranty: d.warranty,
+        city: d.city || null,
+        province: d.province || null,
         estado: "disponible",
       })
       .select("id")
@@ -317,6 +355,19 @@ export async function updateUserPassword(userId: number, newPassword: string): P
   const password_hash = await hashPassword(newPassword);
   const { error } = await supabase.from("users").update({ password_hash }).eq("id", userId);
   if (error) throw new Error(error.message);
+}
+
+import type { Company as _Company, User as _User } from "../shared-types";
+export async function getCompany(companyId: number): Promise<_Company | null> {
+  const { data, error } = await supabase.from("companies").select("*").eq("id", companyId).single();
+  if (error) return null;
+  return data as _Company;
+}
+
+export async function getUser(userId: number): Promise<_User | null> {
+  const { data, error } = await supabase.from("users").select("id, company_id, full_name, username, email, role, active").eq("id", userId).single();
+  if (error) return null;
+  return data as _User;
 }
 
 export async function updateCompany(companyId: number, fields: Partial<{
@@ -435,7 +486,12 @@ export async function listVehiclePhotos(vehicleId: number): Promise<VehiclePhoto
 
   return (data || []).map((p) => ({
     ...p,
-    url: supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path).data.publicUrl,
+    // Si la foto fue importada desde coches.net, usamos source_url directamente
+    // (todavía no la hemos descargado a Storage). Si no, construimos la URL pública
+    // de Supabase Storage a partir del storage_path.
+    url: p.storage_path
+      ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path).data.publicUrl
+      : (p.source_url || ""),
   }));
 }
 

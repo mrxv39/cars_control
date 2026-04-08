@@ -95,9 +95,25 @@ describe("parseDetail (ficha SEAT Ibiza)", () => {
     expect(Array.isArray(d.equipment)).toBe(true);
   });
 
-  it("description no es null (viene de meta description)", () => {
+  it("description contiene el texto real del anunciante con equipamiento", () => {
     const d = parseDetail(detailHtml)!;
     expect(d.description).toBeTruthy();
+    expect(d.description).toContain("EQUIPAMIENTO");
+    expect(d.description).toContain("Apple car play");
+    expect(d.description).toContain("99.000 km certificados");
+  });
+
+  it("emissionsCo2 es un string legible (no [object Object])", () => {
+    const d = parseDetail(detailHtml)!;
+    expect(d.emissionsCo2).toBeTruthy();
+    expect(d.emissionsCo2).not.toContain("object");
+    expect(d.emissionsCo2).toMatch(/106/);
+  });
+
+  it("warranty extraída del JSON-LD offers.warranty", () => {
+    const d = parseDetail(detailHtml)!;
+    expect(d.warranty).toBeTruthy();
+    expect(d.warranty).toMatch(/12/);
   });
 
   it("version se extrae del nombre completo", () => {

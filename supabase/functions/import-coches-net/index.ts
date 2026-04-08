@@ -34,9 +34,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { parseListing, parseDetail } from "./parser.ts";
 
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -47,16 +44,29 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// Coches.net usa Cloudflare con bot protection. Un fetch directo desde un
+// datacenter (AWS/Fly) recibe 403. Usamos ScrapingBee como proxy: hace la
+// petición desde IPs residenciales y bypassa Cloudflare.
+//
+// La API key se guarda como secret en Supabase (SCRAPINGBEE_API_KEY).
+// Tier gratuito: 1000 créditos/mes, suficiente para varios concesionarios.
 async function fetchPage(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
-    },
+  const apiKey = Deno.env.get("SCRAPINGBEE_API_KEY");
+  if (!apiKey) {
+    throw new Error("SCRAPINGBEE_API_KEY no configurada en los secrets de Supabase");
+  }
+  const params = new URLSearchParams({
+    api_key: apiKey,
+    url,
+    render_js: "false", // coches.net mete los datos en INITIAL_PROPS, no necesitamos JS
+    country_code: "es",  // IP residencial española
+    premium_proxy: "true", // necesario para bypass Cloudflare
   });
+  const beeUrl = `https://app.scrapingbee.com/api/v1/?${params.toString()}`;
+  const res = await fetch(beeUrl);
   if (!res.ok) {
-    throw new Error(`fetch ${url} → ${res.status}`);
+    const body = await res.text();
+    throw new Error(`scrapingbee fetch ${url} → ${res.status}: ${body.slice(0, 200)}`);
   }
   return await res.text();
 }
@@ -74,15 +84,18 @@ serve(async (req) => {
     const dealerUrl: string = body.dealerUrl;
     const knownExternalIds: string[] = Array.isArray(body.knownExternalIds) ? body.knownExternalIds : [];
     if (!dealerUrl) {
-      return new Response(JSON.stringify({ error: "dealerUrl is required" }), {
-        status: 400,
+      return new Response(JSON.stringify({ ok: false, error: "dealerUrl is required" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log("Fetching listing:", dealerUrl);
     // 1. Listado del perfil
     const listingHtml = await fetchPage(dealerUrl);
+    console.log("Listing HTML length:", listingHtml.length);
     const listing = parseListing(listingHtml);
+    console.log("Parsed listing items:", listing.length);
 
     // 2. Detectar coches nuevos vs ya conocidos
     const knownSet = new Set(knownExternalIds);
@@ -100,6 +113,8 @@ serve(async (req) => {
         if (detail) {
           // Enriquecer con datos del listado que no están en el JSON-LD
           detail.environmentalLabel = newItems[i].environmentalLabel;
+          (detail as any).city = newItems[i].city;
+          (detail as any).province = newItems[i].province;
           newDetails.push(detail);
         }
       } catch (err) {
@@ -109,6 +124,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
+        ok: true,
         listing,
         newDetails,
         removedExternalIds,
@@ -117,9 +133,10 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
+    console.error("Function error:", err);
     return new Response(
-      JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ ok: false, error: String(err), stack: (err as Error)?.stack }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

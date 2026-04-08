@@ -45,6 +45,7 @@ export interface CochesNetVehicleDetail {
   displacement: number | null;
   emissionsCo2: string | null;
   environmentalLabel: string | null;
+  warranty: string | null;
   description: string | null;
   equipment: string[];
   photoUrls: string[];
@@ -148,10 +149,34 @@ function extractCarJsonLd(html: string): Record<string, any> | null {
   return null;
 }
 
+function extractCo2(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw === "string" || typeof raw === "number") return String(raw);
+  if (typeof raw === "object") {
+    const o = raw as any;
+    if (o.value != null) {
+      const unit = o.unitText || o.unitCode || "";
+      return `${o.value} ${unit}`.trim();
+    }
+  }
+  return null;
+}
+
 function extractDescription(html: string): string | null {
-  // Coches.net mete la descripción del anuncio dentro del HTML como
-  // texto plano dentro de un componente. Buscamos meta description como
-  // fallback fiable porque a veces está duplicada ahí.
+  // El texto real del anuncio (Comentarios del anunciante) está en un div con
+  // data-testid="mt-PanelAdDetails-description". Es el campo libre que escribe
+  // el vendedor — incluye habitualmente la lista de equipamiento.
+  const m = html.match(/<div[^>]*data-testid="mt-PanelAdDetails-description"[^>]*>([\s\S]*?)<\/div>/);
+  if (m) {
+    // Quitar HTML interno y normalizar espacios pero respetar saltos de línea.
+    const text = m[1]
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\r\n/g, "\n");
+    return decodeHtml(text).trim() || null;
+  }
+  // Fallback: meta description (peor calidad pero mejor que nada).
   const meta = html.match(/<meta\s+name="description"\s+content="([^"]*)"/);
   if (meta && meta[1]) return decodeHtml(meta[1]).trim();
   return null;
@@ -203,6 +228,7 @@ export function parseDetail(html: string, fallbackUrl = ""): CochesNetVehicleDet
 
   const offers = car.offers as any;
   let price: number | null = null;
+  let warranty: string | null = null;
   if (offers) {
     const raw = offers.price ?? offers[0]?.price;
     if (raw != null) {
@@ -210,6 +236,11 @@ export function parseDetail(html: string, fallbackUrl = ""): CochesNetVehicleDet
       const s = String(raw).replace(/\./g, "").replace(",", ".");
       const n = parseFloat(s);
       if (!Number.isNaN(n)) price = n;
+    }
+    // Garantía: offers.warranty.durationOfWarranty.value + unitText
+    const w = offers.warranty?.durationOfWarranty;
+    if (w?.value != null) {
+      warranty = `${w.value} ${w.unitText || "meses"}`.trim();
     }
   }
 
@@ -261,8 +292,10 @@ export function parseDetail(html: string, fallbackUrl = ""): CochesNetVehicleDet
     seats: car.seatingCapacity != null ? Number(car.seatingCapacity) : null,
     bodyType: (car.bodyType as string) || null,
     displacement,
-    emissionsCo2: car.emissionsCO2 != null ? String(car.emissionsCO2) : null,
+    // emissionsCO2 es un objeto QuantitativeValue: { value: 106, unitText: "g/km" }
+    emissionsCo2: extractCo2(car.emissionsCO2),
     environmentalLabel: null, // No está en el JSON-LD, viene del listado
+    warranty,
     description: extractDescription(html),
     equipment,
     photoUrls,

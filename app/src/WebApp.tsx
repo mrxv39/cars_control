@@ -1008,6 +1008,22 @@ function ProfileView({ session }: { session: api.LoginResult }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
+  // Refrescar desde DB al montar para evitar mostrar sesión cacheada vieja.
+  React.useEffect(() => {
+    void api.getUser(session.user.id).then((u) => {
+      if (!u) return;
+      setFullName(u.full_name || "");
+      setUsername(u.username || "");
+      setEmail(u.email || session.company.email || "");
+      const stored = localStorage.getItem("cc_session");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.user = { ...parsed.user, ...u };
+        localStorage.setItem("cc_session", JSON.stringify(parsed));
+      }
+    });
+  }, [session.user.id]);
+
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
     setSaving(true); setMsg(null);
@@ -1105,6 +1121,29 @@ function CompanyView({ session }: { session: api.LoginResult }) {
   const [email, setEmail] = useState(session.company.email || "");
   const [website, setWebsite] = useState(session.company.website || "");
   const [saving, setSaving] = useState(false);
+
+  // Refrescar desde DB al montar — la sesión en localStorage puede estar
+  // desactualizada (por ejemplo después de añadir columnas nuevas a la tabla).
+  React.useEffect(() => {
+    void api.getCompany(session.company.id).then((c) => {
+      if (!c) return;
+      setTradeName(c.trade_name || "");
+      setLegalName(c.legal_name || "");
+      setCif(c.cif || "");
+      setAddress(c.address || "");
+      setPhone(c.phone || "");
+      setEmail(c.email || "");
+      setWebsite(c.website || "");
+      // Actualizar también el localStorage para que el sidebar y otras vistas
+      // tengan la versión fresca.
+      const stored = localStorage.getItem("cc_session");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.company = { ...parsed.company, ...c };
+        localStorage.setItem("cc_session", JSON.stringify(parsed));
+      }
+    });
+  }, [session.company.id]);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   async function save(e: FormEvent) {
@@ -1982,7 +2021,64 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
         </div>
       </div>
       <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} setSelectedPhoto={h.setSelectedPhoto} />
+      <VehicleSpecs vehicle={vehicle} />
     </>
+  );
+}
+
+// ── Especificaciones técnicas e info importada ──
+// Validado con Ricard 2026-04-08 (después de la primera importación de coches.net)
+function VehicleSpecs({ vehicle }: { vehicle: api.Vehicle }) {
+  const specs: Array<[string, string | null | undefined]> = [
+    ["Año", vehicle.anio ? String(vehicle.anio) : null],
+    ["Km", vehicle.km ? `${vehicle.km.toLocaleString("es-ES")} km` : null],
+    ["Ubicación", [vehicle.city, vehicle.province].filter(Boolean).join(", ") || null],
+    ["Carrocería", vehicle.body_type],
+    ["Cambio", vehicle.transmission],
+    ["Puertas", vehicle.doors ? String(vehicle.doors) : null],
+    ["Plazas", vehicle.seats ? String(vehicle.seats) : null],
+    ["Cilindrada", vehicle.displacement ? `${vehicle.displacement} cc` : null],
+    ["Potencia", vehicle.cv ? `${vehicle.cv} CV` : null],
+    ["Color", vehicle.color],
+    ["Combustible", vehicle.fuel],
+    ["Emisiones CO₂", vehicle.emissions_co2],
+    ["Etiqueta DGT", vehicle.environmental_label],
+    ["Garantía", vehicle.warranty],
+    ["Matrícula", vehicle.plate],
+    ["Bastidor", vehicle.vin],
+  ];
+  const visible = specs.filter(([, v]) => v != null && v !== "");
+  if (visible.length === 0 && !vehicle.description && !vehicle.equipment?.length) return null;
+  return (
+    <section className="panel" style={{ padding: "1.25rem", marginTop: "1.25rem" }}>
+      <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Especificaciones</p>
+      {visible.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.6rem 1.25rem", marginBottom: "1rem" }}>
+          {visible.map(([label, value]) => (
+            <div key={label}>
+              <p className="muted" style={{ margin: 0, fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
+              <p style={{ margin: "0.1rem 0 0", fontSize: "0.92rem", fontWeight: 500 }}>{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {vehicle.description && (
+        <div style={{ marginBottom: "1rem" }}>
+          <p className="eyebrow" style={{ marginBottom: "0.4rem" }}>Descripción</p>
+          <p style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: "0.88rem", lineHeight: 1.5 }}>{vehicle.description}</p>
+        </div>
+      )}
+      {vehicle.equipment && vehicle.equipment.length > 0 && (
+        <div>
+          <p className="eyebrow" style={{ marginBottom: "0.4rem" }}>Equipamiento ({vehicle.equipment.length})</p>
+          <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.85rem", columnCount: 2, columnGap: "1.5rem" }}>
+            {vehicle.equipment.map((item, i) => (
+              <li key={i} style={{ marginBottom: "0.2rem" }}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }
 
