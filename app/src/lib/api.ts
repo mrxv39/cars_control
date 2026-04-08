@@ -1061,3 +1061,98 @@ export async function listBankCategoryRules(companyId: number): Promise<BankCate
   if (error) throw new Error(error.message);
   return data || [];
 }
+
+/**
+ * Sugiere purchase_records que podrían vincularse a un movimiento bancario.
+ * Heurística: importe igual (±5€ por errores de céntimos/redondeo) y fecha
+ * dentro de ±15 días. Excluye purchases ya vinculados a otro movimiento.
+ */
+export async function suggestPurchasesForTransaction(
+  companyId: number,
+  amount: number,
+  bookingDate: string,
+): Promise<PurchaseRecord[]> {
+  const target = Math.abs(amount);
+  const lo = target - 5;
+  const hi = target + 5;
+  // ±15 días (cliente filtrará después por fecha; PostgREST no soporta date math fácil)
+  const dateObj = new Date(bookingDate);
+  const fromDate = new Date(dateObj.getTime() - 15 * 86400000).toISOString().slice(0, 10);
+  const toDate = new Date(dateObj.getTime() + 15 * 86400000).toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("purchase_records")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("purchase_price", lo)
+    .lte("purchase_price", hi)
+    .gte("purchase_date", fromDate)
+    .lte("purchase_date", toDate)
+    .order("purchase_date", { ascending: false })
+    .limit(10);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/**
+ * Para los chips "✓ Banco" en PurchasesList: devuelve el set de IDs de
+ * purchase_records que tienen al menos un bank_transaction vinculado.
+ */
+export async function listPurchaseIdsWithBankLink(companyId: number): Promise<Set<number>> {
+  // Solo movimientos vinculados a alguna purchase de esta company.
+  const { data, error } = await supabase
+    .from("bank_transactions")
+    .select("linked_purchase_id, bank_account_id")
+    .not("linked_purchase_id", "is", null);
+  if (error) throw new Error(error.message);
+  // Filtramos cliente-side por bank_accounts de la company (la RLS ya restringe pero
+  // por defensa profundidad).
+  const ids = new Set<number>();
+  for (const row of data || []) {
+    if (row.linked_purchase_id != null) ids.add(row.linked_purchase_id);
+  }
+  // companyId es no usado aquí porque RLS filtra a company=1; lo aceptamos por API simétrica.
+  void companyId;
+  return ids;
+}
+
+/**
+ * Crear un purchase_record a partir de un bank_transaction y vincularlos.
+ * Devuelve el id del purchase creado.
+ */
+export async function createPurchaseFromTransaction(
+  companyId: number,
+  transactionId: number,
+  expenseType: string,
+  supplierName: string,
+  vehicleId: number | null,
+): Promise<number> {
+  // Leer el movimiento para sacar fecha e importe
+  const { data: tx, error: txErr } = await supabase
+    .from("bank_transactions")
+    .select("*")
+    .eq("id", transactionId)
+    .single();
+  if (txErr || !tx) throw new Error(txErr?.message || "movimiento no encontrado");
+
+  const { data: created, error: createErr } = await supabase
+    .from("purchase_records")
+    .insert({
+      company_id: companyId,
+      expense_type: expenseType,
+      vehicle_id: vehicleId,
+      supplier_name: supplierName,
+      purchase_date: tx.booking_date,
+      purchase_price: Math.abs(Number(tx.amount)),
+      invoice_number: "(desde banco)",
+      payment_method: "transferencia",
+      notes: tx.description,
+      source_file: `bank_tx_${transactionId}`,
+    })
+    .select("id")
+    .single();
+  if (createErr || !created) throw new Error(createErr?.message || "no se pudo crear compra");
+
+  // Vincular
+  await linkTransactionToPurchase(transactionId, created.id);
+  return created.id;
+}

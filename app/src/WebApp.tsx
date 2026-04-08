@@ -2901,10 +2901,20 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
 // ============================================================
 // Purchases List
 // ============================================================
-function PurchasesList({ records, companyId: _companyId, onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
+function PurchasesList({ records, companyId, onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
   const dialog = useConfirmDialog();
   const total = useMemo(() => records.reduce((s, r) => s + r.purchase_price, 0), [records]);
   const { paged: pagedPurchases, page: purchasesPage, totalPages: purchasesTotalPages, setPage: setPurchasesPage } = usePagination(records);
+  // Marca qué purchase_records ya tienen movimiento bancario vinculado
+  // (chip "✓ Banco" → indica que la compra está conciliada con el extracto).
+  const [bankLinked, setBankLinked] = useState<Set<number>>(new Set());
+  React.useEffect(() => {
+    let cancelled = false;
+    void api.listPurchaseIdsWithBankLink(companyId).then((ids) => {
+      if (!cancelled) setBankLinked(ids);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [companyId, records]);
 
   function handleDeletePurchase(id: number, supplierName: string) {
     dialog.requestConfirm("Eliminar compra", `¿Eliminar registro de compra de "${supplierName}"? Esta acción no se puede deshacer.`, async () => {
@@ -2940,6 +2950,7 @@ function PurchasesList({ records, companyId: _companyId, onReload }: { records: 
                 <th className="sales-th">Fecha</th>
                 <th className="sales-th sales-th-right">Importe</th>
                 <th className="sales-th">Factura</th>
+                <th className="sales-th" style={{ width: "5.5rem" }}>Banco</th>
                 <th className="sales-th" style={{ width: "4rem" }}></th>
               </tr></thead>
               <tbody>
@@ -2950,6 +2961,13 @@ function PurchasesList({ records, companyId: _companyId, onReload }: { records: 
                     <td className="sales-td">{r.purchase_date}</td>
                     <td className="sales-td sales-td-right"><span className="sales-price">{r.purchase_price.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
                     <td className="sales-td"><span className="badge badge-info">{r.invoice_number || "—"}</span></td>
+                    <td className="sales-td">
+                      {bankLinked.has(r.id) ? (
+                        <span className="badge badge-success" title="Vinculado a movimiento bancario" style={{ fontSize: "0.7rem" }}>✓ Banco</span>
+                      ) : (
+                        <span className="muted" style={{ fontSize: "0.72rem" }}>—</span>
+                      )}
+                    </td>
                     <td className="sales-td"><button type="button" className="button danger xs" onClick={() => void handleDeletePurchase(r.id, r.supplier_name)}>Eliminar</button></td>
                   </tr>
                 ))}
