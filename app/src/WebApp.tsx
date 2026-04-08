@@ -2022,7 +2022,194 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack }: VDProps) {
       </div>
       <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} setSelectedPhoto={h.setSelectedPhoto} />
       <VehicleSpecs vehicle={vehicle} />
+      <VehicleListingsLink vehicle={vehicle} />
+      <VehicleDocsList vehicle={vehicle} />
+      <VehicleMergePanel vehicle={vehicle} onMerged={onBack} />
     </>
+  );
+}
+
+// ── Link al anuncio externo (coches.net) ──
+// Si el vehículo tiene listings asociados, los mostramos como links.
+function VehicleListingsLink({ vehicle }: { vehicle: api.Vehicle }) {
+  const [listings, setListings] = useState<api.VehicleListing[]>([]);
+  React.useEffect(() => {
+    void api.listVehicleListings(vehicle.id).then(setListings);
+  }, [vehicle.id]);
+  if (listings.length === 0) return null;
+  return (
+    <section className="panel" style={{ padding: "1rem 1.25rem", marginTop: "1rem" }}>
+      <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Anuncios externos</p>
+      <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.88rem" }}>
+        {listings.map((l) => (
+          <li key={l.id} style={{ marginBottom: "0.3rem" }}>
+            <a href={l.external_url || "#"} target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8" }}>
+              {l.external_source} · ID {l.external_id}
+            </a>
+            {l.removed_at && <span className="muted" style={{ marginLeft: "0.5rem", color: "#b45309" }}>(removido)</span>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+// ── Documentos del vehículo ──
+function VehicleDocsList({ vehicle }: { vehicle: api.Vehicle }) {
+  const [docs, setDocs] = useState<api.VehicleDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+  React.useEffect(() => {
+    void api.listVehicleDocuments(vehicle.id)
+      .then((d) => setDocs(d))
+      .catch(() => setDocs([]))
+      .finally(() => setLoading(false));
+  }, [vehicle.id]);
+  const docTypeLabel: Record<string, string> = {
+    factura_compra: "Factura compra",
+    factura_comision: "Factura comisión",
+    ficha_tecnica: "Ficha técnica",
+    permiso_circulacion: "Permiso circulación",
+    contrato_venta: "Contrato venta",
+    dni_cliente: "DNI cliente",
+    reparacion: "Reparación",
+    mantenimiento: "Mantenimiento",
+    financiacion: "Financiación",
+    otros: "Otros",
+  };
+  if (loading) return null;
+  if (docs.length === 0) return null;
+  // Agrupar por doc_type
+  const grouped: Record<string, api.VehicleDocument[]> = {};
+  for (const d of docs) {
+    const k = d.doc_type || "otros";
+    if (!grouped[k]) grouped[k] = [];
+    grouped[k].push(d);
+  }
+  return (
+    <section className="panel" style={{ padding: "1.25rem", marginTop: "1rem" }}>
+      <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Documentos ({docs.length})</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+        {Object.entries(grouped).map(([type, items]) => (
+          <div key={type}>
+            <p className="muted" style={{ margin: "0 0 0.25rem", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {docTypeLabel[type] || type} ({items.length})
+            </p>
+            <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.85rem" }}>
+              {items.map((d) => (
+                <li key={d.id} style={{ marginBottom: "0.2rem" }}>
+                  <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8" }}>
+                    {d.file_name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Fusión manual de vehículos duplicados ──
+// Caso de uso (validado Ricard 2026-04-08): mismo coche físico aparece
+// importado de coches.net y del zip de stock. Ricard los identifica
+// visualmente y los fusiona desde aquí.
+function VehicleMergePanel({ vehicle, onMerged }: { vehicle: api.Vehicle; onMerged: () => void }) {
+  const dialog = useConfirmDialog();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [candidates, setCandidates] = useState<api.Vehicle[]>([]);
+  const [merging, setMerging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    void api.listVehicles(vehicle.company_id).then((all) =>
+      setCandidates(all.filter((v) => v.id !== vehicle.id))
+    );
+  }, [open, vehicle.id, vehicle.company_id]);
+
+  const filtered = candidates.filter((c) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.plate || "").toLowerCase().includes(q) ||
+      String(c.anio || "").includes(q)
+    );
+  });
+
+  function doMerge(target: api.Vehicle) {
+    dialog.requestConfirm(
+      "Fusionar vehículos",
+      `Vas a fusionar "${vehicle.name}" dentro de "${target.name}". Las fotos, documentos, listings y leads del primero pasarán al segundo. El primero se borrará. ¿Continuar?`,
+      async () => {
+        setMerging(true);
+        setError(null);
+        try {
+          await api.mergeVehicles(vehicle.id, target.id);
+          onMerged();
+        } catch (e: any) {
+          setError(e.message || "Error al fusionar");
+        } finally {
+          setMerging(false);
+        }
+      }
+    );
+  }
+
+  return (
+    <section className="panel" style={{ padding: "1.25rem", marginTop: "1rem" }}>
+      <ConfirmDialog {...dialog.confirmProps} />
+      <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Fusión de duplicados</p>
+      {!open ? (
+        <button type="button" className="button secondary xs" onClick={() => setOpen(true)}>
+          Es el mismo coche que…
+        </button>
+      ) : (
+        <div>
+          <p className="muted" style={{ margin: "0 0 0.5rem", fontSize: "0.78rem" }}>
+            Selecciona el vehículo destino. Las fotos, documentos y leads de este coche se moverán allí y este coche se borrará.
+          </p>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por marca, modelo, matrícula..."
+            style={{ width: "100%", marginBottom: "0.5rem" }}
+          />
+          <div style={{ maxHeight: 240, overflowY: "auto", border: "1px solid #e5e5e5", borderRadius: 6 }}>
+            {filtered.slice(0, 40).map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => doMerge(c)}
+                disabled={merging}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "0.5rem 0.7rem",
+                  background: "none",
+                  border: "none",
+                  borderBottom: "1px solid #f0f0f0",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                }}
+              >
+                <strong>{c.name}</strong>
+                <span className="muted" style={{ marginLeft: "0.5rem", fontSize: "0.75rem" }}>
+                  {[c.plate, c.anio, c.km ? `${c.km.toLocaleString()} km` : null].filter(Boolean).join(" · ")}
+                </span>
+              </button>
+            ))}
+          </div>
+          {error && <p style={{ color: "#b91c1c", margin: "0.5rem 0 0", fontSize: "0.85rem" }}>{error}</p>}
+          <button type="button" className="button secondary xs" onClick={() => setOpen(false)} style={{ marginTop: "0.5rem" }}>
+            Cancelar
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 

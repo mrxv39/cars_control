@@ -209,6 +209,51 @@ export interface ImportPreview {
   fetchedAt: string;
 }
 
+export interface VehicleListing {
+  id: number;
+  vehicle_id: number;
+  external_source: string;
+  external_id: string;
+  external_url: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  removed_at: string | null;
+}
+
+export async function listVehicleListings(vehicleId: number): Promise<VehicleListing[]> {
+  const { data, error } = await supabase
+    .from("vehicle_listings")
+    .select("*")
+    .eq("vehicle_id", vehicleId)
+    .order("first_seen_at", { ascending: false });
+  if (error) return [];
+  return (data || []) as VehicleListing[];
+}
+
+// Fusiona el vehículo `from` dentro del vehículo `into`: mueve fotos,
+// documentos, listings, leads, sales y purchase_records al destino y borra
+// el origen. Validado Ricard 2026-04-08.
+export async function mergeVehicles(fromId: number, intoId: number): Promise<void> {
+  if (fromId === intoId) throw new Error("No se puede fusionar un coche consigo mismo");
+  const tables = [
+    "vehicle_photos",
+    "vehicle_documents",
+    "vehicle_listings",
+    "vehicle_videos",
+  ];
+  for (const t of tables) {
+    const { error } = await supabase.from(t).update({ vehicle_id: intoId }).eq("vehicle_id", fromId);
+    if (error) throw new Error(`merge ${t}: ${error.message}`);
+  }
+  // Tablas con vehicle_id nullable: no rompemos si fallan
+  for (const t of ["leads", "sales_records", "purchase_records"]) {
+    await supabase.from(t).update({ vehicle_id: intoId }).eq("vehicle_id", fromId);
+  }
+  // Borrar el origen
+  const { error: delErr } = await supabase.from("vehicles").delete().eq("id", fromId);
+  if (delErr) throw new Error(`delete: ${delErr.message}`);
+}
+
 export async function listKnownExternalIds(companyId: number): Promise<string[]> {
   // Trae los external_ids ya importados para este company.
   const { data, error } = await supabase
