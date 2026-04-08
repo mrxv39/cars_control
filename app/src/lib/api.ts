@@ -753,12 +753,20 @@ export async function deleteSupplier(id: number): Promise<void> {
 // ============================================================
 
 export async function listVehicleDocuments(vehicleId: number): Promise<VehicleDocument[]> {
+  // SECURITY 2026-04-08: vehicle-docs es PRIVADO. Los documentos contienen
+  // DNIs, contratos y datos personales. Usamos signed URLs (validez 1h)
+  // en vez de getPublicUrl. NUNCA cambiar este bucket a público.
   const { data, error } = await supabase.from("vehicle_documents").select("*").eq("vehicle_id", vehicleId).order("created_at");
   if (error) throw new Error(error.message);
-  return (data || []).map((d) => ({
-    ...d,
-    url: supabase.storage.from("vehicle-docs").getPublicUrl(d.storage_path).data.publicUrl,
-  }));
+  const docs = data || [];
+  if (docs.length === 0) return [];
+  const paths = docs.map((d) => d.storage_path).filter(Boolean);
+  const { data: signedList } = await supabase.storage.from("vehicle-docs").createSignedUrls(paths, 3600);
+  const urlMap = new Map<string, string>();
+  for (const s of signedList || []) {
+    if (s?.path && s?.signedUrl) urlMap.set(s.path, s.signedUrl);
+  }
+  return docs.map((d) => ({ ...d, url: urlMap.get(d.storage_path) || "" }));
 }
 
 export async function uploadVehicleDocument(vehicleId: number, file: File, docType: string): Promise<VehicleDocument> {
@@ -770,7 +778,9 @@ export async function uploadVehicleDocument(vehicleId: number, file: File, docTy
     .insert({ vehicle_id: vehicleId, file_name: file.name, storage_path: storagePath, doc_type: docType })
     .select().single();
   if (error) throw new Error(error.message);
-  return { ...data, url: supabase.storage.from("vehicle-docs").getPublicUrl(storagePath).data.publicUrl };
+  // Signed URL para acceso temporal (vehicle-docs es privado)
+  const { data: signed } = await supabase.storage.from("vehicle-docs").createSignedUrl(storagePath, 3600);
+  return { ...data, url: signed?.signedUrl || "" };
 }
 
 export async function deleteVehicleDocument(doc: VehicleDocument): Promise<void> {

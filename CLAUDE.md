@@ -52,6 +52,45 @@ supabase/functions/   — Edge functions (sync-leads)
 - Anual: Modelo 390 (resumen IVA) + Modelo 100 (IRPF)
 - Dashboard: IVA acumulado, beneficio neto, IRPF estimado, alertas de plazos
 
+## 🔴 SEGURIDAD — RGPD / privacidad de datos personales
+
+> Incidente 2026-04-08: una foto de DNI se publicó accidentalmente en el catálogo
+> público porque el script de import clasificó cualquier `.jpg` como vehicle_photo.
+> Esta sección es para que NUNCA vuelva a pasar.
+
+### Buckets y políticas
+
+- **`vehicle-photos`**: PÚBLICO (catálogo de coches en venta). Solo deben ir aquí
+  fotos genuinas del vehículo (exterior, interior, motor, daños). NUNCA fotos
+  de DNIs, contratos, certificados, dni del cliente, nóminas, etc.
+- **`vehicle-docs`**: **PRIVADO** (RLS sin SELECT público). Documentos sensibles:
+  facturas, contratos, DNIs, fichas técnicas, permisos de circulación, nóminas,
+  vida laboral. Acceso solo desde la app autenticada vía **signed URLs** de 1h.
+  NO usar `getPublicUrl()` para este bucket NUNCA.
+
+### Patrones de nombres SIEMPRE sensibles
+
+Si el nombre de un archivo contiene cualquiera de estas palabras (case-insensitive),
+**NO va a `vehicle-photos` aunque sea `.jpg/.png`**, va a `vehicle-documents`:
+
+> dni · nie · pasaporte · carnet · certificado · titularidad · iban · cuenta ·
+> nomina · nómina · vida laboral · renta · irpf · recibo · domiciliac ·
+> seguridad social · contrato · compraventa · padron · empadronam
+
+Mantenido en `scripts/analyze_zip_stock.py:SENSITIVE_NAME_PATTERNS` —
+si añades patrones nuevos aquí, actualízalos también allí.
+
+### Reglas para Claude
+
+1. **NUNCA** subir un archivo con nombre sensible al bucket `vehicle-photos`.
+2. **NUNCA** cambiar `vehicle-docs` a público (RLS o flag `bucket.public`).
+3. **NUNCA** reemplazar `createSignedUrl()` por `getPublicUrl()` en
+   `listVehicleDocuments()` o `uploadVehicleDocument()`.
+4. **Antes de hacer un import masivo de archivos**, verificar nombres con la
+   lista de patrones sensibles.
+5. **Si encuentras un archivo sensible mal ubicado**: borrarlo del bucket público
+   inmediatamente, moverlo al privado, avisar al usuario.
+
 ## Pendiente
 
 - Viabilidad de automatizar petición provisional circulación a Gestoría Ruppmann

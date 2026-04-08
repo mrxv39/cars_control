@@ -75,6 +75,27 @@ DEFINITIVE_FOLDERS = [
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic"}
 
+# SECURITY 2026-04-08: nombres que indican datos personales / financieros.
+# Aunque la extensión sea de imagen, NO van a vehicle_photos (público) sino
+# a vehicle_documents (privado). Validado tras el incidente con la foto del
+# DNI de Samuel publicada accidentalmente en el catálogo público.
+SENSITIVE_NAME_PATTERNS = [
+    "dni", "nie", "pasaporte", "carnet",
+    "certificado", "titularidad", "iban", "cuenta",
+    "nomina", "nómina",
+    "vida laboral", "vida_laboral", "vidalaboral",
+    "renta", "irpf", "modelo 130", "modelo 100",
+    "recibo", "domiciliac",
+    "seguridad social", "seguridad_social",
+    "contrato", "compraventa",
+    "padron", "padrón", "empadronam",
+]
+
+
+def is_sensitive_name(filename: str) -> bool:
+    n = filename.lower()
+    return any(p in n for p in SENSITIVE_NAME_PATTERNS)
+
 
 def normalize(s: str) -> str:
     return s.lower().strip()
@@ -158,6 +179,12 @@ def analyze_car_folder(folder: Path, base: Path) -> dict:
             continue
         rel_path = entry.relative_to(base).as_posix()
         name = entry.name
+        # SECURITY: nombres sensibles (DNI, certificado, nómina...) NUNCA
+        # van a fotos públicas, aunque sean .jpg. Van a docs privados.
+        if is_sensitive_name(name):
+            cat = classify_file(name)
+            files[cat].append(rel_path)
+            continue
         if is_image(name):
             # Ver en qué subcarpeta está
             parents = [p.name for p in entry.relative_to(folder).parents]
