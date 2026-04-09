@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cómo descargar tus extractos N43 desde CaixaBank — Guía para Ricard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f8fafc;
+    color: #1e293b;
+    padding: 24px;
+    max-width: 760px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #1d4ed8;
+  }
+  header h1 {
+    color: #1d4ed8;
+    font-size: 1.5em;
+    margin-bottom: 6px;
+  }
+  header p {
+    color: #64748b;
+  }
+
+  .intro {
+    background: #eff6ff;
+    border-left: 4px solid #1d4ed8;
+    padding: 16px 20px;
+    border-radius: 6px;
+    margin-bottom: 28px;
+    font-size: 0.95em;
+  }
+  .intro b { color: #1e40af; }
+
+  .step {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    position: relative;
+  }
+  .step::before {
+    content: counter(step-counter);
+    counter-increment: step-counter;
+    position: absolute;
+    left: -16px;
+    top: 16px;
+    background: #1d4ed8;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1em;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  }
+  body { counter-reset: step-counter; }
+  .step h2 {
+    color: #1e293b;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    padding-left: 24px;
+  }
+  .step .body {
+    padding-left: 24px;
+  }
+  .step ul, .step ol {
+    margin: 8px 0 0 24px;
+  }
+  .step li {
+    margin-bottom: 6px;
+  }
+  .step strong { color: #1e293b; }
+
+  .keyword {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 1px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.92em;
+  }
+
+  .tip {
+    background: #f0fdf4;
+    border-left: 3px solid #16a34a;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 12px 0;
+    font-size: 0.9em;
+    color: #166534;
+  }
+
+  .warn {
+    background: #fef3c7;
+    border-left: 3px solid #f59e0b;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 12px 0;
+    font-size: 0.9em;
+    color: #92400e;
+  }
+
+  .danger {
+    background: #fef2f2;
+    border-left: 3px solid #dc2626;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 12px 0;
+    font-size: 0.9em;
+    color: #991b1b;
+  }
+
+  .accounts-card {
+    background: #1e293b;
+    color: #f1f5f9;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+  .accounts-card h3 {
+    color: #fff;
+    margin-bottom: 12px;
+    font-size: 1em;
+  }
+  .accounts-card .acc {
+    background: #334155;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9em;
+  }
+  .accounts-card .acc:last-child { margin-bottom: 0; }
+  .accounts-card .iban {
+    font-family: 'Cascadia Code', Consolas, monospace;
+    color: #fbbf24;
+    font-weight: 600;
+  }
+  .accounts-card .name { font-weight: 600; }
+  .accounts-card .small { font-size: 0.78em; color: #94a3b8; display: block; margin-top: 2px; }
+
+  .cta {
+    background: #dcfce7;
+    border: 2px solid #16a34a;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 28px 0;
+    text-align: center;
+  }
+  .cta h2 {
+    color: #15803d;
+    margin-bottom: 8px;
+    font-size: 1.15em;
+  }
+  .cta p { color: #166534; margin: 6px 0; }
+  .cta b { font-weight: 700; }
+
+  .footer {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85em;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cómo descargar tus extractos del banco</h1>
+  <p>Guía paso a paso · CaixaBank Web · 5 minutos</p>
+</header>
+
+<div class="intro">
+  <p>Hola Ricard 👋 Necesito que descargues <b>3 ficheros</b> desde tu CaixaBank
+  Web (uno por cada cuenta) para que pueda meterlos en la app y veas tu actividad
+  de los últimos 16 meses ya conciliada con las compras y ventas que ya tienes
+  registradas. Es <b>una sola vez</b> — después se actualizará automáticamente.</p>
+</div>
+
+<div class="accounts-card">
+  <h3>📋 Las 3 cuentas que necesitas exportar</h3>
+  <div class="acc">
+    <div>
+      <span class="name">CODINACARS</span>
+      <span class="small">cuenta de la actividad de autónomo</span>
+    </div>
+    <span class="iban">****5385</span>
+  </div>
+  <div class="acc">
+    <div>
+      <span class="name">POLIZA CODINACARS</span>
+      <span class="small">póliza de crédito del negocio</span>
+    </div>
+    <span class="iban">****7550</span>
+  </div>
+  <div class="acc">
+    <div>
+      <span class="name">RICARD CODINA LUDEÑA</span>
+      <span class="small">cuenta personal (queda separada del cómputo fiscal)</span>
+    </div>
+    <span class="iban">****2130</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="step">
+  <h2>Entra en CaixaBank Web</h2>
+  <div class="body">
+    <p>Abre <strong>https://www.caixabank.es</strong> en el navegador y haz login con tu acceso habitual (Banca Online).</p>
+    <div class="tip">
+      💡 Si normalmente usas la app del móvil, este proceso solo se puede hacer desde el navegador del ordenador.
+      La app de móvil no tiene la opción de descargar ficheros N43.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="step">
+  <h2>Selecciona la primera cuenta</h2>
+  <div class="body">
+    <p>En la pantalla principal verás tus cuentas listadas (Posición Global). <strong>Click en la cuenta CODINACARS (****5385)</strong> para entrar en sus movimientos.</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="step">
+  <h2>Busca la opción de descargar movimientos</h2>
+  <div class="body">
+    <p>Dentro de la cuenta busca un botón o menú que ponga alguna de estas palabras:</p>
+    <ul>
+      <li><span class="keyword">Descargar</span></li>
+      <li><span class="keyword">Exportar</span></li>
+      <li><span class="keyword">Ficheros</span> o <span class="keyword">Extractos</span></li>
+      <li><span class="keyword">Más opciones</span> (a veces está dentro de un menú "..." o "⋮")</li>
+    </ul>
+    <div class="tip">
+      💡 La interfaz de CaixaBank cambia cada cierto tiempo. Si no la encuentras a la primera, mira en
+      "<b>Detalle de la cuenta</b>" o en el menú de la izquierda.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="step">
+  <h2>Elige el formato Norma 43</h2>
+  <div class="body">
+    <p>Te aparecerán varias opciones de formato. <strong>Tienes que elegir "Norma 43"</strong>. También puede aparecer como:</p>
+    <ul>
+      <li><span class="keyword">Norma 43</span> ← este es el que queremos</li>
+      <li><span class="keyword">N43</span></li>
+      <li><span class="keyword">Cuaderno 43</span></li>
+      <li><span class="keyword">CSB 43</span></li>
+    </ul>
+    <div class="warn">
+      ⚠️ <b>NO descargues</b> Excel, PDF, CSV ni Norma 34. Esos formatos no me sirven, solo el <b>Norma 43</b>.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="step">
+  <h2>Selecciona el periodo: del 01/01/2025 a hoy</h2>
+  <div class="body">
+    <p>Te pedirá un rango de fechas. Pon:</p>
+    <ul>
+      <li><strong>Desde:</strong> 01/01/2025</li>
+      <li><strong>Hasta:</strong> el día de hoy</li>
+    </ul>
+    <div class="warn">
+      ⚠️ Algunos bancos limitan el periodo a 1 año en una sola descarga. Si te dice
+      <i>"el rango es demasiado grande"</i>, hazlo en <b>dos descargas</b>:<br>
+      &nbsp;&nbsp;&nbsp;Fichero A → 01/01/2025 a 31/12/2025<br>
+      &nbsp;&nbsp;&nbsp;Fichero B → 01/01/2026 a hoy<br>
+      Y me mandas los dos.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="step">
+  <h2>Descarga el fichero</h2>
+  <div class="body">
+    <p>Pulsa <b>Descargar / Aceptar</b>. Se te bajará un fichero a tu ordenador. Va a tener un nombre tipo:</p>
+    <ul style="font-family: monospace; font-size: 0.9em;">
+      <li>extracto_N43_5385_20260408.txt</li>
+      <li>movimientos.n43</li>
+      <li>cnt43_xxxxxxxx.txt</li>
+    </ul>
+    <p>El nombre exacto da igual. Lo que importa es que sea un <b>fichero de texto (.txt)</b> o <b>.n43</b>.</p>
+    <div class="tip">
+      💡 <b>Renómbralo</b> a algo claro como <code>codinacars_5385.n43</code> para que sepas cuál es cuál cuando los mandes.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="step">
+  <h2>Repite con las otras 2 cuentas</h2>
+  <div class="body">
+    <p>Vuelve a la posición global y haz lo mismo con:</p>
+    <ul>
+      <li><b>POLIZA CODINACARS (****7550)</b> → guárdalo como <code>poliza_7550.n43</code></li>
+      <li><b>RICARD CODINA LUDEÑA (****2130)</b> → guárdalo como <code>personal_2130.n43</code></li>
+    </ul>
+    <div class="warn">
+      ⚠️ Si la <b>póliza de crédito</b> no te deja descargar Norma 43 (es posible
+      porque no es una cuenta corriente al uso), avísame y pensamos otra forma.
+      Las otras 2 cuentas seguro que sí.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="step">
+  <h2>Mándamelos por WhatsApp</h2>
+  <div class="body">
+    <p>Cuando tengas los 2 o 3 ficheros, pásamelos por WhatsApp como <b>documento</b> (no como foto).</p>
+
+    <div class="danger">
+      🔒 <b>Nota de seguridad:</b> Estos ficheros contienen los movimientos de
+      tu cuenta. Solo me los mandas a mí, NO los subas a Drive público ni los
+      compartas con nadie más. Yo los borro de mi PC en cuanto los procese.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="cta">
+  <h2>🎯 Lo que pasa después</h2>
+  <p>Cuando me los mandes (puede ser <b>hoy mismo</b> si te animas):</p>
+  <p>1. Yo los importo en la app en 5 minutos</p>
+  <p>2. Conecto los movimientos con las compras y ventas que ya tienes</p>
+  <p>3. Te enseño cómo verlo cuando esté <b>todo verificado</b> y funcionando bien</p>
+  <p>4. Después configuramos la sincronización automática (sin descargas a mano nunca más)</p>
+</div>
+
+<div class="footer">
+  Cualquier duda durante la descarga, mándame una captura por WhatsApp y te ayudo en el momento.<br>
+  CodinaCars · App de gestión · 2026-04-08
+</div>
+
+</body>
+</html>

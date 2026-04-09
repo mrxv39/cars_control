@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodinaCars · Conexión bancaria — Preguntas para Ricard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f8fafc;
+    color: #1e293b;
+    padding: 24px;
+    max-width: 760px;
+    margin: 0 auto;
+    line-height: 1.55;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #1d4ed8;
+  }
+  header h1 {
+    color: #1d4ed8;
+    font-size: 1.6em;
+    margin-bottom: 4px;
+  }
+  header p {
+    color: #64748b;
+    font-size: 0.95em;
+  }
+  .intro {
+    background: #eff6ff;
+    border-left: 4px solid #1d4ed8;
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin-bottom: 28px;
+    font-size: 0.92em;
+  }
+  .intro b { color: #1e40af; }
+
+  .section {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .section h2 {
+    color: #1e293b;
+    font-size: 1.1em;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section h2 .num {
+    background: #1d4ed8;
+    color: #fff;
+    font-size: 0.75em;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .section .help {
+    color: #64748b;
+    font-size: 0.85em;
+    margin-bottom: 14px;
+    margin-left: 34px;
+  }
+
+  .field {
+    margin-bottom: 14px;
+  }
+  .field label.q {
+    display: block;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 6px;
+    font-size: 0.95em;
+  }
+  .field input[type="text"],
+  .field input[type="email"],
+  .field textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-family: inherit;
+    background: #fff;
+    transition: border-color 0.15s;
+  }
+  .field input[type="text"]:focus,
+  .field input[type="email"]:focus,
+  .field textarea:focus {
+    outline: none;
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+  }
+  .field textarea {
+    min-height: 70px;
+    resize: vertical;
+  }
+
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .options.inline { flex-direction: row; flex-wrap: wrap; gap: 14px; }
+  .options label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: background 0.12s;
+    font-size: 0.93em;
+  }
+  .options label:hover { background: #f1f5f9; }
+  .options input[type="radio"],
+  .options input[type="checkbox"] {
+    margin-top: 3px;
+    accent-color: #1d4ed8;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 540px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  .footer {
+    background: #1e293b;
+    color: #f1f5f9;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-top: 24px;
+    text-align: center;
+  }
+  .footer button {
+    background: #3fb950;
+    color: #fff;
+    border: none;
+    padding: 14px 32px;
+    font-size: 1.05em;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 14px 0 8px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .footer button:hover { background: #2ea043; }
+  .footer button:active { transform: scale(0.98); }
+  .footer p { color: #94a3b8; font-size: 0.85em; }
+  .footer .ok {
+    background: #14532d;
+    border: 1px solid #166534;
+    color: #86efac;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-top: 10px;
+    display: none;
+    font-size: 0.9em;
+  }
+  .footer .ok.show { display: block; }
+
+  .micro {
+    color: #94a3b8;
+    font-size: 0.78em;
+    margin-top: 6px;
+  }
+
+  details {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 10px;
+    font-size: 0.85em;
+  }
+  details summary {
+    cursor: pointer;
+    color: #1d4ed8;
+    font-weight: 600;
+  }
+  details ul { margin: 8px 0 0 22px; }
+  details li { margin-bottom: 4px; color: #475569; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Conexión bancaria CodinaCars</h1>
+  <p>Preguntas para conectar tu CaixaBank a la app · 5 minutos</p>
+</header>
+
+<div class="intro">
+  <b>¿Qué es esto?</b> Estamos preparando que la app vea tus movimientos
+  bancarios y los case sola con las compras y ventas que ya tienes registradas
+  (gestoría, IVA, etc). Antes de tocar nada en tu cuenta necesito que respondas
+  estas preguntas. Cuando termines, pulsa el botón verde de abajo y manda el
+  resultado a Mauro.
+</div>
+
+<form id="form">
+
+<!-- ============================================================ -->
+<div class="section">
+  <h2><span class="num">1</span> Tus cuentas CaixaBank</h2>
+  <p class="help">
+    Necesito identificar tus cuentas. Pon el alias que quieres ver en la app
+    y los <b>últimos 4 dígitos del IBAN</b> (no el IBAN completo) para
+    distinguirlas.
+  </p>
+
+  <div class="field">
+    <label class="q">🏢 Cuenta de la actividad (autónomo)</label>
+    <div class="grid-2">
+      <input type="text" name="cuenta_autonomo_alias" placeholder="Alias, ej: Autónomo CodinaCars">
+      <input type="text" name="cuenta_autonomo_iban4" placeholder="Últimos 4 dígitos IBAN, ej: 4521">
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">💳 Póliza de crédito del negocio</label>
+    <div class="grid-2">
+      <input type="text" name="cuenta_poliza_alias" placeholder="Alias, ej: Póliza CodinaCars">
+      <input type="text" name="cuenta_poliza_iban4" placeholder="Últimos 4 dígitos IBAN">
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">👤 Cuenta personal</label>
+    <div class="grid-2">
+      <input type="text" name="cuenta_personal_alias" placeholder="Alias, ej: Personal Ricard">
+      <input type="text" name="cuenta_personal_iban4" placeholder="Últimos 4 dígitos IBAN">
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">¿Hay alguna cuenta más en CaixaBank que use el negocio? (ahorro, depósito, dólares, etc.)</label>
+    <textarea name="cuentas_extra" placeholder="Si no, deja en blanco. Si sí, pon alias y para qué la usas."></textarea>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+  <h2><span class="num">2</span> Cuenta personal: ¿la metemos en la app?</h2>
+  <p class="help">
+    Hacienda no permite mezclar gastos personales con la actividad de autónomo.
+    Pero podemos importarla para que veas tu caja personal en la app, marcada
+    aparte y sin contar en los modelos fiscales (303, 130, etc).
+  </p>
+  <div class="options">
+    <label>
+      <input type="radio" name="personal_modo" value="importar_filtrar">
+      <span>Sí, importar pero <b>marcarla como personal</b> y excluirla del cómputo fiscal (recomendado)</span>
+    </label>
+    <label>
+      <input type="radio" name="personal_modo" value="no_conectar">
+      <span>No, no conectar la cuenta personal a la app en absoluto</span>
+    </label>
+    <label>
+      <input type="radio" name="personal_modo" value="ya_veremos">
+      <span>Lo decidimos más adelante (empezamos solo con autónomo + póliza)</span>
+    </label>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+  <h2><span class="num">3</span> ¿Cuánto histórico necesitas?</h2>
+  <p class="help">
+    La conexión automática solo nos da unos 90 días hacia atrás (es un
+    límite legal europeo). Para más histórico tenemos que descargar a mano un
+    fichero del banco y meterlo nosotros.
+  </p>
+  <div class="options">
+    <label>
+      <input type="radio" name="historico" value="solo_nuevo">
+      <span>Solo desde hoy, lo viejo se queda donde está</span>
+    </label>
+    <label>
+      <input type="radio" name="historico" value="90d">
+      <span>Últimos 90 días (no requiere descarga manual)</span>
+    </label>
+    <label>
+      <input type="radio" name="historico" value="ano_actual">
+      <span>Año fiscal en curso (todo 2026 — necesitamos descarga manual)</span>
+    </label>
+    <label>
+      <input type="radio" name="historico" value="ano_actual_y_anterior">
+      <span>Año en curso + año anterior (2025 y 2026 — descarga manual)</span>
+    </label>
+    <label>
+      <input type="radio" name="historico" value="todo">
+      <span>Todo lo posible, hasta donde llegue el banco</span>
+    </label>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+  <h2><span class="num">4</span> Conexión automática (la opción cómoda)</h2>
+  <p class="help">
+    Usamos un servicio europeo llamado GoCardless (gratis) que sigue las
+    normas legales bancarias. <b>Nunca tendrás que darnos tu contraseña.</b>
+    Una vez cada 90 días te pedirá entrar en la web de CaixaBank con tu
+    acceso normal y dar permiso (15 segundos).
+  </p>
+
+  <div class="field">
+    <label class="q">¿Estás dispuesto a hacer este proceso de "renovación cada 90 días"?</label>
+    <div class="options">
+      <label>
+        <input type="radio" name="psd2_ok" value="si"> Sí, sin problema
+      </label>
+      <label>
+        <input type="radio" name="psd2_ok" value="no_prefiero_manual">
+        Prefiero descargar yo el fichero a mano cada mes (más control)
+      </label>
+      <label>
+        <input type="radio" name="psd2_ok" value="dudas">
+        Tengo dudas, lo hablamos en persona
+      </label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">Email para registrar la app (lo usaremos solo para esto)</label>
+    <input type="email" name="email_gocardless" placeholder="email@dominio.com">
+    <p class="micro">Sirve cualquier email. Si quieres uno nuevo dedicado, dilo.</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+  <h2><span class="num">5</span> Descarga manual de extractos</h2>
+  <p class="help">
+    Aunque conectemos el automático, para el histórico nos hace falta que
+    descargues UNA vez un fichero <b>"Norma 43"</b> desde la web de CaixaBank.
+    Es un .txt que contiene todos los movimientos del periodo que pidas.
+  </p>
+
+  <div class="field">
+    <label class="q">¿Sabes cómo descargar el fichero N43 desde tu CaixaBank Web?</label>
+    <div class="options">
+      <label><input type="radio" name="sabe_n43" value="si"> Sí, lo he hecho otras veces</label>
+      <label><input type="radio" name="sabe_n43" value="no"> No, necesito que me hagas una guía paso a paso</label>
+      <label><input type="radio" name="sabe_n43" value="lo_pido_a_gestoria"> Se lo pido a la gestoría que me lo descargue</label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">¿Cuándo puedes mandarme el primer fichero N43 de prueba?</label>
+    <div class="options">
+      <label><input type="radio" name="cuando_n43" value="hoy_mismo"> Hoy mismo / mañana</label>
+      <label><input type="radio" name="cuando_n43" value="esta_semana"> Esta semana</label>
+      <label><input type="radio" name="cuando_n43" value="proxima_semana"> Próxima semana</label>
+      <label><input type="radio" name="cuando_n43" value="cuando_haya_guia"> Cuando me mandes la guía</label>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+  <h2><span class="num">6</span> Casos especiales del día a día</h2>
+  <p class="help">Estas preguntas son para que la app no se equivoque clasificando.</p>
+
+  <div class="field">
+    <label class="q">Compras a particulares en efectivo (sin movimiento bancario): ¿con qué frecuencia?</label>
+    <div class="options inline">
+      <label><input type="radio" name="cash_freq" value="nunca"> Casi nunca</label>
+      <label><input type="radio" name="cash_freq" value="alguna"> Alguna al mes</label>
+      <label><input type="radio" name="cash_freq" value="varias"> Varias al mes</label>
+      <label><input type="radio" name="cash_freq" value="muy_a_menudo"> Muy a menudo</label>
+    </div>
+    <p class="micro">Estas seguirán siendo manuales — la app no las puede ver desde el banco.</p>
+  </div>
+
+  <div class="field">
+    <label class="q">Bizum: ¿lo recibes a menudo? ¿Para qué tipo de cosas?</label>
+    <textarea name="bizum_uso" placeholder="Ej: para señales de reserva, devoluciones, gastos pequeños..."></textarea>
+  </div>
+
+  <div class="field">
+    <label class="q">Cuando vendes financiado (Santander, Cetelem, financiera del cliente): ¿el dinero entra a tu cuenta el mismo día de la firma?</label>
+    <div class="options">
+      <label><input type="radio" name="financiacion_timing" value="mismo_dia"> Sí, el mismo día</label>
+      <label><input type="radio" name="financiacion_timing" value="dias_despues"> Tarda 1-3 días</label>
+      <label><input type="radio" name="financiacion_timing" value="varia"> Depende de la financiera</label>
+      <label><input type="radio" name="financiacion_timing" value="no_financio"> No suelo trabajar con financiación</label>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+  <h2><span class="num">7</span> Categorías de gasto</h2>
+  <p class="help">
+    Estas son las categorías que ya tengo preparadas para clasificar tus
+    movimientos automáticamente. Mira si falta alguna importante.
+  </p>
+
+  <details>
+    <summary>Ver las 22 categorías ya configuradas</summary>
+    <ul>
+      <li>Compra vehículo / Venta vehículo / Cobro financiera</li>
+      <li>Reparación / Recambios / Neumáticos</li>
+      <li>Gestoría / Transporte / ITV</li>
+      <li>Combustible / Seguro</li>
+      <li>Modelo 303 (IVA) / Modelo 130 (IRPF) / Otro impuesto</li>
+      <li>Cuota autónomo (TGSS)</li>
+      <li>Comisión banco / Traspaso interno</li>
+      <li>Publicidad / Software</li>
+      <li>Retiro personal / Otro / Sin categorizar</li>
+    </ul>
+  </details>
+
+  <div class="field" style="margin-top:14px">
+    <label class="q">¿Falta alguna que uses a menudo?</label>
+    <textarea name="categorias_extra" placeholder="Ej: alquiler local, luz, internet, asesoría fiscal, devoluciones a clientes, leasing..."></textarea>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+  <h2><span class="num">8</span> Cualquier otra cosa</h2>
+  <div class="field">
+    <textarea name="comentarios" placeholder="Dudas, preocupaciones, cosas que se me hayan olvidado preguntar, casos raros del día a día..."></textarea>
+  </div>
+</div>
+
+</form>
+
+<div class="footer">
+  <p>Cuando termines, pulsa el botón. Se copiará un resumen al portapapeles que solo tienes que pegar en el chat con Mauro.</p>
+  <button type="button" id="btn-copy">📋 Copiar respuestas y enviar a Mauro</button>
+  <div id="ok-msg" class="ok">✓ Copiado al portapapeles. Pégalo en el chat (Ctrl+V).</div>
+  <p>No se guarda nada en ningún sitio. Solo en tu portapapeles.</p>
+</div>
+
+<script>
+document.getElementById('btn-copy').addEventListener('click', function() {
+  var form = document.getElementById('form');
+  var data = new FormData(form);
+  var lines = ['# Respuestas conexión bancaria CodinaCars',
+               '_Generado: ' + new Date().toLocaleString('es-ES') + '_',
+               ''];
+
+  var fieldLabels = {
+    cuenta_autonomo_alias: '1. Cuenta autónomo - alias',
+    cuenta_autonomo_iban4: '1. Cuenta autónomo - últimos 4',
+    cuenta_poliza_alias: '1. Póliza - alias',
+    cuenta_poliza_iban4: '1. Póliza - últimos 4',
+    cuenta_personal_alias: '1. Cuenta personal - alias',
+    cuenta_personal_iban4: '1. Cuenta personal - últimos 4',
+    cuentas_extra: '1. Otras cuentas',
+    personal_modo: '2. Cuenta personal en la app',
+    historico: '3. Histórico necesario',
+    psd2_ok: '4. Renovación PSD2 cada 90 días',
+    email_gocardless: '4. Email para GoCardless',
+    sabe_n43: '5. Sabe descargar N43',
+    cuando_n43: '5. Cuándo manda primer N43',
+    cash_freq: '6. Frecuencia compras en efectivo',
+    bizum_uso: '6. Uso de Bizum',
+    financiacion_timing: '6. Timing financiaciones',
+    categorias_extra: '7. Categorías adicionales',
+    comentarios: '8. Comentarios libres'
+  };
+
+  for (var key in fieldLabels) {
+    var val = data.get(key);
+    if (val && val.trim()) {
+      lines.push('**' + fieldLabels[key] + ':** ' + val);
+    } else {
+      lines.push('**' + fieldLabels[key] + ':** _(sin respuesta)_');
+    }
+  }
+
+  var text = lines.join('\n');
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      var ok = document.getElementById('ok-msg');
+      ok.classList.add('show');
+      setTimeout(function(){ ok.classList.remove('show'); }, 4000);
+    }, function() {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+
+  function fallbackCopy(t) {
+    var ta = document.createElement('textarea');
+    ta.value = t;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+    var ok = document.getElementById('ok-msg');
+    ok.classList.add('show');
+    setTimeout(function(){ ok.classList.remove('show'); }, 4000);
+  }
+});
+</script>
+
+</body>
+</html>

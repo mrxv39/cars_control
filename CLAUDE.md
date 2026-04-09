@@ -123,17 +123,47 @@ si añades patrones nuevos aquí, actualízalos también allí.
 
 ### Reglas de negocio bancarias (validado con Ricard 2026-04-08)
 
-Ricard opera **EXCLUSIVAMENTE con CaixaBank** y tiene **3 cuentas**:
+Ricard opera **EXCLUSIVAMENTE con CaixaBank** y tiene **3 cuentas**.
+Confirmadas con últimos 4 dígitos de IBAN tras formulario `docs/banco_preguntas_ricard.html`:
 
-1. **Personal** (`is_personal=true`, `account_type=checking`): uso particular.
-   Excluida del cómputo fiscal.
-2. **Autónomo** (`is_personal=false`, `account_type=checking`): cuenta operativa
-   real de CodinaCars. Aquí entran las compras (Auto1, talleres), las ventas,
-   los pagos a Hacienda, las cuotas de autónomo (TGSS), seguros, ITV.
-3. **Póliza CodinaCars** (`is_personal=false`, `account_type=credit_line`):
-   línea de crédito del negocio. NO es cuenta corriente al uso, los movimientos
-   son disposiciones y reintegros. **Posible riesgo:** GoCardless puede no
-   soportarla en Fase 3 (verificar).
+| `bank_accounts.id` | alias               | IBAN     | tipo          | personal | uso |
+|---|---|---|---|---|---|
+| 1 | RICARD CODINA LUDEÑA  | ****2130 | checking      | **true** | particular, excluida del cómputo fiscal |
+| 2 | CODINACARS            | ****5385 | checking      | false    | operativa: compras Auto1, ventas, Hacienda, TGSS |
+| 3 | POLIZA CODINACARS     | ****7550 | credit_line   | false    | línea de crédito, disposiciones/reintegros |
+
+**Decisiones de Ricard 2026-04-08 que aún no están implementadas pero hay que respetar cuando se haga:**
+- Cuenta personal: importar SÍ pero filtrar del cómputo fiscal (`is_personal=true`)
+- Histórico necesario: **2025+2026 completos** → N43 manual obligatorio (PSD2 solo da 90 días)
+- PSD2 90d: OK, acepta renovar
+- Email para registrar GoCardless en Fase 3: `codinacars@gmail.com`
+- Compras a particulares en efectivo: **nunca** (no contamina)
+- Bizum: lo recibe para **pagas y señales** → dejar como SIN_CATEGORIZAR para reconciliar manualmente
+- Financiaciones de venta (Santander, Cetelem...): **el dinero entra 1-3 días después de la firma**, NO el mismo día. La ventana de match en `suggestPurchasesForTransaction` debe ampliarse de ±15 a ±21 días para captar este caso (TODO no aplicado todavía).
+
+**Posible riesgo Fase 3:** GoCardless puede no soportar bien la cuenta póliza
+de crédito porque no es cuenta corriente al uso. Verificar antes de Fase 3.
+
+### Bloqueo conocido — descarga N43 desde CaixaBank Banca Premier
+
+Validado 2026-04-08, Ricard usa **CaixaBank Banca Premier** (la interfaz de banca personal de alta gama, NO Línea Abierta Empresas):
+
+- El módulo "**Cuaderno 43**" (URL `loc5.caixabank.es/GPeticiones/...`) **acepta peticiones**
+  ("Operación realizada correctamente") pero el fichero generado **no aparece**
+  en ningún sitio visible: ni MailBox, ni Mis certificados, ni se manda por
+  email, ni se descarga al disco. Es un módulo pensado para Línea Abierta
+  Empresas, en Banca Premier la "recepción de ficheros" no está expuesta.
+  → **NO insistir** con Cuaderno 43 desde Banca Premier sin antes verificar
+  que su contrato lo soporta.
+- El **"Exportar Excel"** del menú `⋮` dentro de cada cuenta es la vía válida
+  en Banca Premier, pero requiere validar paso a paso porque en la primera
+  prueba con Ricard tampoco apareció en Descargas (causa pendiente de
+  diagnosticar — puede ser popup bloqueado, formato real distinto, o requerir
+  diálogo previo de email).
+- **Plan B confirmado viable:** copy-paste de la tabla de movimientos del web
+  a un Google Sheet, después parser CSV. Tedioso pero funciona seguro.
+- **Plan C nuclear:** script Playwright que automatiza la navegación con
+  sesión iniciada por Ricard. ~2h escribir, después funciona para siempre.
 
 ### Importación de extractos
 
@@ -160,13 +190,53 @@ Ricard opera **EXCLUSIVAMENTE con CaixaBank** y tiene **3 cuentas**:
   poder transformarlas (~5 MB de bandwidth en el listado de Stock vienen de ahí)
 - Lazy-load real con IntersectionObserver en el listado de Stock (mejora TTI
   aunque no `Finish`)
-- **Banco Fase 0** (validar con Ricard): registrar cuenta en
-  bankaccountdata.gocardless.com (gratis), confirmar que CaixaBank Particular
-  + Negocios + Póliza están soportados, profundidad histórica de cada uno
-- **Banco Fase 2**: UI de reconciliación (vincular movimiento ↔ compra/venta),
-  editor de categoría inline, "aprender regla"
-- **Banco Fase 3**: edge function `sync-bank-caixa` con GoCardless, cron diario,
-  banner renovación PSD2 (consentimiento expira cada 90 días)
+
+### Banco — bloqueado / siguiente sesión
+
+1. **Desbloquear la obtención del primer extracto real** de las cuentas de
+   Ricard. Ver sección "Bloqueo conocido — descarga N43 desde CaixaBank
+   Banca Premier" más arriba. Estado actual: el primer N43 + los Excel
+   pedidos no han llegado a ningún sitio (ni MailBox, ni Descargas, ni email).
+   Plan B y C documentados pero sin probar todavía.
+2. **Ampliar ventana de match** en `app/src/lib/api.ts:suggestPurchasesForTransaction`
+   de `±15 días` a `±21 días` (cambio de 2 líneas, las dos `* 86400000`).
+   Razón: financiaciones de venta tardan 1-3 días en abonarse según Ricard.
+3. **Parser de Excel/CSV de CaixaBank Banca Premier** (cuando tengamos un
+   fichero real para saber el formato exacto). Usar `openpyxl` (xlsx) o
+   `xlrd` (xls). Estilo de `scripts/import_n43.py`, idempotente igual,
+   external_id sha1 estable.
+4. **Script Playwright nuclear** (Plan C) si los planes anteriores siguen
+   fallando: automatiza navegación con sesión iniciada por Ricard, recorre
+   las 3 cuentas, copia movimientos a CSV. ~2h, funciona seguro.
+5. **Banco Fase 2**: editor categoría inline ya existe (commit 68f0b72),
+   pero falta el botón "crear regla a partir de esta categorización" y
+   `createPurchaseFromTransaction` en UI (helper en api.ts ya existe).
+6. **Banco Fase 3**: edge function `sync-bank-caixa` con GoCardless. Email
+   confirmado: `codinacars@gmail.com`. Bloqueo: registro en
+   bankaccountdata.gocardless.com (gratis) y verificar que CaixaBank
+   Particular + Empresas + Póliza están en su lista de instituciones.
+
+### Migración cron sync-leads
+
+7. **Migrar sync-leads de Windows Task Scheduler local a Supabase pg_cron.**
+   Estado verificado 2026-04-08 vía MCP:
+   - Código local: `supabase/functions/sync-leads/index.ts` (558 líneas) ✅
+   - Edge function en Supabase: ❌ NO desplegada (solo `import-coches-net`
+     existe, que es otra cosa)
+   - `pg_cron` + `pg_net`: ✅ habilitados, hay 3 jobs activos como referencia
+     (`process-email-queue` cada 5 min usa el patrón exacto que necesitamos)
+   - Cron job para sync-leads: ❌ no creado
+   Pasos pendientes (3 los puedo hacer yo vía MCP, los 2 primeros no):
+   1. Usuario: obtener credenciales OAuth2 Gmail (CLIENT_ID/SECRET/REFRESH_TOKEN)
+      desde Google Cloud Console + OAuth Playground (paso 1 de
+      `supabase/DEPLOY_GUIDE.md`)
+   2. Usuario: configurar 3 secretos en Supabase
+      (`supabase secrets set` o Dashboard → Edge Functions → Secrets)
+   3. Yo: deploy edge function con `verify_jwt=false`
+   4. Yo: crear cron job pg_cron `*/5 * * * *` apuntando a la function URL
+   5. Yo: invocación manual de prueba + verificar logs vía MCP get_logs
+   6. Usuario: deshabilitar Task Scheduler local con
+      `schtasks /delete /tn "SyncLeadsCoches" /f` cuando esté verificado
 
 ## Performance — reglas para el listado de Stock
 
@@ -221,3 +291,6 @@ Validado Ricard 2026-04-08:
 - Sesión 2026-04-08: import zip stock, fusión coches.net+zip, foto principal, fix privacidad RGPD
 - Sesión 2026-04-08 (perf): listado de Stock 12.6s → 4.7s — batch queries `.in()` + thumbnails Storage Transforms
 - Sesión 2026-04-08 (banco Fase 1): integración CaixaBank — migración 012 (bank_accounts/transactions/category_rules), parser N43 + 16 tests, BankList read-only, 3 cuentas Ricard sembradas (Personal/Autónomo/Póliza), 16 reglas categorización inicial. Plan completo en `~/.claude/plans/wondrous-tumbling-firefly.md`
+- Sesión 2026-04-08 (banco Fase 2): reconciliación UI — resumen visual con barras por categoría (clickable filtra), tabla agrupada por mes con subtotales, editor categoría inline (dropdown), modal "vincular movimiento → compra existente" con sugerencias automáticas por importe ±5€ y fecha ±15 días, chip "✓ Banco" en `PurchasesList` para compras conciliadas. `api.ts` nuevos helpers: `suggestPurchasesForTransaction`, `listPurchaseIdsWithBankLink`, `createPurchaseFromTransaction`. Commit `68f0b72`
+- Sesión 2026-04-08 (formulario Ricard): cuestionario HTML autocontenido `docs/banco_preguntas_ricard.html` enviado a Ricard, 3 cuentas confirmadas con últimos 4 IBAN, decisiones recogidas (ver sección "Reglas de negocio bancarias" arriba). Aliases actualizados en BD vía MCP
+- Sesión 2026-04-08 (intento descarga N43): bloqueo CaixaBank Banca Premier — Cuaderno 43 acepta peticiones pero los ficheros no aparecen en MailBox/Mis Certificados/Descargas/email. Plan B y C documentados pero sin probar. Guía visual creada en `docs/guia_descargar_n43_caixabank.html` para Ricard
