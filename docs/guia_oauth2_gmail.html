@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Guia OAuth2 Gmail - CodinaCars</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #222;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 50px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #1a73e8;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: #1a73e8;
+            margin-bottom: 5px;
+        }
+        .header .subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+        .info-box {
+            background: #e8f0fe;
+            border-left: 4px solid #1a73e8;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-box strong { color: #1a73e8; }
+        .warning-box {
+            background: #fef7e0;
+            border-left: 4px solid #f9ab00;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .warning-box strong { color: #e37400; }
+        .success-box {
+            background: #e6f4ea;
+            border-left: 4px solid #34a853;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .success-box strong { color: #1e8e3e; }
+        .error-box {
+            background: #fce8e6;
+            border-left: 4px solid #d32f2f;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .error-box strong { color: #d32f2f; }
+        h2 {
+            font-size: 18px;
+            color: #1a73e8;
+            margin-top: 30px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        h3 {
+            font-size: 15px;
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
+        .step {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        .step-number {
+            display: inline-block;
+            background: #1a73e8;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        .step-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            display: inline;
+        }
+        ol, ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        li { margin-bottom: 8px; }
+        code {
+            background: #f1f3f4;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            color: #c7254e;
+        }
+        .code-block {
+            background: #263238;
+            color: #eeffff;
+            padding: 15px 20px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            overflow-x: auto;
+            word-break: break-all;
+        }
+        .copy-hint {
+            display: block;
+            text-align: right;
+            font-size: 11px;
+            color: #999;
+            margin-top: -5px;
+        }
+        .screenshot-placeholder {
+            background: #f0f0f0;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            color: #999;
+            margin: 10px 0;
+            font-style: italic;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px 12px;
+            text-align: left;
+        }
+        th { background: #1a73e8; color: white; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        .footer {
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 2px solid #1a73e8;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        .result-box {
+            background: #fff;
+            border: 2px solid #1a73e8;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .result-box label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #1a73e8;
+        }
+        .result-box input, .result-box textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+        .result-box textarea { height: 80px; resize: vertical; }
+        .result-box button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .result-box button:hover { background: #1557b0; }
+        @media print {
+            body { padding: 20px 30px; }
+            .step { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Configuracion OAuth2 Gmail</h1>
+    <div class="subtitle">Acceso seguro al correo codinacars@gmail.com para importacion automatica de leads</div>
+    <div class="subtitle" style="margin-top: 5px; font-size: 12px;">Documento para: <strong>Ricard</strong> | Fecha: Abril 2026</div>
+</div>
+
+<div class="info-box">
+    <strong>Por que una nueva guia?</strong> La contrasena de aplicacion que creaste en el paso anterior sirve para acceso IMAP, pero nuestro servidor (Supabase Edge Functions) solo puede conectarse a Gmail mediante su API oficial, que requiere un tipo de acceso diferente llamado OAuth2. Es igual de seguro, simplemente es otro metodo.
+    <br><br>
+    <strong>Tiempo estimado:</strong> 15-20 minutos<br>
+    <strong>Requisitos:</strong> Acceso a la cuenta <code>codinacars@gmail.com</code>
+</div>
+
+<div class="warning-box">
+    <strong>Sobre la contrasena de aplicacion anterior:</strong> La puedes dejar activa (no molesta) o eliminarla desde <code>myaccount.google.com/apppasswords</code>. No la vamos a usar, pero tampoco hace falta borrarla.
+</div>
+
+<h2>Resumen de pasos</h2>
+<table>
+    <tr><th>#</th><th>Paso</th><th>Donde</th><th>Tiempo</th></tr>
+    <tr><td>1</td><td>Crear un proyecto en Google Cloud</td><td>Google Cloud Console</td><td>3 min</td></tr>
+    <tr><td>2</td><td>Activar la Gmail API</td><td>Google Cloud Console</td><td>1 min</td></tr>
+    <tr><td>3</td><td>Configurar pantalla de consentimiento</td><td>Google Cloud Console</td><td>3 min</td></tr>
+    <tr><td>4</td><td>Crear credenciales OAuth2</td><td>Google Cloud Console</td><td>2 min</td></tr>
+    <tr><td>5</td><td>Obtener el Refresh Token</td><td>OAuth Playground</td><td>5 min</td></tr>
+    <tr><td>6</td><td>Enviarnos los 3 valores</td><td>WhatsApp</td><td>1 min</td></tr>
+</table>
+
+<!-- PASO 1 -->
+<div class="step">
+    <span class="step-number">1</span>
+    <span class="step-title">Crear un proyecto en Google Cloud</span>
+
+    <ol>
+        <li>Abre el navegador y ve a: <code>console.cloud.google.com</code></li>
+        <li>Inicia sesion con <code>codinacars@gmail.com</code></li>
+        <li>Si es la primera vez, acepta los terminos de servicio</li>
+        <li>Arriba a la izquierda, junto al logo "Google Cloud", hay un selector de proyecto. Haz clic en el</li>
+        <li>En la ventana que aparece, haz clic en <strong>"NUEVO PROYECTO"</strong> (arriba a la derecha)</li>
+        <li>Nombre del proyecto: <code>CodinaCars Leads</code></li>
+        <li>Haz clic en <strong>"CREAR"</strong></li>
+        <li>Espera unos segundos y asegurate de que el proyecto <strong>"CodinaCars Leads"</strong> esta seleccionado arriba a la izquierda</li>
+    </ol>
+
+    <div class="info-box">
+        <strong>Es gratuito?</strong> Si. Google Cloud tiene un nivel gratuito que incluye la Gmail API. Para lo que necesitamos (leer unos pocos emails al dia) nunca se generara ningun coste. No hace falta introducir tarjeta de credito.
+    </div>
+</div>
+
+<!-- PASO 2 -->
+<div class="step">
+    <span class="step-number">2</span>
+    <span class="step-title">Activar la Gmail API</span>
+
+    <ol>
+        <li>En el menu lateral izquierdo, haz clic en <strong>"APIs y servicios"</strong> (o "APIs & Services")</li>
+        <li>Haz clic en <strong>"Biblioteca"</strong> (o "Library")</li>
+        <li>En el buscador, escribe: <code>Gmail API</code></li>
+        <li>Haz clic en el resultado <strong>"Gmail API"</strong> (icono del sobre rojo de Gmail)</li>
+        <li>Haz clic en el boton azul <strong>"HABILITAR"</strong> (o "ENABLE")</li>
+        <li>Espera unos segundos hasta que cargue la pagina de la API habilitada</li>
+    </ol>
+
+    <div class="success-box">
+        <strong>Verificacion:</strong> Sabras que esta bien si ves la pagina de "Gmail API" con un mensaje tipo "API habilitada" o un boton de "Administrar" en lugar de "Habilitar".
+    </div>
+</div>
+
+<!-- PASO 3 -->
+<div class="step">
+    <span class="step-number">3</span>
+    <span class="step-title">Configurar la pantalla de consentimiento OAuth</span>
+
+    <div class="info-box">
+        <strong>Que es esto?</strong> Google requiere que configures una "pantalla de consentimiento" antes de crear credenciales OAuth. Como solo la usaremos nosotros (no es una app publica), la configuracion es minima.
+    </div>
+
+    <ol>
+        <li>En el menu lateral izquierdo: <strong>"APIs y servicios"</strong> &rarr; <strong>"Pantalla de consentimiento OAuth"</strong> (o "OAuth consent screen")</li>
+        <li>Selecciona <strong>"Externo"</strong> y haz clic en <strong>"CREAR"</strong>
+            <br><em>(No te preocupes por "Externo" — como pondremos la app en modo "Testing", solo tu cuenta tendra acceso)</em>
+        </li>
+        <li>Rellena solo los campos obligatorios:
+            <ul>
+                <li><strong>Nombre de la aplicacion:</strong> <code>CodinaCars Leads</code></li>
+                <li><strong>Correo de asistencia:</strong> <code>codinacars@gmail.com</code></li>
+                <li><strong>Correo del desarrollador</strong> (al final de la pagina): <code>codinacars@gmail.com</code></li>
+            </ul>
+        </li>
+        <li>Haz clic en <strong>"GUARDAR Y CONTINUAR"</strong></li>
+        <li>En la pagina de <strong>"Permisos"</strong> (Scopes): haz clic en <strong>"GUARDAR Y CONTINUAR"</strong> sin cambiar nada</li>
+        <li>En la pagina de <strong>"Usuarios de prueba"</strong> (Test users):
+            <ul>
+                <li>Haz clic en <strong>"+ ADD USERS"</strong></li>
+                <li>Escribe: <code>codinacars@gmail.com</code></li>
+                <li>Haz clic en <strong>"Agregar"</strong> y luego <strong>"GUARDAR Y CONTINUAR"</strong></li>
+            </ul>
+        </li>
+        <li>En la pagina de resumen: haz clic en <strong>"VOLVER AL PANEL"</strong></li>
+    </ol>
+</div>
+
+<!-- PASO 4 -->
+<div class="step">
+    <span class="step-number">4</span>
+    <span class="step-title">Crear credenciales OAuth2</span>
+
+    <ol>
+        <li>En el menu lateral izquierdo: <strong>"APIs y servicios"</strong> &rarr; <strong>"Credenciales"</strong> (o "Credentials")</li>
+        <li>Haz clic en <strong>"+ CREAR CREDENCIALES"</strong> (arriba) &rarr; <strong>"ID de cliente OAuth"</strong></li>
+        <li>Tipo de aplicacion: selecciona <strong>"Aplicacion de escritorio"</strong> (o "Desktop app")</li>
+        <li>Nombre: <code>CodinaCars Sync</code></li>
+        <li>Haz clic en <strong>"CREAR"</strong></li>
+        <li>Aparecera una ventana con dos valores importantes:
+            <div class="code-block">
+Tu ID de cliente:    xxxxxxxxxxxx.apps.googleusercontent.com
+Tu secreto de cliente:    GOCSPX-xxxxxxxxxxxxxxxxxxxx
+            </div>
+        </li>
+    </ol>
+
+    <div class="error-box">
+        <strong>MUY IMPORTANTE:</strong> Copia y guarda estos dos valores ahora. Los necesitaras en el siguiente paso y al final para enviarnos. Puedes hacer clic en el icono de copiar junto a cada valor.
+    </div>
+
+    <div class="result-box">
+        <label>Valor 1 — Client ID (pegalo aqui para tenerlo a mano):</label>
+        <input type="text" id="clientId" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com">
+
+        <label>Valor 2 — Client Secret (pegalo aqui para tenerlo a mano):</label>
+        <input type="text" id="clientSecret" placeholder="GOCSPX-xxxxxxxxxxxxxxxxxxxx">
+    </div>
+</div>
+
+<!-- PASO 5 -->
+<div class="step">
+    <span class="step-number">5</span>
+    <span class="step-title">Obtener el Refresh Token (OAuth Playground)</span>
+
+    <div class="info-box">
+        <strong>Que es un Refresh Token?</strong> Es una clave que permite a nuestra app pedir acceso al correo automaticamente, sin que tengas que volver a autorizar cada vez. Es como una llave permanente (pero revocable).
+    </div>
+
+    <ol>
+        <li>Abre una nueva pestana y ve a: <code>developers.google.com/oauthplayground</code></li>
+        <li>Arriba a la derecha, haz clic en el icono del <strong>engranaje</strong> (configuracion)</li>
+        <li>En el panel que se abre:
+            <ul>
+                <li>Marca la casilla <strong>"Use your own OAuth credentials"</strong></li>
+                <li>Pega tu <strong>Client ID</strong> en el campo "OAuth Client ID"</li>
+                <li>Pega tu <strong>Client Secret</strong> en el campo "OAuth Client secret"</li>
+            </ul>
+        </li>
+        <li>Cierra el panel del engranaje</li>
+        <li>En la columna de la izquierda (<strong>"Step 1 - Select & authorize APIs"</strong>):
+            <ul>
+                <li>Busca y despliega <strong>"Gmail API v1"</strong></li>
+                <li>Marca la casilla: <code>https://www.googleapis.com/auth/gmail.modify</code></li>
+            </ul>
+        </li>
+        <li>Haz clic en el boton azul <strong>"Authorize APIs"</strong></li>
+        <li>Se abrira una ventana de Google pidiendo que inicies sesion:
+            <ul>
+                <li>Selecciona la cuenta <code>codinacars@gmail.com</code></li>
+                <li>Aparecera un aviso: <strong>"Google no ha verificado esta aplicacion"</strong></li>
+                <li>Haz clic en <strong>"Avanzado"</strong> (o "Advanced")</li>
+                <li>Haz clic en <strong>"Ir a CodinaCars Leads (no seguro)"</strong>
+                    <br><em>(Es seguro — es TU propia app, Google muestra este aviso para apps en modo Testing)</em>
+                </li>
+                <li>Haz clic en <strong>"Continuar"</strong> para autorizar el acceso al correo</li>
+            </ul>
+        </li>
+        <li>Volveras al OAuth Playground en el <strong>"Step 2"</strong></li>
+        <li>Haz clic en <strong>"Exchange authorization code for tokens"</strong></li>
+        <li>En el panel de la derecha aparecera un JSON. Busca el campo <strong>"refresh_token"</strong>:
+            <div class="code-block">
+{
+  "access_token": "ya29.xxxxxxxxxx...",
+  "refresh_token": "1//0xxxxxxxxxxxxxxxxxxxxxxxxxx",   &larr; ESTE es el que necesitas
+  "token_type": "Bearer",
+  ...
+}
+            </div>
+        </li>
+    </ol>
+
+    <div class="error-box">
+        <strong>Copia el valor de refresh_token.</strong> Es el tercer y ultimo valor que necesitamos. Empieza por <code>1//</code> seguido de muchos caracteres.
+    </div>
+
+    <div class="result-box">
+        <label>Valor 3 — Refresh Token (pegalo aqui):</label>
+        <textarea id="refreshToken" placeholder="1//0xxxxxxxxxxxxxxxxxxxxxxxxxx"></textarea>
+    </div>
+</div>
+
+<!-- PASO 6 -->
+<div class="step">
+    <span class="step-number">6</span>
+    <span class="step-title">Enviarnos los 3 valores</span>
+
+    <p>Necesitamos que nos envies estos <strong>3 valores</strong> por WhatsApp o mensaje directo (NO por email):</p>
+
+    <div class="result-box" style="margin-top: 15px;">
+        <label>Resumen — los 3 valores a enviar:</label>
+
+        <p style="margin: 10px 0 5px;"><strong>1. Client ID:</strong></p>
+        <input type="text" id="summaryClientId" placeholder="Se rellenara automaticamente si lo pegaste arriba" readonly style="background: #f8f8f8;">
+
+        <p style="margin: 10px 0 5px;"><strong>2. Client Secret:</strong></p>
+        <input type="text" id="summaryClientSecret" placeholder="Se rellenara automaticamente si lo pegaste arriba" readonly style="background: #f8f8f8;">
+
+        <p style="margin: 10px 0 5px;"><strong>3. Refresh Token:</strong></p>
+        <textarea id="summaryRefreshToken" placeholder="Se rellenara automaticamente si lo pegaste arriba" readonly style="background: #f8f8f8;"></textarea>
+
+        <button onclick="copyAll()">Copiar los 3 valores al portapapeles</button>
+        <span id="copyFeedback" style="margin-left: 10px; color: #34a853; font-weight: bold; display: none;">Copiado!</span>
+    </div>
+
+    <div class="warning-box">
+        <strong>Seguridad:</strong> Estos valores solo dan acceso a leer y marcar como leidos los correos de codinacars@gmail.com. No permiten borrar emails, enviar emails, ni acceder a Drive, Calendar o cualquier otro servicio. Si en algun momento quieres revocar el acceso, puedes hacerlo desde <code>myaccount.google.com/permissions</code> eliminando "CodinaCars Leads".
+    </div>
+</div>
+
+<h2>Preguntas frecuentes</h2>
+
+<h3>Me pide tarjeta de credito en Google Cloud?</h3>
+<p>No deberia. Si aparece un aviso de prueba gratuita, simplemente ignoralo o cierra el banner. La Gmail API es gratuita para el volumen que usamos (unos pocos emails al dia). No es necesario activar la facturacion.</p>
+
+<h3>Dice "Google no ha verificado esta aplicacion" — es peligroso?</h3>
+<p>No. Ese aviso aparece porque la app esta en modo "Testing" (solo para tu cuenta). Como tu eres el dueno de la app Y de la cuenta de Gmail, es totalmente seguro. Google muestra ese aviso para apps de terceros que no han pasado su proceso de revision, pero en este caso no aplica porque es tu propia app privada.</p>
+
+<h3>Me he equivocado o he cerrado algo sin querer</h3>
+<p>No pasa nada. Puedes volver a cada paso:</p>
+<ul>
+    <li>Para ver tus credenciales: <code>console.cloud.google.com/apis/credentials</code></li>
+    <li>Para repetir el OAuth Playground: <code>developers.google.com/oauthplayground</code> (repite desde el paso 5)</li>
+    <li>Si nada funciona: borra las credenciales y crea unas nuevas (paso 4)</li>
+</ul>
+
+<h3>Puedo revocar el acceso despues?</h3>
+<p>Si, de dos formas:</p>
+<ul>
+    <li><strong>Desde Google Account:</strong> <code>myaccount.google.com/permissions</code> &rarr; eliminar "CodinaCars Leads"</li>
+    <li><strong>Desde Google Cloud:</strong> <code>console.cloud.google.com/apis/credentials</code> &rarr; borrar la credencial OAuth</li>
+</ul>
+
+<div class="footer">
+    <strong>Cars Control</strong> - CodinaCars<br>
+    Documento generado en Abril 2026<br>
+    Para dudas contactar al equipo de desarrollo
+</div>
+
+<script>
+// Auto-sync fields
+document.getElementById('clientId').addEventListener('input', function() {
+    document.getElementById('summaryClientId').value = this.value;
+});
+document.getElementById('clientSecret').addEventListener('input', function() {
+    document.getElementById('summaryClientSecret').value = this.value;
+});
+document.getElementById('refreshToken').addEventListener('input', function() {
+    document.getElementById('summaryRefreshToken').value = this.value;
+});
+
+function copyAll() {
+    var clientId = document.getElementById('summaryClientId').value || document.getElementById('clientId').value;
+    var clientSecret = document.getElementById('summaryClientSecret').value || document.getElementById('clientSecret').value;
+    var refreshToken = document.getElementById('summaryRefreshToken').value || document.getElementById('refreshToken').value;
+
+    var text = 'CLIENT_ID: ' + clientId + '\n' +
+               'CLIENT_SECRET: ' + clientSecret + '\n' +
+               'REFRESH_TOKEN: ' + refreshToken;
+
+    navigator.clipboard.writeText(text).then(function() {
+        var fb = document.getElementById('copyFeedback');
+        fb.style.display = 'inline';
+        setTimeout(function() { fb.style.display = 'none'; }, 3000);
+    });
+}
+</script>
+
+</body>
+</html>

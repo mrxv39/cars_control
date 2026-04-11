@@ -226,10 +226,20 @@ Validado 2026-04-08, Ricard usa **CaixaBank Banca Premier** (la interfaz de banc
    - `pg_cron` + `pg_net`: ✅ habilitados, hay 3 jobs activos como referencia
      (`process-email-queue` cada 5 min usa el patrón exacto que necesitamos)
    - Cron job para sync-leads: ❌ no creado
-   Pasos pendientes (3 los puedo hacer yo vía MCP, los 2 primeros no):
-   1. Usuario: obtener credenciales OAuth2 Gmail (CLIENT_ID/SECRET/REFRESH_TOKEN)
-      desde Google Cloud Console + OAuth Playground (paso 1 de
-      `supabase/DEPLOY_GUIDE.md`)
+   - **Tarea local ahora silenciosa** (2026-04-09): la tarea `SyncLeadsCoches`
+     ejecuta `sync_leads_silent.vbs` (wrapper VBScript con ventana oculta)
+     en lugar del `.bat` directamente. Ya no muestra ventana de CMD.
+   - **Gmail App Password creada por Ricard** (2026-04-09): Ricard generó una
+     contraseña de aplicación siguiendo `docs/guia_configuracion_gmail.html`,
+     pero la edge function usa **Gmail REST API con OAuth2** (no IMAP), así que
+     la app password NO sirve. Ricard puede dejarla activa o borrarla.
+   - **Guía OAuth2 enviada** (2026-04-09): `docs/guia_oauth2_gmail.html` — guía
+     paso a paso para que Ricard configure Google Cloud Console + OAuth Playground
+     y obtenga los 3 valores necesarios (CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN).
+     **Pendiente de que Ricard la complete.**
+   Pasos pendientes:
+   1. ~~Usuario: obtener credenciales OAuth2 Gmail~~ → guía enviada (`docs/guia_oauth2_gmail.html`),
+      **esperando que Ricard la complete y envíe los 3 valores**
    2. Usuario: configurar 3 secretos en Supabase
       (`supabase secrets set` o Dashboard → Edge Functions → Secrets)
    3. Yo: deploy edge function con `verify_jwt=false`
@@ -294,3 +304,4 @@ Validado Ricard 2026-04-08:
 - Sesión 2026-04-08 (banco Fase 2): reconciliación UI — resumen visual con barras por categoría (clickable filtra), tabla agrupada por mes con subtotales, editor categoría inline (dropdown), modal "vincular movimiento → compra existente" con sugerencias automáticas por importe ±5€ y fecha ±15 días, chip "✓ Banco" en `PurchasesList` para compras conciliadas. `api.ts` nuevos helpers: `suggestPurchasesForTransaction`, `listPurchaseIdsWithBankLink`, `createPurchaseFromTransaction`. Commit `68f0b72`
 - Sesión 2026-04-08 (formulario Ricard): cuestionario HTML autocontenido `docs/banco_preguntas_ricard.html` enviado a Ricard, 3 cuentas confirmadas con últimos 4 IBAN, decisiones recogidas (ver sección "Reglas de negocio bancarias" arriba). Aliases actualizados en BD vía MCP
 - Sesión 2026-04-08 (intento descarga N43): bloqueo CaixaBank Banca Premier — Cuaderno 43 acepta peticiones pero los ficheros no aparecen en MailBox/Mis Certificados/Descargas/email. Plan B y C documentados pero sin probar. Guía visual creada en `docs/guia_descargar_n43_caixabank.html` para Ricard
+- Sesión 2026-04-09 (sync-leads): Ricard generó App Password Gmail (no sirve para la edge function que usa OAuth2 REST API). Creada guía OAuth2 `docs/guia_oauth2_gmail.html` para que Ricard obtenga CLIENT_ID/SECRET/REFRESH_TOKEN. Tarea programada `SyncLeadsCoches` convertida a silenciosa vía `sync_leads_silent.vbs` (sin ventana CMD visible)
