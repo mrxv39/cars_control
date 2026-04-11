@@ -167,21 +167,62 @@ Validado 2026-04-08, Ricard usa **CaixaBank Banca Premier** (la interfaz de banc
 
 ### Importación de extractos
 
-- **Fase 1 (actual):** parser N43 manual en `scripts/import_n43.py`.
-  Ricard descarga el fichero Norma 43 (Cuaderno 43 CSB) desde el área cliente
-  CaixaBank y lo importa con:
+- **Parser N43 (plan A, sin usar todavía):** `scripts/import_n43.py`. Si
+  Ricard consigue alguna vez descargar un Cuaderno 43 real desde CaixaBank,
+  ese es el camino más limpio. Uso:
   ```
   python scripts/import_n43.py --account-id 2 --file extracto.n43
   ```
-  Variables de entorno requeridas: `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
-  (NO la anon key — el upsert respeta RLS, así que necesita service role).
-  El parser es idempotente: re-importar el mismo fichero NO duplica filas
-  gracias al `external_id = sha1(account+date+amount+ref+raw_lines)`.
+- **Parser PDF CaixaBank Banca Premier (plan real, usado 2026-04-11):**
+  `scripts/import_caixa_pdf.py`. Lo tiramos porque Banca Premier NUNCA
+  suelta el N43 desde su interfaz (ver bloqueo arriba), pero sí permite
+  pedir extractos en PDF por cuenta que llegan al email. Los PDFs usan
+  una fuente subset (URWClassicSans-Bold) SIN ToUnicode CMap, así que
+  `pdfplumber` y `pdfminer` extraen string vacío — **solo `pypdf` funciona**.
+  Detalles críticos del parser:
+  - Formato: 3 líneas por movimiento (fecha+concepto / oficina / importe+saldo EUR).
+    Soporta tanto el formato nuevo (`INGRÉS CÀRREC SALDO` con EUR)
+    como el antiguo (`+ INGRÉS - CÀRREC = SALDO` sin EUR al final).
+  - **Signo**: el importe NO viene firmado en el PDF — la columna
+    visual (INGRÉS vs CÀRREC) se pierde al extraer plano. El parser
+    determina el signo por **delta del saldo** contra la fila siguiente
+    en el tiempo. Para la primera fila del histórico (sin referencia
+    previa) usa heurística `opening_positive` / `opening_negative`:
+    si `saldo_after == ±amount_abs` asume saldo previo 0.
+  - **Chunks**: CaixaBank trocea el histórico en varios PDFs
+    `cuenta_XXXX.1.pdf` (más reciente) … `.6.pdf` (más antiguo). El parser
+    los detecta por sufijo numérico y los concatena en orden cronológico
+    antes de firmar, para que el encadenamiento de saldos sea continuo.
+  - **Edge case**: en transferencias con data valor != data operació,
+    CaixaBank imprime las dos fechas en líneas separadas y el concepto
+    en una tercera línea. La máquina de estados del parser lo soporta
+    (regex de fecha con concepto opcional).
+  - Tests en `scripts/test_import_caixa_pdf.py` (17 tests con fixtures
+    sintéticos que reproducen todos los casos patológicos — NO dependen
+    de PDFs reales porque los PDFs bancarios no se commitean).
+  - **Idempotente**: `external_id = sha1(account_id + date + amount_abs +
+    saldo + concepto + meta)`. Se hashea `amount_abs` (no el importe
+    firmado) para que el id sea estable incluso si el signo cambia
+    entre corridas.
+  - Uso:
+    ```
+    python scripts/import_caixa_pdf.py --account-id 1 --dir <carpeta_con_pdfs> --match "cuenta_2130*.pdf"
+    python scripts/import_caixa_pdf.py --account-id 2 --dir <carpeta_con_pdfs> --match "cuenta_5385*.pdf"
+    python scripts/import_caixa_pdf.py --account-id 3 --file cuenta_7550.pdf
+    ```
+  - Variables de entorno requeridas: `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
 - **Fase 3 (futura):** edge function `sync-bank-caixa` vía GoCardless Bank
   Account Data (agregador PSD2 europeo, gratis, soporta CaixaBank).
 - **Categorización automática:** las reglas viven en `bank_category_rules`
-  (16 reglas seed creadas en migration 012), aplicadas en orden de prioridad.
-  Cuando Ricard recategoriza algo a mano, se ofrecerá "crear regla" en Fase 2.
+  (16 reglas seed en migration 012, con fix en migration 013), aplicadas
+  en orden de prioridad. Cuando Ricard recategoriza algo a mano, se
+  ofrecerá "crear regla" en Fase 2.
+- **⚠ Regla al escribir nuevas reglas**: los conceptos que imprime CaixaBank
+  mezclan **castellano y catalán** (`TRASPÀS PROPI` vs `traspaso propio`),
+  y los importes de compra a Auto1 aparecen como `"TRF.INTERNACIONAL | 00046 / AUTO 1"`
+  (con espacio). Las regex tienen que ser case-insensitive, aceptar el
+  acento catalán (`trasp[àa]s`) y permitir espacios flexibles (`auto\s*1`,
+  `mod[\.\s]+130`). Ver migration 013 como referencia.
 
 ## Pendiente
 
@@ -191,30 +232,40 @@ Validado 2026-04-08, Ricard usa **CaixaBank Banca Premier** (la interfaz de banc
 - Lazy-load real con IntersectionObserver en el listado de Stock (mejora TTI
   aunque no `Finish`)
 
-### Banco — bloqueado / siguiente sesión
+### Banco — pendientes (bloqueo histórico desbloqueado 2026-04-11)
 
-1. **Desbloquear la obtención del primer extracto real** de las cuentas de
-   Ricard. Ver sección "Bloqueo conocido — descarga N43 desde CaixaBank
-   Banca Premier" más arriba. Estado actual: el primer N43 + los Excel
-   pedidos no han llegado a ningún sitio (ni MailBox, ni Descargas, ni email).
-   Plan B y C documentados pero sin probar todavía.
-2. **Ampliar ventana de match** en `app/src/lib/api.ts:suggestPurchasesForTransaction`
+~~1. Desbloquear la obtención del primer extracto real.~~ **DESBLOQUEADO 2026-04-11**:
+Ricard envió los 13 PDFs de extracto por email (`[EXTERNAL] Fwd_ excel movimietnos.eml`).
+Creado `scripts/import_caixa_pdf.py` que los parsea y firma los importes
+por delta de saldos. **2651 movimientos importados** (2023-10-01 a 2026-04-09
+en personal y empresa; 2025-03-26 a 2026-04-01 en póliza). Saldos finales
+en BD cuadran al céntimo con los PDFs.
+
+1. **Ampliar ventana de match** en `app/src/lib/api.ts:suggestPurchasesForTransaction`
    de `±15 días` a `±21 días` (cambio de 2 líneas, las dos `* 86400000`).
    Razón: financiaciones de venta tardan 1-3 días en abonarse según Ricard.
-3. **Parser de Excel/CSV de CaixaBank Banca Premier** (cuando tengamos un
-   fichero real para saber el formato exacto). Usar `openpyxl` (xlsx) o
-   `xlrd` (xls). Estilo de `scripts/import_n43.py`, idempotente igual,
-   external_id sha1 estable.
-4. **Script Playwright nuclear** (Plan C) si los planes anteriores siguen
-   fallando: automatiza navegación con sesión iniciada por Ricard, recorre
-   las 3 cuentas, copia movimientos a CSV. ~2h, funciona seguro.
-5. **Banco Fase 2**: editor categoría inline ya existe (commit 68f0b72),
+2. **Reconciliación entre cuentas (gastos de empresa pagados desde personal)**:
+   Ricard ha pagado **7 compras a Auto1 por 47.246,60 €** desde su cuenta
+   personal 2130 (datos históricos confirmados tras import 2026-04-11).
+   Son compras intracomunitarias (modelo 349) pagadas por la vía incorrecta,
+   probablemente compensadas luego con `TRASPÀS PROPI` de 5385 → 2130.
+   Necesita una herramienta que:
+   - Detecte automáticamente las 7 compras Auto1 en personal y las marque
+     como `COMPRA_VEHICULO` de empresa (ya hecho por migration 013).
+   - Busque traspasos compensatorios (|amount| ± tolerancia, fecha ± 3d)
+     entre 5385 y 2130 con concepto TRASPÀS y los marque como
+     `MOV_INTERNO` (neutro fiscalmente, no cuenta como ingreso/gasto).
+   - Alerta al dashboard fiscal si hay compras sin traspaso compensatorio.
+3. **Banco Fase 2**: editor categoría inline ya existe (commit 68f0b72),
    pero falta el botón "crear regla a partir de esta categorización" y
    `createPurchaseFromTransaction` en UI (helper en api.ts ya existe).
-6. **Banco Fase 3**: edge function `sync-bank-caixa` con GoCardless. Email
+4. **Banco Fase 3**: edge function `sync-bank-caixa` con GoCardless. Email
    confirmado: `codinacars@gmail.com`. Bloqueo: registro en
    bankaccountdata.gocardless.com (gratis) y verificar que CaixaBank
    Particular + Empresas + Póliza están en su lista de instituciones.
+5. **Script Playwright nuclear** (Plan C) como respaldo a la Fase 3 si
+   GoCardless no soporta las 3 cuentas. Menos prioritario ahora que hay
+   un pipeline funcional vía email+PDF.
 
 ### Migración cron sync-leads
 
@@ -305,3 +356,4 @@ Validado Ricard 2026-04-08:
 - Sesión 2026-04-08 (formulario Ricard): cuestionario HTML autocontenido `docs/banco_preguntas_ricard.html` enviado a Ricard, 3 cuentas confirmadas con últimos 4 IBAN, decisiones recogidas (ver sección "Reglas de negocio bancarias" arriba). Aliases actualizados en BD vía MCP
 - Sesión 2026-04-08 (intento descarga N43): bloqueo CaixaBank Banca Premier — Cuaderno 43 acepta peticiones pero los ficheros no aparecen en MailBox/Mis Certificados/Descargas/email. Plan B y C documentados pero sin probar. Guía visual creada en `docs/guia_descargar_n43_caixabank.html` para Ricard
 - Sesión 2026-04-09 (sync-leads): Ricard generó App Password Gmail (no sirve para la edge function que usa OAuth2 REST API). Creada guía OAuth2 `docs/guia_oauth2_gmail.html` para que Ricard obtenga CLIENT_ID/SECRET/REFRESH_TOKEN. Tarea programada `SyncLeadsCoches` convertida a silenciosa vía `sync_leads_silent.vbs` (sin ventana CMD visible)
+- Sesión 2026-04-11 (banco import real): DESBLOQUEO del extracto inicial. Ricard envió 13 PDFs de CaixaBank por email. Creado `scripts/import_caixa_pdf.py` (parser pypdf con firma por delta de saldos, soporta formato antiguo/moderno, opening_negative para línea de crédito, máquina de estados forward para data valor en línea separada) + 17 tests unitarios con fixtures sintéticos. **Importadas 2651 movimientos** a `bank_transactions` (1299 personal + 1244 empresa + 108 póliza). Saldos finales cuadran al céntimo con PDFs. Migration 013 fix de 3 reglas de categorización buggeadas de 012 (`auto\s*1` con espacio, `mod[\.\s]+130` con punto+espacio, `trasp[àa]s` catalán). Re-categorizadas 244 filas. Hallazgo: 7 compras Auto1 por 47.246€ pagadas desde cuenta personal — pendiente de reconciliar con traspasos compensatorios. PDFs borrados de disco tras importar (están en el `.eml` original por si se necesitan)

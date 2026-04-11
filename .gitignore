@@ -32,3 +32,11 @@ docs_legacy/
 .claude/
 *.log
 .coverage
+
+# Datos bancarios sensibles — NUNCA commitear PDFs de extractos
+tmp_caixa_eml/
+extractos/
+*.n43
+cuenta_*.pdf
+cuenta_*.xls
+cuenta_*.xlsx
