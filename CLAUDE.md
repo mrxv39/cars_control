@@ -244,18 +244,43 @@ en BD cuadran al céntimo con los PDFs.
 1. **Ampliar ventana de match** en `app/src/lib/api.ts:suggestPurchasesForTransaction`
    de `±15 días` a `±21 días` (cambio de 2 líneas, las dos `* 86400000`).
    Razón: financiaciones de venta tardan 1-3 días en abonarse según Ricard.
-2. **Reconciliación entre cuentas (gastos de empresa pagados desde personal)**:
-   Ricard ha pagado **7 compras a Auto1 por 47.246,60 €** desde su cuenta
-   personal 2130 (datos históricos confirmados tras import 2026-04-11).
-   Son compras intracomunitarias (modelo 349) pagadas por la vía incorrecta,
-   probablemente compensadas luego con `TRASPÀS PROPI` de 5385 → 2130.
-   Necesita una herramienta que:
-   - Detecte automáticamente las 7 compras Auto1 en personal y las marque
-     como `COMPRA_VEHICULO` de empresa (ya hecho por migration 013).
-   - Busque traspasos compensatorios (|amount| ± tolerancia, fecha ± 3d)
-     entre 5385 y 2130 con concepto TRASPÀS y los marque como
-     `MOV_INTERNO` (neutro fiscalmente, no cuenta como ingreso/gasto).
-   - Alerta al dashboard fiscal si hay compras sin traspaso compensatorio.
+2. **Reconciliación entre cuentas — el caso del "puente 2024-2025"**:
+   Durante **octubre 2024 – enero 2025** (4 meses, inicios de Ricard como
+   autónomo), Ricard usó la cuenta personal 2130 como cuenta puente para
+   las transferencias internacionales a Auto 1: traspasaba dinero desde
+   empresa 5385 → personal 2130 y desde ahí mandaba la TRF.INTERNACIONAL.
+   Total del periodo: **7 compras, 47.246,60 €**. El patrón está confirmado
+   con los datos: 3 de las 4 fechas tienen un `TRASPÀS PROPI` entrante que
+   cuadra con el importe de la TRF a Auto 1 el mismo día o 1-5 días antes
+   (ej. 18-12-2024 entra +15.142,80, sale -7.288+-7.558 a Auto 1).
+
+   **Contexto importante (no tratar como error grave):** fue la respuesta
+   de un autónomo novato a un problema puntual de tesorería en la empresa,
+   **no fraude ni dolo**. A partir de febrero 2025 NO hay más compras Auto 1
+   desde personal — aprendió. En agosto 2025 empieza a usar la línea de
+   crédito 7550 para las compras grandes (solución madura que descubrió
+   después). Arco de aprendizaje limpio visible en el dataset.
+
+   **Lo que sí hay que hacer en el dashboard fiscal:**
+   - Esas 7 compras a Auto 1 siguen siendo compras intracomunitarias de la
+     empresa (factura a CIF de CODINACARS, coches al stock, modelo 349)
+     independientemente de que el dinero saliera por la personal. Ya las
+     categorizamos como `COMPRA_VEHICULO` (migration 013 + recategorización).
+   - Los `TRASPÀS PROPI` compensatorios (empresa → personal, entre
+     oct 2024 y ene 2025, en torno a las fechas Auto 1) deben marcarse
+     como `MOV_INTERNO` y neutralizarse entre sí con las TRF a Auto 1.
+     El objetivo es que en el libro de IRPF y en el dashboard fiscal
+     NI el traspaso ni la TRF aparezcan como gasto/ingreso extra — el
+     único hecho fiscal es la compra intracomunitaria (modelo 349)
+     que ya está bien atribuida a la empresa.
+
+   Herramienta a construir: reconciliador automático que
+   - Busca pares `(traspaso_entrante_personal, TRF_Auto1_saliente)` con
+     fechas dentro de ±7 días e importes que cuadran (entrada ≥ salida),
+     dentro del periodo problemático.
+   - Los marca como `MOV_INTERNO` + anota en `notes` el par vinculado.
+   - Alerta si hay TRF Auto1 en personal sin su traspaso compensatorio
+     identificable — en esos casos hay que revisar manualmente con Ricard.
 3. **Banco Fase 2**: editor categoría inline ya existe (commit 68f0b72),
    pero falta el botón "crear regla a partir de esta categorización" y
    `createPurchaseFromTransaction` en UI (helper en api.ts ya existe).
@@ -356,4 +381,4 @@ Validado Ricard 2026-04-08:
 - Sesión 2026-04-08 (formulario Ricard): cuestionario HTML autocontenido `docs/banco_preguntas_ricard.html` enviado a Ricard, 3 cuentas confirmadas con últimos 4 IBAN, decisiones recogidas (ver sección "Reglas de negocio bancarias" arriba). Aliases actualizados en BD vía MCP
 - Sesión 2026-04-08 (intento descarga N43): bloqueo CaixaBank Banca Premier — Cuaderno 43 acepta peticiones pero los ficheros no aparecen en MailBox/Mis Certificados/Descargas/email. Plan B y C documentados pero sin probar. Guía visual creada en `docs/guia_descargar_n43_caixabank.html` para Ricard
 - Sesión 2026-04-09 (sync-leads): Ricard generó App Password Gmail (no sirve para la edge function que usa OAuth2 REST API). Creada guía OAuth2 `docs/guia_oauth2_gmail.html` para que Ricard obtenga CLIENT_ID/SECRET/REFRESH_TOKEN. Tarea programada `SyncLeadsCoches` convertida a silenciosa vía `sync_leads_silent.vbs` (sin ventana CMD visible)
-- Sesión 2026-04-11 (banco import real): DESBLOQUEO del extracto inicial. Ricard envió 13 PDFs de CaixaBank por email. Creado `scripts/import_caixa_pdf.py` (parser pypdf con firma por delta de saldos, soporta formato antiguo/moderno, opening_negative para línea de crédito, máquina de estados forward para data valor en línea separada) + 17 tests unitarios con fixtures sintéticos. **Importadas 2651 movimientos** a `bank_transactions` (1299 personal + 1244 empresa + 108 póliza). Saldos finales cuadran al céntimo con PDFs. Migration 013 fix de 3 reglas de categorización buggeadas de 012 (`auto\s*1` con espacio, `mod[\.\s]+130` con punto+espacio, `trasp[àa]s` catalán). Re-categorizadas 244 filas. Hallazgo: 7 compras Auto1 por 47.246€ pagadas desde cuenta personal — pendiente de reconciliar con traspasos compensatorios. PDFs borrados de disco tras importar (están en el `.eml` original por si se necesitan)
+- Sesión 2026-04-11 (banco import real): DESBLOQUEO del extracto inicial. Ricard envió 13 PDFs de CaixaBank por email. Creado `scripts/import_caixa_pdf.py` (parser pypdf con firma por delta de saldos, soporta formato antiguo/moderno, opening_negative para línea de crédito, máquina de estados forward para data valor en línea separada) + 17 tests unitarios con fixtures sintéticos. **Importadas 2651 movimientos** a `bank_transactions` (1299 personal + 1244 empresa + 108 póliza). Saldos finales cuadran al céntimo con PDFs. Migration 013 fix de 3 reglas de categorización buggeadas de 012 (`auto\s*1` con espacio, `mod[\.\s]+130` con punto+espacio, `trasp[àa]s` catalán). Re-categorizadas 244 filas. **Hallazgo operativo**: 7 compras Auto 1 por 47.246€ desde cuenta personal entre oct-2024 y ene-2025 (4 meses de inicios de autónomo, patrón "puente": traspàs empresa→personal + TRF.INT a Auto 1 el mismo día). Desde feb-2025 cero errores, y desde ago-2025 usa la línea de crédito 7550 como solución madura. Arco de aprendizaje limpio, NO tratar como error grave — el gestor ya declaró bien el modelo 349 (factura a CIF empresa). Pendiente: reconciliador automático que neutralice pares (traspàs compensatorio, TRF Auto 1) como MOV_INTERNO. PDFs borrados de disco tras importar (originales en el `.eml` de Downloads por si se necesitan)
