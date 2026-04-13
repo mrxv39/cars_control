@@ -40,3 +40,6 @@ extractos/
 cuenta_*.pdf
 cuenta_*.xls
 cuenta_*.xlsx
+
+# Vercel CLI — project link local, no commitear
+.vercel/

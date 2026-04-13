@@ -11,6 +11,27 @@ Cliente: Ricard (autónomo, CodinaCars).
 - **Arranque local:** `cd app && npm run tauri dev` (Vite puerto 3000)
 - **Tests:** `cd app && npm test`
 
+### Deploy web (Vercel)
+
+- **URL de producción para Ricard:** `https://cars-control-ruddy.vercel.app`
+- **Proyecto Vercel:** `cars-control` (prj_qSKXqEi17mb5CG3ngkFrKPZWWJIB)
+- **Team:** `mrxv39s-projects` (team_rWo8ZPj5KmzqksM9hEKV0H6X)
+- **Production branch en Vercel:** `main` (por defecto), **PERO** el deploy
+  actual de producción fue promovido manualmente desde `wo/005-stock-checklist`
+  con `vercel promote` (sesión 2026-04-11). Esto significa:
+  - **Ahora mismo** `cars-control-ruddy.vercel.app` sirve el código de la rama
+    `wo/005-stock-checklist` (commit `f322948`).
+  - **Si alguien hace push a `main`**, Vercel redeploya production con `main`
+    y pisa el promote manual. Para evitar esto:
+    - **Solución permanente (pendiente):** cambiar production branch en Vercel
+      UI a `wo/005-stock-checklist` (Settings → Git → Production Branch).
+    - **Workaround:** tras cada push a `main`, re-ejecutar
+      `vercel promote <latest-preview-deploy-url> --yes --scope mrxv39s-projects`.
+- **Vercel CLI local:** instalado (`v50.35.0`), autenticado como `mrxv39`.
+  Útil para `vercel promote` sin necesitar acceso al dashboard.
+- **Ricard ahora solo usa la web** (no Tauri desktop). Todas las features
+  deben verificarse en la URL de producción, no solo en `tauri dev`.
+
 ## Estructura principal
 
 ```
@@ -381,4 +402,4 @@ Validado Ricard 2026-04-08:
 - Sesión 2026-04-08 (formulario Ricard): cuestionario HTML autocontenido `docs/banco_preguntas_ricard.html` enviado a Ricard, 3 cuentas confirmadas con últimos 4 IBAN, decisiones recogidas (ver sección "Reglas de negocio bancarias" arriba). Aliases actualizados en BD vía MCP
 - Sesión 2026-04-08 (intento descarga N43): bloqueo CaixaBank Banca Premier — Cuaderno 43 acepta peticiones pero los ficheros no aparecen en MailBox/Mis Certificados/Descargas/email. Plan B y C documentados pero sin probar. Guía visual creada en `docs/guia_descargar_n43_caixabank.html` para Ricard
 - Sesión 2026-04-09 (sync-leads): Ricard generó App Password Gmail (no sirve para la edge function que usa OAuth2 REST API). Creada guía OAuth2 `docs/guia_oauth2_gmail.html` para que Ricard obtenga CLIENT_ID/SECRET/REFRESH_TOKEN. Tarea programada `SyncLeadsCoches` convertida a silenciosa vía `sync_leads_silent.vbs` (sin ventana CMD visible)
-- Sesión 2026-04-11 (banco import real): DESBLOQUEO del extracto inicial. Ricard envió 13 PDFs de CaixaBank por email. Creado `scripts/import_caixa_pdf.py` (parser pypdf con firma por delta de saldos, soporta formato antiguo/moderno, opening_negative para línea de crédito, máquina de estados forward para data valor en línea separada) + 17 tests unitarios con fixtures sintéticos. **Importadas 2651 movimientos** a `bank_transactions` (1299 personal + 1244 empresa + 108 póliza). Saldos finales cuadran al céntimo con PDFs. Migration 013 fix de 3 reglas de categorización buggeadas de 012 (`auto\s*1` con espacio, `mod[\.\s]+130` con punto+espacio, `trasp[àa]s` catalán). Re-categorizadas 244 filas. **Hallazgo operativo**: 7 compras Auto 1 por 47.246€ desde cuenta personal entre oct-2024 y ene-2025 (4 meses de inicios de autónomo, patrón "puente": traspàs empresa→personal + TRF.INT a Auto 1 el mismo día). Desde feb-2025 cero errores, y desde ago-2025 usa la línea de crédito 7550 como solución madura. Arco de aprendizaje limpio, NO tratar como error grave — el gestor ya declaró bien el modelo 349 (factura a CIF empresa). Pendiente: reconciliador automático que neutralice pares (traspàs compensatorio, TRF Auto 1) como MOV_INTERNO. PDFs borrados de disco tras importar (originales en el `.eml` de Downloads por si se necesitan)
+- Sesión 2026-04-11 (banco import real): DESBLOQUEO del extracto inicial. Ricard envió 13 PDFs de CaixaBank por email. Creado `scripts/import_caixa_pdf.py` (parser pypdf con firma por delta de saldos, soporta formato antiguo/moderno, opening_negative para línea de crédito, máquina de estados forward para data valor en línea separada) + 17 tests unitarios con fixtures sintéticos. **Importadas 2651 movimientos** a `bank_transactions` (1299 personal + 1244 empresa + 108 póliza). Saldos finales cuadran al céntimo con PDFs. Migration 013 fix de 3 reglas de categorización buggeadas de 012 (`auto\s*1` con espacio, `mod[\.\s]+130` con punto+espacio, `trasp[àa]s` catalán). Re-categorizadas 244 filas. **Hallazgo operativo**: 7 compras Auto 1 por 47.246€ desde cuenta personal entre oct-2024 y ene-2025 (4 meses de inicios de autónomo, patrón "puente": traspàs empresa→personal + TRF.INT a Auto 1 el mismo día). Desde feb-2025 cero errores, y desde ago-2025 usa la línea de crédito 7550 como solución madura. Arco de aprendizaje limpio, NO tratar como error grave — el gestor ya declaró bien el modelo 349 (factura a CIF empresa). Pendiente: reconciliador automático que neutralice pares (traspàs compensatorio, TRF Auto 1) como MOV_INTERNO. PDFs borrados de disco tras importar (originales en el `.eml` de Downloads por si se necesitan). **Deploy web**: código promovido a producción vía `vercel promote` → `cars-control-ruddy.vercel.app` sirve la versión completa con pestaña Banco y los 2651 movimientos. Promoción temporal (válida hasta próximo push a main). **Pendiente**: cambiar production branch de `main` a `wo/005-stock-checklist` en Vercel UI para que sea permanente
