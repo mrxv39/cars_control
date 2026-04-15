@@ -14,6 +14,7 @@ import ConfirmDialog from "./components/web/ConfirmDialog";
 import EmptyState from "./components/web/EmptyState";
 import Spinner from "./components/web/Spinner";
 import { SkeletonGrid } from "./components/web/Skeleton";
+import UndoToast from "./components/web/UndoToast";
 import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
 import Car from "lucide-react/dist/esm/icons/car";
 import Receipt from "lucide-react/dist/esm/icons/receipt";
@@ -42,6 +43,17 @@ function getAppMode(): AppMode {
 const APP_MODE = getAppMode();
 const STORE_URL = "https://codinacars.vercel.app";
 const ADMIN_URL = "https://carscontrol.vercel.app";
+
+function translateError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) return "Sin conexión a internet. Comprueba tu red e inténtalo de nuevo.";
+  if (msg.includes("JWT expired") || msg.includes("invalid claim")) return "Tu sesión ha caducado. Vuelve a iniciar sesión.";
+  if (msg.includes("row-level security") || msg.includes("policy")) return "No tienes permiso para esta acción.";
+  if (msg.includes("duplicate key") || msg.includes("unique constraint")) return "Este registro ya existe.";
+  if (msg.includes("23503") || msg.includes("foreign key")) return "No se puede eliminar: hay datos vinculados.";
+  if (msg.includes("PGRST")) return "Error del servidor. Inténtalo de nuevo en unos minutos.";
+  return msg;
+}
 
 function useConfirmDialog() {
   const [state, setState] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
@@ -984,6 +996,9 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
   const [loading, setLoading] = useState(true);
   const [globalSearch, setGlobalSearch] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; key: number } | null>(null);
+  const showToast = useCallback((message: string) => setToast({ message, key: Date.now() }), []);
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 4000); return () => clearTimeout(t); }, [toast]);
 
   React.useEffect(() => {
     void loadAll();
@@ -1010,6 +1025,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       setSuppliers(sup);
     } catch (err) {
       console.error("Error loading data:", err);
+      showToast(translateError(err));
     } finally {
       setLoading(false);
     }
@@ -1150,6 +1166,13 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         clients={clients}
         selectedVehicle={selectedVehicle}
       />
+
+      {toast && (
+        <div className="toast success" role="status" key={toast.key}>
+          {toast.message}
+          <button type="button" style={{ background: "none", border: "none", color: "inherit", marginLeft: "0.75rem", cursor: "pointer", fontSize: "0.85rem" }} onClick={() => setToast(null)} aria-label="Cerrar">✕</button>
+        </div>
+      )}
     </main>
   );
 }
@@ -1460,6 +1483,8 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
   const [newColor, setNewColor] = useState("");
   const [newNotes, setNewNotes] = useState("");
   const [adding, setAdding] = useState(false);
+  const [nameBlurred, setNameBlurred] = useState(false);
+  const nameError = nameBlurred && !newName.trim() ? "El nombre es obligatorio" : null;
 
   // Precarga resúmenes de fotos+docs de todos los vehículos en DOS queries
   // batched (.in()) en lugar de 2N queries individuales. Validado 2026-04-08:
@@ -1607,7 +1632,7 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
         notes: newNotes,
       } as api.Vehicle);
       setNewName(""); setNewAnio(""); setNewKm(""); setNewPrecioCompra(""); setNewPrecioVenta(""); setNewFuel(""); setNewColor(""); setNewNotes("");
-      setShowAdd(false);
+      setShowAdd(false); setNameBlurred(false);
       await onReload();
     } finally {
       setAdding(false);
@@ -1684,7 +1709,8 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "end" }}>
               <div style={{ flex: 1, position: "relative" }}>
                 <label className="field-label required">Marca y modelo</label>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Escribe para buscar coincidencias..." autoFocus />
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} onBlur={() => setNameBlurred(true)} placeholder="Escribe para buscar coincidencias..." autoFocus className={nameError ? "input-error" : ""} />
+                {nameError && <p className="input-error-message" role="alert">{nameError}</p>}
               </div>
             </div>
             <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
