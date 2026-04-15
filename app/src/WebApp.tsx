@@ -1874,10 +1874,7 @@ function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTyp
       <div className="stock-row-title">
         <h3>{vehicle.name}</h3>
         {vehicle.estado && vehicle.estado !== "disponible" && (
-          <span className="badge" style={{
-            background: vehicle.estado === "reservado" ? "#f59e0b" : vehicle.estado === "vendido" ? "#22c55e" : "#6b7280",
-            color: "#fff", fontSize: "0.7rem", padding: "2px 8px", borderRadius: 6,
-          }}>{vehicle.estado}</span>
+          <span className={`badge-estado badge-${vehicle.estado}`}>{vehicle.estado}</span>
         )}
       </div>
       <div className="stock-row-thumb">
