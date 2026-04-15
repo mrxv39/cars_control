@@ -2028,6 +2028,7 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
   const [uploading, setUploading] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const docFileRef = React.useRef<HTMLInputElement>(null);
   const dialog = useConfirmDialog();
@@ -2038,7 +2039,9 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
   async function loadDocs() { setDocs(await api.listVehicleDocuments(vehicle.id)); }
 
   async function handleSave(e: FormEvent) {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault();
+    if (!form.name.trim()) { setError("El nombre del vehículo es obligatorio."); return; }
+    setSaving(true); setError(null);
     try {
       await api.updateVehicle(vehicle.id, {
         name: form.name, anio: form.anio, km: form.km,
@@ -2046,18 +2049,18 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
         ad_url: form.ad_url, estado: form.estado, fuel: form.fuel, color: form.color, notes: form.notes,
         supplier_id: form.supplier_id,
       });
-      setSuccess(true); setTimeout(() => setSuccess(false), 2000);
-    } finally { setSaving(false); }
+      setSuccess(true); setTimeout(() => setSuccess(false), 4000);
+    } catch (err) { setError(translateError(err)); } finally { setSaving(false); }
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files; if (!files) return;
-    setUploading(true);
+    setUploading(true); setError(null);
     try {
       for (let i = 0; i < files.length; i++) await api.uploadVehiclePhoto(vehicle.id, files[i]);
       await loadPhotos();
       onReload?.();
-    }
+    } catch (err) { setError(`Error subiendo fotos: ${translateError(err)}`); }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
@@ -2095,8 +2098,10 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
   const margin = (form.precio_compra && form.precio_venta) ? form.precio_venta - form.precio_compra : null;
   const facturas = docs.filter((d) => d.doc_type === "factura");
 
-  return { form, setForm, photos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadingDoc, success,
-    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleSetPrimary, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, loadPhotos, dialog };
+  const marginWarning = form.precio_compra && form.precio_venta && form.precio_venta < form.precio_compra ? "Margen negativo — el precio de venta es menor que el de compra" : null;
+
+  return { form, setForm, photos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadingDoc, success, error, setError,
+    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleSetPrimary, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, marginWarning, loadPhotos, dialog };
 }
 
 // Shared: Hero header
@@ -2151,7 +2156,7 @@ function VDPhotos({ photos, fileRef, uploading, handleUpload, handleDeletePhoto,
                   {p.is_primary ? "★" : "☆"}
                 </button>
               )}
-              <button type="button" onClick={() => void handleDeletePhoto(p)} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 8, padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}>X</button>
+              <button type="button" onClick={() => void handleDeletePhoto(p)} title="Eliminar foto" aria-label="Eliminar foto" style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 8, padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}>X</button>
             </div>
           ))}
         </div>
@@ -2203,7 +2208,7 @@ function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
 function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps) {
   const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
-  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
     <>
       <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} margin={h.margin} leadsCount={vehicleLeads.length} />
@@ -2221,19 +2226,21 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps
         <section className="panel" style={{ padding: "1.25rem" }}>
           <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehículo</p>
           <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
-            <div><label className="field-label">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} /></div>
+            <div><label className="field-label required">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} placeholder="Ej: SEAT Ibiza 1.0 MPI Style" className={!h.form.name.trim() ? "input-error" : ""} /></div>
             <div className="form-grid-3">
-              <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} /></div>
-              <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} /></div>
+              <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} placeholder="2020" min="1990" max="2030" /></div>
+              <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} placeholder="125000" min="0" /></div>
               <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
             </div>
             <div className="form-grid-2">
-              <div><label className="field-label">Precio compra</label><input type="number" step="100" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} /></div>
-              <div><label className="field-label">Precio venta</label><input type="number" step="100" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} /></div>
+              <div><label className="field-label">Precio compra</label><input type="number" step="100" min="0" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} placeholder="8500" /></div>
+              <div><label className="field-label">Precio venta</label><input type="number" step="100" min="0" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} placeholder="10500" /></div>
             </div>
+            {h.marginWarning && <p style={{ color: "#b45309", fontSize: "0.82rem", margin: "-0.25rem 0 0" }}>⚠ {h.marginWarning}</p>}
             <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-            <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} /></div>
-            {h.success && <p className="success-banner" role="status">Guardado</p>}
+            <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} placeholder="Observaciones sobre el vehículo, reparaciones, etc." /></div>
+            {h.error && <p className="error-banner" role="alert">{h.error}</p>}
+            {h.success && <p className="success-banner" role="status">✓ Guardado correctamente</p>}
             <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar"}</button>
           </form>
         </section>
@@ -2507,7 +2514,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack, onReload }: VDProps
   const h = useVehicleDetail(vehicle, onReload);
   const [activeTab, setActiveTab] = useState<"datos" | "leads" | "documentos">("datos");
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
-  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   const tabStyle = (tab: typeof activeTab): React.CSSProperties => ({
     flex: "none", padding: "0.65rem 1.25rem", border: "none", background: "none", fontSize: "0.88rem", fontWeight: 600,
     color: activeTab === tab ? "#1d4ed8" : "#64748b", cursor: "pointer",
@@ -2583,7 +2590,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack, onReload }: VDProps
 function VehicleDetailC({ vehicle, suppliers, leads, onBack, onReload }: VDProps) {
   const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
-  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `Eliminar ${vehicle.name}?`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
   return (
     <>
       <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} margin={h.margin} leadsCount={vehicleLeads.length} />
