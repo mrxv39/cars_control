@@ -1,4 +1,4 @@
-import { FormEvent } from "react";
+import { FormEvent, useEffect } from "react";
 import { StockVehicleForm, StockModal as StockModalType } from "../types";
 
 interface Props {
@@ -28,12 +28,19 @@ export function StockModal({
   onSubmit,
   onClose,
 }: Props) {
+  useEffect(() => {
+    if (!modal) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [modal, onClose]);
+
   if (!modal) return null;
 
   const isCreate = modal.mode === "create";
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal-card panel" onClick={(event) => event.stopPropagation()}>
         <p className="eyebrow">{isCreate ? "Nuevo vehiculo" : "Editar vehiculo"}</p>
         <h3 className="modal-title">

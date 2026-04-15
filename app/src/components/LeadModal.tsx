@@ -1,4 +1,4 @@
-import { FormEvent } from "react";
+import { FormEvent, useEffect } from "react";
 import { StockVehicle, LeadForm, LeadModal as LeadModalType } from "../types";
 
 interface Props {
@@ -24,6 +24,13 @@ export function LeadModal({
   onSubmit,
   onClose,
 }: Props) {
+  useEffect(() => {
+    if (!modal) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [modal, onClose]);
+
   if (!modal) return null;
 
   function updateField<K extends keyof LeadForm>(field: K, value: LeadForm[K]) {
@@ -31,7 +38,7 @@ export function LeadModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal-card panel" onClick={(event) => event.stopPropagation()}>
         <p className="eyebrow">{modal.mode === "create" ? "Nuevo lead" : "Editar lead"}</p>
         <h3 className="modal-title">{modal.mode === "create" ? "Registrar lead" : "Actualizar lead"}</h3>
