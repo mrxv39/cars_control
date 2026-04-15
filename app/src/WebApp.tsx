@@ -1159,7 +1159,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
           <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} dealerWebsite={session.company.website || ""} onSelect={setSelectedVehicle} onReload={loadAll} />
         )}
         {currentView === "stock" && selectedVehicle && (
-          <VehicleDetail vehicle={selectedVehicle} suppliers={suppliers} leads={leads} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
+          <VehicleDetail vehicle={selectedVehicle} suppliers={suppliers} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} clients={clients} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
         )}
         {currentView === "leads" && <LeadsList leads={leads} vehicles={vehicles} companyId={companyId} onReload={loadAll} />}
         {currentView === "clients" && <ClientsList clients={clients} companyId={companyId} onReload={loadAll} />}
@@ -1987,7 +1987,7 @@ function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTyp
 // Vehicle Detail — wrapper with layout selector
 // ============================================================
 type VehicleLayout = "A" | "B" | "C";
-type VDProps = { vehicle: api.Vehicle; suppliers: api.Supplier[]; leads: api.Lead[]; onBack: () => void; onReload: () => void };
+type VDProps = { vehicle: api.Vehicle; suppliers: api.Supplier[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; clients: api.Client[]; onBack: () => void; onReload: () => void };
 
 function VehicleDetail(props: VDProps) {
   const [layout, setLayout] = useState<VehicleLayout>(() => {
@@ -2201,10 +2201,76 @@ function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
 }
 
 // ── PROPOSAL A: Sidebar layout (redesigned) ──
-function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps) {
+function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId, clients, onBack, onReload }: VDProps) {
   const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
+
+  // ── Quick status toggle ──
+  const [changingEstado, setChangingEstado] = useState(false);
+  async function quickSetEstado(newEstado: string) {
+    setChangingEstado(true);
+    try { await api.updateVehicle(vehicle.id, { estado: newEstado }); h.setForm({ ...h.form, estado: newEstado }); onReload?.(); }
+    finally { setChangingEstado(false); }
+  }
+
+  // ── WhatsApp share + Copy ──
+  const [copied, setCopied] = useState(false);
+  const vehicleSummary = [
+    vehicle.name,
+    vehicle.anio ? `Año: ${vehicle.anio}` : null,
+    vehicle.km != null ? `${vehicle.km.toLocaleString()} km` : null,
+    vehicle.fuel || null,
+    vehicle.color || null,
+    h.form.precio_venta ? `Precio: ${h.form.precio_venta.toLocaleString("es-ES")} €` : null,
+  ].filter(Boolean).join(" · ");
+  function shareWhatsApp() {
+    const text = encodeURIComponent(`🚗 ${vehicleSummary}`);
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  }
+  async function copyToClipboard() {
+    await navigator.clipboard.writeText(vehicleSummary);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  }
+
+  // ── Days in stock ──
+  const vehiclePurchases = purchaseRecords.filter((p) => p.vehicle_id === vehicle.id);
+  const purchaseDate = vehiclePurchases.find((p) => p.expense_type === "COMPRA_VEHICULO")?.purchase_date;
+  const daysInStock = purchaseDate ? Math.floor((Date.now() - new Date(purchaseDate).getTime()) / 86400000) : null;
+  const totalExpenses = vehiclePurchases.reduce((s, p) => s + p.purchase_price, 0);
+
+  // ── Quick sale ──
+  const [showQuickSale, setShowQuickSale] = useState(false);
+  const [salePrice, setSalePrice] = useState(h.form.precio_venta ? String(h.form.precio_venta) : "");
+  const [saleClient, setSaleClient] = useState("");
+  const [savingSale, setSavingSale] = useState(false);
+  async function handleQuickSale() {
+    if (!salePrice || parseFloat(salePrice) <= 0) return;
+    setSavingSale(true);
+    try {
+      await api.addSalesRecord(companyId, { vehicle_id: vehicle.id, client_id: saleClient ? parseInt(saleClient) : null, date: new Date().toISOString().split("T")[0], price_final: parseFloat(salePrice), notes: "" });
+      await api.updateVehicle(vehicle.id, { estado: "vendido" });
+      h.setForm({ ...h.form, estado: "vendido" });
+      setShowQuickSale(false);
+      onReload?.();
+    } finally { setSavingSale(false); }
+  }
+
+  // ── Quick note ──
+  const [quickNote, setQuickNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  async function handleQuickNote() {
+    if (!quickNote.trim()) return;
+    setSavingNote(true);
+    try {
+      const currentNotes = h.form.notes || "";
+      const timestamp = new Date().toLocaleDateString("es-ES");
+      const updated = currentNotes ? `${currentNotes}\n\n[${timestamp}] ${quickNote.trim()}` : `[${timestamp}] ${quickNote.trim()}`;
+      await api.updateVehicle(vehicle.id, { notes: updated });
+      h.setForm({ ...h.form, notes: updated });
+      setQuickNote("");
+    } finally { setSavingNote(false); }
+  }
 
   const estadoColor = h.form.estado === "vendido" ? "#16a34a" : h.form.estado === "reservado" ? "#f59e0b" : "#3b82f6";
   const estadoLabel = h.form.estado === "vendido" ? "Vendido" : h.form.estado === "reservado" ? "Reservado" : "Disponible";
@@ -2233,6 +2299,20 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps
             {vehicle.km != null && <span className="vd-meta-chip">{vehicle.km.toLocaleString()} km</span>}
             {vehicle.fuel && <span className="vd-meta-chip">{vehicle.fuel}</span>}
             {vehicle.color && <span className="vd-meta-chip">{vehicle.color}</span>}
+            {daysInStock !== null && <span className="vd-meta-chip" title="Días desde la compra">{daysInStock}d en stock</span>}
+          </div>
+
+          {/* Quick status toggle */}
+          <div className="vd-quick-status">
+            {(["disponible", "reservado", "vendido"] as const).map((est) => (
+              <button key={est} type="button" disabled={changingEstado}
+                className={`vd-status-btn ${h.form.estado === est ? "active" : ""}`}
+                style={{ "--status-color": est === "vendido" ? "#16a34a" : est === "reservado" ? "#f59e0b" : "#3b82f6" } as React.CSSProperties}
+                onClick={() => { if (h.form.estado !== est) void quickSetEstado(est); }}
+              >
+                {est === "disponible" ? "Disponible" : est === "reservado" ? "Reservado" : "Vendido"}
+              </button>
+            ))}
           </div>
 
           {/* Mini stats */}
@@ -2257,6 +2337,12 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps
                 </span>
               </div>
             )}
+            {totalExpenses > 0 && (
+              <div className="vd-stat">
+                <span className="vd-stat-label">Gastos</span>
+                <span className="vd-stat-value">{totalExpenses.toLocaleString("es-ES")} €</span>
+              </div>
+            )}
             {vehicleLeads.length > 0 && (
               <div className="vd-stat">
                 <span className="vd-stat-label">Leads</span>
@@ -2266,7 +2352,10 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps
           </div>
 
           <div className="vd-hero-actions">
-            <button type="button" className="button secondary" onClick={onBack}>← Volver al stock</button>
+            <button type="button" className="button secondary" onClick={onBack}>← Volver</button>
+            <button type="button" className="button secondary" onClick={shareWhatsApp} title="Compartir por WhatsApp">WhatsApp</button>
+            <button type="button" className="button secondary" onClick={() => void copyToClipboard()} title="Copiar datos al portapapeles">{copied ? "✓ Copiado" : "Copiar"}</button>
+            {h.form.estado !== "vendido" && <button type="button" className="button primary" onClick={() => setShowQuickSale(true)}>Registrar venta</button>}
             <span style={{ flex: 1 }} />
             <button type="button" className="button danger" onClick={handleDeleteVehicle}>Eliminar</button>
           </div>
@@ -2336,12 +2425,73 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps
         </div>
       </div>
 
+      {/* ── Nota rápida ── */}
+      <section className="panel" style={{ padding: "1.25rem" }}>
+        <div className="vd-section-header"><p className="eyebrow">Nota rápida</p></div>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <input value={quickNote} onChange={(e) => setQuickNote(e.target.value)} placeholder="Añade una nota..." style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") void handleQuickNote(); }} />
+          <button type="button" className="button primary" disabled={savingNote || !quickNote.trim()} onClick={() => void handleQuickNote()}>{savingNote ? "..." : "Añadir"}</button>
+        </div>
+      </section>
+
+      {/* ── Gastos del vehículo ── */}
+      {vehiclePurchases.length > 0 && (
+        <section className="panel" style={{ padding: "1.25rem" }}>
+          <div className="vd-section-header"><p className="eyebrow">Gastos asociados ({vehiclePurchases.length})</p></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+            {vehiclePurchases.map((p) => (
+              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid rgba(0,0,0,0.04)", fontSize: "0.85rem" }}>
+                <span style={{ color: "var(--color-text-secondary)" }}>{p.expense_type} — {p.supplier_name || "Sin proveedor"}</span>
+                <span style={{ fontWeight: 600 }}>{p.purchase_price.toLocaleString("es-ES")} €</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0 0", fontWeight: 700 }}>
+              <span>Total gastos</span>
+              <span>{totalExpenses.toLocaleString("es-ES")} €</span>
+            </div>
+            {h.margin !== null && (
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "0.25rem 0 0", fontWeight: 700, color: (h.form.precio_venta || 0) - totalExpenses >= 0 ? "#16a34a" : "#dc2626" }}>
+                <span>Beneficio real (venta - gastos)</span>
+                <span>{((h.form.precio_venta || 0) - totalExpenses).toLocaleString("es-ES")} €</span>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* ── Fotos ── */}
       <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} uploadProgress={h.uploadProgress} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
       <VehicleSpecs vehicle={vehicle} />
       <VehicleListingsLink vehicle={vehicle} />
       <VehicleDocsList vehicle={vehicle} />
       <VehicleMergePanel vehicle={vehicle} onMerged={onBack} />
+
+      {/* ── Quick sale modal ── */}
+      {showQuickSale && (
+        <div className="modal-overlay" onClick={() => setShowQuickSale(false)}>
+          <div className="modal-card panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <p className="eyebrow">Registrar venta</p>
+            <h3 style={{ margin: "0.25rem 0 1rem" }}>{vehicle.name}</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <div>
+                <label className="field-label required">Precio de venta</label>
+                <input type="number" step="100" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="10500" autoFocus />
+              </div>
+              <div>
+                <label className="field-label">Cliente</label>
+                <select value={saleClient} onChange={(e) => setSaleClient(e.target.value)}>
+                  <option value="">Sin cliente</option>
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}{c.dni ? ` (${c.dni})` : ""}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+                <button type="button" className="button primary" disabled={savingSale || !salePrice} onClick={() => void handleQuickSale()}>{savingSale ? "Guardando..." : "Registrar venta"}</button>
+                <button type="button" className="button secondary" onClick={() => setShowQuickSale(false)}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -2588,6 +2738,7 @@ function VehicleSpecs({ vehicle }: { vehicle: api.Vehicle }) {
 
 // ── PROPOSAL B: Tabs layout ──
 function VehicleDetailB({ vehicle, suppliers, leads, onBack, onReload }: VDProps) {
+  // purchaseRecords, companyId, clients available via VDProps but not used in layout B
   const h = useVehicleDetail(vehicle, onReload);
   const [activeTab, setActiveTab] = useState<"datos" | "leads" | "documentos">("datos");
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
@@ -2665,6 +2816,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack, onReload }: VDProps
 
 // ── PROPOSAL C: Dashboard layout ──
 function VehicleDetailC({ vehicle, suppliers, leads, onBack, onReload }: VDProps) {
+  // purchaseRecords, companyId, clients available via VDProps but not used in layout C
   const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });

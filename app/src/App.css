@@ -2532,6 +2532,33 @@ select:focus-visible {
   .vd-stats-row { gap: 0.75rem; }
 }
 
+/* ── Quick Status Toggle ── */
+.vd-quick-status {
+  display: flex;
+  gap: 0.35rem;
+}
+.vd-status-btn {
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid rgba(0,0,0,0.1);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.vd-status-btn:hover:not(:disabled) {
+  border-color: var(--status-color, #3b82f6);
+  color: var(--status-color, #3b82f6);
+}
+.vd-status-btn.active {
+  background: var(--status-color, #3b82f6);
+  border-color: var(--status-color, #3b82f6);
+  color: #fff;
+}
+.vd-status-btn:disabled { opacity: 0.5; cursor: wait; }
+
 /* ── Photo Grid ── */
 .vd-photo-grid {
   display: grid;
