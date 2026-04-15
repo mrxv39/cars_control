@@ -14,7 +14,21 @@ import ConfirmDialog from "./components/web/ConfirmDialog";
 import EmptyState from "./components/web/EmptyState";
 import Spinner from "./components/web/Spinner";
 import { SkeletonGrid } from "./components/web/Skeleton";
-import { LayoutDashboard, Car, Receipt, ShoppingCart, Landmark, Truck, Users, UserCheck, ClipboardCheck, Building2, User, LogOut, Search, Menu, X } from "lucide-react";
+import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
+import Car from "lucide-react/dist/esm/icons/car";
+import Receipt from "lucide-react/dist/esm/icons/receipt";
+import ShoppingCart from "lucide-react/dist/esm/icons/shopping-cart";
+import Landmark from "lucide-react/dist/esm/icons/landmark";
+import Truck from "lucide-react/dist/esm/icons/truck";
+import Users from "lucide-react/dist/esm/icons/users";
+import UserCheck from "lucide-react/dist/esm/icons/user-check";
+import ClipboardCheck from "lucide-react/dist/esm/icons/clipboard-check";
+import Building2 from "lucide-react/dist/esm/icons/building-2";
+import User from "lucide-react/dist/esm/icons/user";
+import LogOut from "lucide-react/dist/esm/icons/log-out";
+import Search from "lucide-react/dist/esm/icons/search";
+import Menu from "lucide-react/dist/esm/icons/menu";
+import X from "lucide-react/dist/esm/icons/x";
 import "./App.css";
 
 // Detect app mode based on hostname

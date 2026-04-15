@@ -1,4 +1,7 @@
-import { Car, Users, TrendingUp, AlertTriangle } from "lucide-react";
+import Car from "lucide-react/dist/esm/icons/car";
+import Users from "lucide-react/dist/esm/icons/users";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
+import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
 import { StockVehicle, Lead } from "../types";
 
 interface Props {
