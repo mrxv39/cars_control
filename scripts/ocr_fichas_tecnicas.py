@@ -38,16 +38,13 @@ except ImportError:
     print("ERROR: pip install pdfplumber", file=sys.stderr)
     sys.exit(1)
 
-PROJECT_REF = "hyydkyhvgcekvtkrnspf"
-SUPABASE_URL = f"https://{PROJECT_REF}.supabase.co"
+PROJECT_REF = "kpgkcersrfvzncqupkxa"
+SUPABASE_URL = os.environ.get("SUPABASE_URL", f"https://{PROJECT_REF}.supabase.co")
 BUCKET_DOCS = "vehicle-docs"
 
-# Anon key (pública, misma que en el frontend). RLS abierta en vehicle-docs.
-ANON_KEY = (
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-    "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5eWRreWh2Z2Nla3Z0a3Juc3BmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MDU3MDQsImV4cCI6MjA4OTQ4MTcwNH0."
-    "54OcvlXRN9Bb7yhxUw2ufhWT2GypqCu3wH26fJuCuRA"
-)
+ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+if not ANON_KEY:
+    raise RuntimeError("SUPABASE_ANON_KEY env var is required. Set it in .env")
 
 PLATE_RE = re.compile(r"\b(\d{4})\s*([B-DF-HJ-NP-TV-Z]{3})\b")
 PLATE_OLD_RE = re.compile(r"\b([A-Z]{1,2})\s*[-]?\s*(\d{4})\s*[-]?\s*([A-Z]{1,2})\b")
