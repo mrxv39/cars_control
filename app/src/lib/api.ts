@@ -1,5 +1,4 @@
 import { supabase } from "./supabase";
-import { verifyPassword } from "./hash";
 import type { VehicleBase, LeadBase, ClientBase, SalesRecordBase, PurchaseRecordBase, LeadNote } from "../shared-types";
 
 // Re-exportar tipos compartidos para que WebApp.tsx pueda seguir usando api.Company, api.User, etc.
@@ -8,7 +7,7 @@ import type { LoginResult } from "../shared-types";
 
 // Detect if running inside Tauri
 export function isTauri(): boolean {
-  return !!(window as any).__TAURI_INTERNALS__;
+  return !!(window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
 }
 
 export async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
@@ -132,32 +131,26 @@ export async function setPrimaryPhoto(vehicleId: number, photoId: number): Promi
 }
 
 // ============================================================
-// Auth — Login con migración gradual SHA-256 → PBKDF2
+// Auth — Login via Supabase Auth (signInWithPassword)
 // ============================================================
 
 export async function login(username: string, password: string): Promise<LoginResult> {
-  // 1. Buscar usuario por username (sin comparar hash en la query)
+  // 1. Resolver username → email via RPC (SECURITY DEFINER, bypasses RLS)
+  const email = username.includes("@") ? username : await resolveUsername(username);
+
+  // 2. Autenticar con Supabase Auth
+  const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
+  if (authErr) throw new Error("Usuario o contraseña incorrectos.");
+
+  // 3. Ahora autenticado — RLS permite leer users/companies
   const { data: user, error: userErr } = await supabase
     .from("users")
-    .select("id, company_id, full_name, username, email, password_hash, role, active")
-    .eq("username", username)
+    .select("id, company_id, full_name, username, email, role, active")
+    .eq("email", email)
     .eq("active", true)
     .single();
 
-  if (userErr || !user) throw new Error("Usuario o contrasena incorrectos.");
-
-  // 2. Verificar password (soporta PBKDF2 nuevo y SHA-256 legacy)
-  const { valid, newHash } = await verifyPassword(password, user.password_hash);
-  if (!valid) throw new Error("Usuario o contrasena incorrectos.");
-
-  // 3. Si el hash era legacy SHA-256, migrar silenciosamente a PBKDF2
-  if (newHash) {
-    await supabase
-      .from("users")
-      .update({ password_hash: newHash })
-      .eq("id", user.id);
-    // No bloquear login si la actualización falla — el usuario ya está autenticado
-  }
+  if (userErr || !user) throw new Error("Usuario no encontrado en la aplicación.");
 
   // 4. Obtener empresa
   const { data: company, error: compErr } = await supabase
@@ -172,6 +165,12 @@ export async function login(username: string, password: string): Promise<LoginRe
     user: { id: user.id, company_id: user.company_id, full_name: user.full_name, username: user.username, email: user.email || "", role: user.role, active: user.active },
     company,
   };
+}
+
+async function resolveUsername(username: string): Promise<string> {
+  const { data, error } = await supabase.rpc("resolve_login", { p_username: username });
+  if (error || !data || data.error) throw new Error("Usuario o contraseña incorrectos.");
+  return data.email;
 }
 
 // ============================================================
@@ -277,7 +276,7 @@ export async function listKnownExternalIds(companyId: number): Promise<string[]>
     .eq("external_source", "coches_net")
     .eq("vehicles.company_id", companyId);
   if (error) throw new Error(error.message);
-  return (data || []).map((r: any) => r.external_id);
+  return (data || []).map((r: { external_id: string }) => r.external_id);
 }
 
 export async function fetchCochesNetPreview(dealerUrl: string, knownExternalIds: string[]): Promise<ImportPreview> {
@@ -287,7 +286,7 @@ export async function fetchCochesNetPreview(dealerUrl: string, knownExternalIds:
   if (error) {
     // Intentar leer el cuerpo de la respuesta para más detalle
     try {
-      const ctx = (error as any).context;
+      const ctx = (error as { context?: { text?: () => Promise<string> } }).context;
       if (ctx && typeof ctx.text === "function") {
         const text = await ctx.text();
         throw new Error(`Edge function error: ${text}`);
@@ -389,7 +388,7 @@ export async function markVehiclesNeedsReview(companyId: number, externalIds: st
     .eq("external_source", "coches_net")
     .in("external_id", externalIds)
     .eq("vehicles.company_id", companyId);
-  const vehicleIds = (listings || []).map((l: any) => l.vehicle_id);
+  const vehicleIds = (listings || []).map((l: { vehicle_id: number }) => l.vehicle_id);
   if (vehicleIds.length === 0) return 0;
   await supabase.from("vehicles").update({ needs_review: true }).in("id", vehicleIds);
   // Marcar los listings como removidos

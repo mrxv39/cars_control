@@ -21,6 +21,10 @@ vi.mock('../lib/supabase', () => {
   return {
     supabase: {
       from: fromFn,
+      rpc: vi.fn(),
+      auth: {
+        signInWithPassword: vi.fn(),
+      },
       storage: {
         from: vi.fn(() => ({
           remove: vi.fn(() => ({ data: null, error: null })),
@@ -49,7 +53,19 @@ beforeEach(() => {
 })
 
 describe('login', () => {
-  it('retorna LoginResult con credenciales válidas', async () => {
+  it('retorna LoginResult con credenciales válidas (Supabase Auth)', async () => {
+    // Mock resolve_login RPC
+    ;(mockedSupabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { email: 'test@test.com' },
+      error: null,
+    })
+
+    // Mock signInWithPassword
+    ;(mockedSupabase.auth.signInWithPassword as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { user: { id: 'auth-uuid' } },
+      error: null,
+    })
+
     const userChain = chainMock({
       single: vi.fn(() => ({
         data: {
@@ -57,7 +73,7 @@ describe('login', () => {
           company_id: 10,
           full_name: 'Test User',
           username: 'testuser',
-          password_hash: 'pbkdf2:600000:salt:hash',
+          email: 'test@test.com',
           role: 'admin',
           active: true,
         },
@@ -86,35 +102,44 @@ describe('login', () => {
       return callCount === 1 ? userChain : companyChain
     }) as any
 
-    mockedVerifyPassword.mockResolvedValue({ valid: true })
-
     const result = await login('testuser', 'password')
     expect(result.user.username).toBe('testuser')
     expect(result.company.trade_name).toBe('Test Co')
+    expect(mockedSupabase.rpc).toHaveBeenCalledWith('resolve_login', { p_username: 'testuser' })
+    expect(mockedSupabase.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'test@test.com', password: 'password' })
   })
 
   it('lanza error con credenciales inválidas', async () => {
-    const userChain = chainMock({
-      single: vi.fn(() => ({
-        data: null,
-        error: { message: 'Not found' },
-      })),
+    // Mock resolve_login returns email
+    ;(mockedSupabase.rpc as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { email: 'bad@test.com' },
+      error: null,
     })
 
-    mockedSupabase.from = vi.fn(() => userChain) as any
+    // Mock signInWithPassword fails
+    ;(mockedSupabase.auth.signInWithPassword as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { user: null },
+      error: { message: 'Invalid login credentials' },
+    })
 
-    await expect(login('baduser', 'badpass')).rejects.toThrow('Usuario o contrasena incorrectos.')
+    await expect(login('baduser', 'badpass')).rejects.toThrow('Usuario o contraseña incorrectos.')
   })
 
-  it('migra hash legacy a PBKDF2 cuando detecta SHA-256', async () => {
+  it('acepta email directamente sin llamar a resolve_login', async () => {
+    // Mock signInWithPassword
+    ;(mockedSupabase.auth.signInWithPassword as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { user: { id: 'auth-uuid' } },
+      error: null,
+    })
+
     const userChain = chainMock({
       single: vi.fn(() => ({
         data: {
           id: 1,
           company_id: 10,
-          full_name: 'Legacy User',
-          username: 'legacy',
-          password_hash: 'abc123legacy',
+          full_name: 'Email User',
+          username: 'emailuser',
+          email: 'user@example.com',
           role: 'admin',
           active: true,
         },
@@ -122,7 +147,6 @@ describe('login', () => {
       })),
     })
 
-    const updateChain = chainMock()
     const companyChain = chainMock({
       single: vi.fn(() => ({
         data: {
@@ -141,20 +165,14 @@ describe('login', () => {
     let callCount = 0
     mockedSupabase.from = vi.fn(() => {
       callCount++
-      if (callCount === 1) return userChain
-      if (callCount === 2) return updateChain // hash migration update
-      return companyChain
+      return callCount === 1 ? userChain : companyChain
     }) as any
 
-    mockedVerifyPassword.mockResolvedValue({
-      valid: true,
-      newHash: 'pbkdf2:600000:newsalt:newhash',
-    })
-
-    const result = await login('legacy', 'oldpass')
-    expect(result.user.username).toBe('legacy')
-    // Verify that update was called for hash migration
-    expect(mockedSupabase.from).toHaveBeenCalledWith('users')
+    const result = await login('user@example.com', 'pass')
+    expect(result.user.username).toBe('emailuser')
+    // Should NOT call resolve_login when input is already an email
+    expect(mockedSupabase.rpc).not.toHaveBeenCalled()
+    expect(mockedSupabase.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'user@example.com', password: 'pass' })
   })
 })
 
