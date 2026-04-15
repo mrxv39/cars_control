@@ -13,6 +13,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import ConfirmDialog from "./components/web/ConfirmDialog";
 import EmptyState from "./components/web/EmptyState";
 import Spinner from "./components/web/Spinner";
+import { SkeletonGrid } from "./components/web/Skeleton";
 import { LayoutDashboard } from "lucide-react/dist/esm/icons/layout-dashboard";
 import { Car } from "lucide-react/dist/esm/icons/car";
 import { Receipt } from "lucide-react/dist/esm/icons/receipt";
@@ -425,7 +426,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "3rem" }}><Spinner label="Cargando vehículos..." /></div>
+          <SkeletonGrid count={6} />
         ) : filtered.length === 0 ? (
           <EmptyState message="No se encontraron vehículos con estos filtros" />
         ) : (
@@ -986,8 +987,15 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
   if (loading) {
     return (
       <main className="shell">
-        <section className="panel status-panel" style={{ margin: "auto" }}>
-          <Spinner size="lg" label="Cargando..." />
+        <aside className="sidebar">
+          <div>
+            <p className="eyebrow"><Car size={14} style={{ verticalAlign: "-2px", marginRight: "0.3rem" }} />Cars Control</p>
+            <div className="skeleton-line skeleton-lg" style={{ marginTop: "0.5rem" }} />
+            <div className="skeleton-line skeleton-sm" style={{ marginTop: "0.5rem" }} />
+          </div>
+        </aside>
+        <section className="content">
+          <SkeletonGrid count={6} />
         </section>
       </main>
     );
