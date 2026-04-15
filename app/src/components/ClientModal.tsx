@@ -86,7 +86,7 @@ export function ClientModal({
             <option value="">Sin vincular</option>
             {stock.map((vehicle) => (
               <option key={vehicle.folder_path} value={vehicle.folder_path}>
-                {vehicle.name}
+                {vehicle.name}{vehicle.anio ? ` (${vehicle.anio})` : ""}{vehicle.km ? ` — ${vehicle.km.toLocaleString()} km` : ""}
               </option>
             ))}
           </select>

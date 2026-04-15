@@ -428,7 +428,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
         {loading ? (
           <SkeletonGrid count={6} />
         ) : filtered.length === 0 ? (
-          <EmptyState message="No se encontraron vehículos con estos filtros" />
+          <EmptyState title="No se encontraron vehículos con estos filtros" icon="🔍" />
         ) : (
           <div className="catalog-grid">
             {filtered.map((v) => {
@@ -1573,6 +1573,8 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
     });
   }, [vehicles, leads, search, sortBy, filterKey, purchaseDateByVehicle, leadCounts, photoCountMap, docTypesMap]);
 
+  const { paged: pagedStock, page: stockPage, totalPages: stockTotalPages, setPage: setStockPage } = usePagination(filtered);
+
   const filterCounts = useMemo(() => ({
     todos: vehicles.length,
     pendientes: vehicles.filter((v) => !isComplete(v)).length,
@@ -1751,8 +1753,9 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
         </section>
       )}
 
+      <PaginationControls page={stockPage} totalPages={stockTotalPages} setPage={setStockPage} />
       <section className="stock-list" aria-live="polite">
-        {filtered.map((v) => (
+        {pagedStock.map((v) => (
           <StockRow
             key={v.id}
             vehicle={v}
@@ -1765,6 +1768,7 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
           />
         ))}
       </section>
+      <PaginationControls page={stockPage} totalPages={stockTotalPages} setPage={setStockPage} />
 
       {importError && (
         <div className="modal-overlay" onClick={() => setImportError(null)}>
@@ -2910,6 +2914,7 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
   const dialog = useConfirmDialog();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", dni: "", notes: "" });
+  const { paged: pagedClients, page: clientsPage, totalPages: clientsTotalPages, setPage: setClientsPage } = usePagination(clients);
 
   function startEdit(c: api.Client) {
     setEditingId(c.id);
@@ -2947,8 +2952,9 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
           </div>
         )}
       </header>
+      <PaginationControls page={clientsPage} totalPages={clientsTotalPages} setPage={setClientsPage} />
       <section className="record-grid" aria-live="polite">
-        {clients.map((c) => (
+        {pagedClients.map((c) => (
           <article key={c.id} className="record-card panel">
             {editingId === c.id ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -2982,6 +2988,7 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
           </article>
         ))}
       </section>
+      <PaginationControls page={clientsPage} totalPages={clientsTotalPages} setPage={setClientsPage} />
     </>
   );
 }
