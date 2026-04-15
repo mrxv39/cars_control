@@ -2373,6 +2373,162 @@ select:focus-visible {
   }
 }
 
+/* ── Vehicle Detail Redesign ── */
+.vd-hero {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+.vd-hero-left { flex-shrink: 0; }
+.vd-hero-photo {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+.vd-hero-photo-empty {
+  display: grid;
+  place-items: center;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  border: 2px dashed rgba(0,0,0,0.1);
+}
+.vd-hero-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+.vd-vehicle-name {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.5vw, 2rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--color-text);
+}
+.vd-meta-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.vd-estado-badge {
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-sm);
+}
+.vd-meta-chip {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.vd-stats-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+.vd-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.vd-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+.vd-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.vd-hero-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Thumbnail strip */
+.vd-thumbs-strip {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.25rem 0 0.75rem;
+}
+.vd-thumb {
+  width: 72px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  opacity: 0.7;
+  transition: opacity 150ms ease, border-color 150ms ease;
+}
+.vd-thumb:hover { opacity: 1; }
+.vd-thumb.active { border-color: var(--color-primary); opacity: 1; }
+.vd-thumb.primary { border-color: #f59e0b; opacity: 1; }
+
+/* Content grid */
+.vd-content-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+.vd-form-panel {
+  padding: 1.5rem !important;
+  border-left: 4px solid var(--color-primary);
+}
+.vd-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.vd-sidebar-panel { padding: 1.25rem !important; }
+.vd-section-header {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.vd-divider {
+  height: 1px;
+  background: rgba(0,0,0,0.06);
+  margin: 0.25rem 0;
+}
+.vd-margin-warning {
+  color: #b45309;
+  font-size: 0.82rem;
+  margin: -0.25rem 0 0;
+  padding: 0.4rem 0.6rem;
+  background: #fffbeb;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(180, 83, 9, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .vd-hero { grid-template-columns: 1fr; }
+  .vd-hero-photo { max-height: 220px; }
+  .vd-content-grid { grid-template-columns: 1fr; }
+  .vd-stats-row { gap: 0.75rem; }
+}
+
 /* ── Undo Toast ── */
 .undo-toast {
   position: fixed;

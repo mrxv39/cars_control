@@ -2204,62 +2204,140 @@ function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
   );
 }
 
-// ── PROPOSAL A: Sidebar layout ──
+// ── PROPOSAL A: Sidebar layout (redesigned) ──
 function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps) {
   const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
+
+  const estadoColor = h.form.estado === "vendido" ? "#16a34a" : h.form.estado === "reservado" ? "#f59e0b" : "#3b82f6";
+  const estadoLabel = h.form.estado === "vendido" ? "Vendido" : h.form.estado === "reservado" ? "Reservado" : "Disponible";
+
   return (
     <>
-      <VDHero vehicle={vehicle} onBack={onBack} onDelete={handleDeleteVehicle} margin={h.margin} leadsCount={vehicleLeads.length} />
       <ConfirmDialog {...h.dialog.confirmProps} />
-      {h.photos.length > 0 && (
-        <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", padding: "0.25rem 0" }}>
+
+      {/* ── Hero con foto principal ── */}
+      <header className="vd-hero">
+        <div className="vd-hero-left">
+          {h.mainPhoto ? (
+            <img src={h.mainPhoto} className="vd-hero-photo" alt={vehicle.name} />
+          ) : (
+            <div className="vd-hero-photo vd-hero-photo-empty">Sin foto</div>
+          )}
+        </div>
+        <div className="vd-hero-right">
+          <p className="breadcrumb"><span className="breadcrumb-link" onClick={onBack}>Stock</span> &rsaquo; Ficha</p>
+          <h2 className="vd-vehicle-name">{vehicle.name}</h2>
+          <div className="vd-meta-row">
+            <span className="vd-estado-badge" style={{ background: estadoColor }}>{estadoLabel}</span>
+            {vehicle.anio && <span className="vd-meta-chip">{vehicle.anio}</span>}
+            {vehicle.km != null && <span className="vd-meta-chip">{vehicle.km.toLocaleString()} km</span>}
+            {vehicle.fuel && <span className="vd-meta-chip">{vehicle.fuel}</span>}
+            {vehicle.color && <span className="vd-meta-chip">{vehicle.color}</span>}
+          </div>
+
+          {/* Mini stats */}
+          <div className="vd-stats-row">
+            {h.form.precio_compra != null && (
+              <div className="vd-stat">
+                <span className="vd-stat-label">Compra</span>
+                <span className="vd-stat-value">{h.form.precio_compra.toLocaleString("es-ES")} €</span>
+              </div>
+            )}
+            {h.form.precio_venta != null && (
+              <div className="vd-stat">
+                <span className="vd-stat-label">Venta</span>
+                <span className="vd-stat-value">{h.form.precio_venta.toLocaleString("es-ES")} €</span>
+              </div>
+            )}
+            {h.margin !== null && (
+              <div className="vd-stat">
+                <span className="vd-stat-label">Margen</span>
+                <span className="vd-stat-value" style={{ color: h.margin >= 0 ? "#16a34a" : "#dc2626" }}>
+                  {h.margin >= 0 ? "+" : ""}{h.margin.toLocaleString("es-ES")} €
+                </span>
+              </div>
+            )}
+            {vehicleLeads.length > 0 && (
+              <div className="vd-stat">
+                <span className="vd-stat-label">Leads</span>
+                <span className="vd-stat-value">{vehicleLeads.length}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="vd-hero-actions">
+            <button type="button" className="button secondary" onClick={onBack}>← Volver al stock</button>
+            <button type="button" className="button danger" onClick={handleDeleteVehicle}>Eliminar vehículo</button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Thumbnails strip ── */}
+      {h.photos.length > 1 && (
+        <div className="vd-thumbs-strip">
           {h.photos.map((p) => (
             <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
-              style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 10, cursor: "pointer", flexShrink: 0,
-                border: (h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "2px solid #1d4ed8" : "2px solid transparent" }} />
+              className={`vd-thumb ${(h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "active" : ""} ${p.is_primary ? "primary" : ""}`}
+              alt="" />
           ))}
         </div>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "1.25rem", alignItems: "start" }}>
-        <section className="panel" style={{ padding: "1.25rem" }}>
-          <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Datos del vehículo</p>
+
+      {/* ── Contenido principal: Formulario + Sidebar ── */}
+      <div className="vd-content-grid">
+        {/* Columna izquierda: Formulario */}
+        <section className="panel vd-form-panel">
+          <div className="vd-section-header">
+            <p className="eyebrow">Datos del vehículo</p>
+          </div>
           <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
-            <div><label className="field-label required">Marca y modelo</label><input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} placeholder="Ej: SEAT Ibiza 1.0 MPI Style" className={!h.form.name.trim() ? "input-error" : ""} /></div>
+            <div>
+              <label className="field-label required">Marca y modelo</label>
+              <input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} placeholder="Ej: SEAT Ibiza 1.0 MPI Style" className={!h.form.name.trim() ? "input-error" : ""} />
+            </div>
             <div className="form-grid-3">
               <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} placeholder="2020" min="1990" max="2030" /></div>
-              <div><label className="field-label">Km</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} placeholder="125000" min="0" /></div>
+              <div><label className="field-label">Kilómetros</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} placeholder="125000" min="0" /></div>
               <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
             </div>
+            <div className="form-grid-2">
+              <div><label className="field-label">Combustible</label><select value={h.form.fuel || ""} onChange={(e) => h.setForm({ ...h.form, fuel: e.target.value })}><option value="">—</option><option value="Gasolina">Gasolina</option><option value="Diésel">Diésel</option><option value="Híbrido">Híbrido</option><option value="Eléctrico">Eléctrico</option><option value="GLP">GLP</option></select></div>
+              <div><label className="field-label">Color</label><input value={h.form.color || ""} onChange={(e) => h.setForm({ ...h.form, color: e.target.value })} placeholder="Blanco" /></div>
+            </div>
+            <div className="vd-divider" />
             <div className="form-grid-2">
               <div><label className="field-label">Precio compra</label><input type="number" step="100" min="0" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} placeholder="8500" /></div>
               <div><label className="field-label">Precio venta</label><input type="number" step="100" min="0" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} placeholder="10500" /></div>
             </div>
-            {h.marginWarning && <p style={{ color: "#b45309", fontSize: "0.82rem", margin: "-0.25rem 0 0" }}>⚠ {h.marginWarning}</p>}
+            {h.marginWarning && <p className="vd-margin-warning">⚠ {h.marginWarning}</p>}
             <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-            <div><label className="field-label">Notas</label><textarea value={h.form.notes} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} placeholder="Observaciones sobre el vehículo, reparaciones, etc." /></div>
+            <div><label className="field-label">Notas</label><textarea value={h.form.notes || ""} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} placeholder="Observaciones, reparaciones, historial..." /></div>
             {h.error && <p className="error-banner" role="alert">{h.error}</p>}
             {h.success && <p className="success-banner" role="status">✓ Guardado correctamente</p>}
-            <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar"}</button>
+            <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar cambios"}</button>
           </form>
         </section>
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          {h.margin !== null && (
-            <div className="panel" style={{ padding: "1rem 1.25rem" }}>
-              <p className="eyebrow" style={{ marginBottom: "0.35rem" }}>Margen estimado</p>
-              <p style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: h.margin >= 0 ? "#166534" : "#991b1b" }}>{h.margin.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
+
+        {/* Columna derecha: Info panels */}
+        <div className="vd-sidebar">
+          <section className="panel vd-sidebar-panel">
+            <div className="vd-section-header">
+              <p className="eyebrow">Leads ({vehicleLeads.length})</p>
             </div>
-          )}
-          <section className="panel" style={{ padding: "1.25rem" }}>
-            <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Leads ({vehicleLeads.length})</p>
             <VDLeads vehicleLeads={vehicleLeads} />
           </section>
-          <section className="panel" style={{ padding: "1.25rem" }}>
+          <section className="panel vd-sidebar-panel">
+            <div className="vd-section-header">
+              <p className="eyebrow">Documentos</p>
+            </div>
             <VDFactura facturas={h.facturas} docFileRef={h.docFileRef} uploadingDoc={h.uploadingDoc} handleUploadDoc={h.handleUploadDoc} handleDeleteDoc={h.handleDeleteDoc} />
           </section>
         </div>
       </div>
+
+      {/* ── Fotos ── */}
       <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
       <VehicleSpecs vehicle={vehicle} />
       <VehicleListingsLink vehicle={vehicle} />
