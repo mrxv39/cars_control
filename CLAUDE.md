@@ -93,6 +93,9 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 ## Pendiente
 
 - Re-subir fotos a Storage nuevo (buckets no existen tras migración Supabase)
+- Verificar que catálogo público carga vehículos (posible RLS issue sin auth)
+- Template factura REBU/IVA (datos fiscales Ricard en tabla `companies`)
+- Tablas responsive en móvil (colapsar a card layout)
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
 - Descargar fotos coches.net a Storage propio
 - Lazy-load IntersectionObserver en listado Stock
@@ -108,3 +111,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - 2026-04-11: import 2651 movimientos CaixaBank via PDF, migration 013 fix regex
 - 2026-04-15: migración Supabase dedicado, RLS auth.uid(), dos dominios Vercel
 - 2026-04-15b: migración Supabase Auth (login+Google OAuth), fotos Storage pendientes
+- 2026-04-15c: security fixes, Playwright E2E, filtros catálogo, iconos sidebar, skeleton, a11y modales
