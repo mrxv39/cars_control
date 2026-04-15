@@ -16,6 +16,7 @@ import Spinner from "./components/web/Spinner";
 import { SkeletonGrid } from "./components/web/Skeleton";
 import OnboardingTour from "./components/web/OnboardingTour";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useDirtyForm } from "./hooks/useDirtyForm";
 import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
 import Car from "lucide-react/dist/esm/icons/car";
 import Receipt from "lucide-react/dist/esm/icons/receipt";
@@ -1036,6 +1037,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const shortcuts = useMemo(() => ({
     "/": () => searchInputRef.current?.focus(),
+    "escape": () => { setSelectedVehicle(null); setGlobalSearch(""); setMobileMenuOpen(false); },
   }), []);
   useKeyboardShortcuts(shortcuts);
 
@@ -1499,6 +1501,11 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
   const [adding, setAdding] = useState(false);
   const [nameBlurred, setNameBlurred] = useState(false);
   const nameError = nameBlurred && !newName.trim() ? "El nombre es obligatorio" : null;
+  const stockFormDirty = !!(newName || newAnio || newKm || newPrecioCompra || newPrecioVenta || newFuel || newColor || newNotes);
+  function handleCancelAdd() {
+    if (stockFormDirty && !window.confirm("Tienes cambios sin guardar. ¿Salir sin guardar?")) return;
+    setShowAdd(false); setNewName(""); setNewAnio(""); setNewKm(""); setNewPrecioCompra(""); setNewPrecioVenta(""); setNewFuel(""); setNewColor(""); setNewNotes(""); setNameBlurred(false);
+  }
 
   // Precarga resúmenes de fotos+docs de todos los vehículos en DOS queries
   // batched (.in()) en lugar de 2N queries individuales. Validado 2026-04-08:
@@ -1668,7 +1675,7 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
           <button type="button" className="button secondary" onClick={() => void handleImport()} disabled={importing}>
             {importing ? "Importando..." : "Importar de coches.net"}
           </button>
-          <button type="button" className="button primary" onClick={() => setShowAdd(!showAdd)}>
+          <button type="button" className="button primary" onClick={() => showAdd ? handleCancelAdd() : setShowAdd(true)}>
             {showAdd ? "Cancelar" : "Añadir vehículo"}
           </button>
         </div>
@@ -2557,10 +2564,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack, onReload }: VDProps
         {activeTab === "leads" && (
           <div style={{ padding: "1.5rem" }}>
             {vehicleLeads.length > 0 ? <VDLeads vehicleLeads={vehicleLeads} /> : (
-              <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#475569", margin: "0 0 0.5rem" }}>Sin leads para este vehículo</p>
-                <p className="muted" style={{ margin: 0 }}>Cuando un cliente contacte interesado en este coche, aparecera aqui.</p>
-              </div>
+              <EmptyState icon="📞" title="Sin leads para este vehículo" description="Cuando un cliente contacte interesado en este coche, aparecerá aquí." />
             )}
           </div>
         )}
@@ -2773,9 +2777,25 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
   }), [leads]);
   const { paged: pagedLeads, page: leadsPage, totalPages: leadsTotalPages, setPage: setLeadsPage } = usePagination(filtered);
 
+  const phoneDuplicate = useMemo(() => {
+    if (!editForm.phone || !editForm.phone.trim()) return null;
+    const normalized = editForm.phone.replace(/\s/g, "");
+    const dup = leads.find((l) => l.id !== editingId && l.phone.replace(/\s/g, "") === normalized);
+    return dup ? `Ya existe un lead con este teléfono: ${dup.name}` : null;
+  }, [editForm.phone, editingId, leads]);
+
+  const leadOriginal = React.useRef<typeof editForm | null>(null);
   function startEdit(lead: api.Lead) {
     setEditingId(lead.id);
-    setEditForm({ name: lead.name, phone: lead.phone, email: lead.email, notes: lead.notes, estado: lead.estado, canal: lead.canal });
+    const form = { name: lead.name, phone: lead.phone, email: lead.email, notes: lead.notes, estado: lead.estado, canal: lead.canal };
+    setEditForm(form);
+    leadOriginal.current = { ...form };
+  }
+  function cancelLeadEdit() {
+    if (leadOriginal.current && JSON.stringify(editForm) !== JSON.stringify(leadOriginal.current)) {
+      if (!window.confirm("Tienes cambios sin guardar. ¿Salir sin guardar?")) return;
+    }
+    setEditingId(null);
   }
 
   async function saveEdit() {
@@ -2854,8 +2874,10 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
           <article key={lead.id} className="record-card panel">
             {editingId === lead.id ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" />
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" className={!editForm.name.trim() && editingId ? "input-error" : ""} />
+                {!editForm.name.trim() && editingId && <p className="input-error-message" role="alert">El nombre es obligatorio</p>}
                 <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Telefono" />
+                {phoneDuplicate && <p style={{ color: "#b45309", fontSize: "0.78rem", margin: "-0.25rem 0 0" }}>⚠ {phoneDuplicate}</p>}
                 <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
                 <select value={editForm.estado} onChange={(e) => setEditForm({ ...editForm, estado: e.target.value })}>
                   <option value="nuevo">Nuevo</option><option value="contactado">Contactado</option><option value="negociando">Negociando</option><option value="cerrado">Cerrado</option><option value="perdido">Perdido</option>
@@ -2864,7 +2886,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
                 <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notas" rows={2} />
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void saveEdit()}>Guardar</button>
-                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => setEditingId(null)}>Cancelar</button>
+                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={cancelLeadEdit}>Cancelar</button>
                 </div>
               </div>
             ) : (
@@ -2956,9 +2978,25 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", dni: "", notes: "" });
   const { paged: pagedClients, page: clientsPage, totalPages: clientsTotalPages, setPage: setClientsPage } = usePagination(clients);
 
+  const clientPhoneDup = useMemo(() => {
+    if (!editForm.phone || !editForm.phone.trim()) return null;
+    const normalized = editForm.phone.replace(/\s/g, "");
+    const dup = clients.find((c) => c.id !== editingId && c.phone.replace(/\s/g, "") === normalized);
+    return dup ? `Ya existe un cliente con este teléfono: ${dup.name}` : null;
+  }, [editForm.phone, editingId, clients]);
+
+  const clientOriginal = React.useRef<typeof editForm | null>(null);
   function startEdit(c: api.Client) {
     setEditingId(c.id);
-    setEditForm({ name: c.name, phone: c.phone, email: c.email, dni: c.dni, notes: c.notes });
+    const form = { name: c.name, phone: c.phone, email: c.email, dni: c.dni, notes: c.notes };
+    setEditForm(form);
+    clientOriginal.current = { ...form };
+  }
+  function cancelClientEdit() {
+    if (clientOriginal.current && JSON.stringify(editForm) !== JSON.stringify(clientOriginal.current)) {
+      if (!window.confirm("Tienes cambios sin guardar. ¿Salir sin guardar?")) return;
+    }
+    setEditingId(null);
   }
 
   async function saveEdit() {
@@ -2998,14 +3036,16 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
           <article key={c.id} className="record-card panel">
             {editingId === c.id ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" />
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" className={!editForm.name.trim() && editingId ? "input-error" : ""} />
+                {!editForm.name.trim() && editingId && <p className="input-error-message" role="alert">El nombre es obligatorio</p>}
                 <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Telefono" />
+                {clientPhoneDup && <p style={{ color: "#b45309", fontSize: "0.78rem", margin: "-0.25rem 0 0" }}>⚠ {clientPhoneDup}</p>}
                 <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
                 <input value={editForm.dni} onChange={(e) => setEditForm({ ...editForm, dni: e.target.value })} placeholder="DNI" />
                 <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notas" rows={2} />
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void saveEdit()}>Guardar</button>
-                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => setEditingId(null)}>Cancelar</button>
+                  <button type="button" className="button secondary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={cancelClientEdit}>Cancelar</button>
                 </div>
               </div>
             ) : (
