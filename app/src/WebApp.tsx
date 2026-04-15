@@ -15,6 +15,8 @@ import EmptyState from "./components/web/EmptyState";
 import Spinner from "./components/web/Spinner";
 import { SkeletonGrid } from "./components/web/Skeleton";
 import UndoToast from "./components/web/UndoToast";
+import OnboardingTour from "./components/web/OnboardingTour";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
 import Car from "lucide-react/dist/esm/icons/car";
 import Receipt from "lucide-react/dist/esm/icons/receipt";
@@ -996,6 +998,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
   const [loading, setLoading] = useState(true);
   const [globalSearch, setGlobalSearch] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [toast, setToast] = useState<{ message: string; key: number } | null>(null);
   const showToast = useCallback((message: string) => setToast({ message, key: Date.now() }), []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 4000); return () => clearTimeout(t); }, [toast]);
@@ -1030,6 +1033,12 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       setLoading(false);
     }
   }
+
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const shortcuts = useMemo(() => ({
+    "/": () => searchInputRef.current?.focus(),
+  }), []);
+  useKeyboardShortcuts(shortcuts);
 
   if (loading) {
     return (
@@ -1082,9 +1091,10 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         <div style={{ position: "relative" }}>
           <Search size={15} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", opacity: 0.5, pointerEvents: "none" }} />
           <input
+            ref={searchInputRef}
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
-            placeholder="Buscar vehículos, leads, clientes..."
+            placeholder="Buscar... (pulsa / para enfocar)"
             style={{ width: "100%", padding: "0.7rem 1rem 0.7rem 2.2rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "inherit", fontSize: "0.88rem" }}
           />
           {globalSearch.trim().length >= 2 && (
@@ -1124,6 +1134,9 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
               Panel plataforma
             </button>
           )}
+          <button type="button" className="button secondary full-width" onClick={() => setShowOnboarding(true)} style={{ marginBottom: "0.5rem" }}>
+            ? Ayuda / Tutorial
+          </button>
           <button type="button" className="button danger full-width" onClick={onLogout}>
             <LogOut size={16} style={{ verticalAlign: "-3px", marginRight: "0.4rem" }} />Cerrar sesión
           </button>
@@ -1173,6 +1186,8 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
           <button type="button" style={{ background: "none", border: "none", color: "inherit", marginLeft: "0.75rem", cursor: "pointer", fontSize: "0.85rem" }} onClick={() => setToast(null)} aria-label="Cerrar">✕</button>
         </div>
       )}
+
+      <OnboardingTour show={showOnboarding || !loading} />
     </main>
   );
 }

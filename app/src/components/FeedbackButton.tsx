@@ -50,11 +50,14 @@ function getViewContext(currentView: string): string {
   return currentView;
 }
 
+const FAB_SEEN_KEY = "cc_fab_seen";
+
 export function FeedbackButton({ userName, currentView, stock, leads, clients, selectedVehicle }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"sugerencias" | "mensaje">("sugerencias");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [fabSeen, setFabSeen] = useState(() => { try { return !!localStorage.getItem(FAB_SEEN_KEY); } catch { return true; } });
   const [sent, setSent] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
     try {
@@ -425,8 +428,8 @@ export function FeedbackButton({ userName, currentView, stock, leads, clients, s
     <>
       <button
         type="button"
-        className="feedback-fab"
-        onClick={() => setOpen(true)}
+        className={`feedback-fab${!fabSeen ? " pulse" : ""}`}
+        onClick={() => { setOpen(true); if (!fabSeen) { setFabSeen(true); try { localStorage.setItem(FAB_SEEN_KEY, "1"); } catch { /* ignore */ } } }}
         title="Sugerencias y optimizaciones"
       >
         {suggestions.length > 0 && (
