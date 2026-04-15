@@ -33,19 +33,14 @@ except ImportError:
     print("ERROR: pip install requests", file=sys.stderr)
     sys.exit(1)
 
-PROJECT_REF = "hyydkyhvgcekvtkrnspf"
+PROJECT_REF = "kpgkcersrfvzncqupkxa"
 SUPABASE_URL = f"https://{PROJECT_REF}.supabase.co"
 BUCKET_PHOTOS = "vehicle-photos"
 BUCKET_DOCS = "vehicle-docs"
 
-# Publishable (anon) key — la misma que usa el frontend. Es pública.
-# Las políticas RLS de los buckets vehicle-photos / vehicle-docs permiten
-# upload/read/delete públicos, así que con la anon key basta.
-SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or (
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-    "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5eWRreWh2Z2Nla3Z0a3Juc3BmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MDU3MDQsImV4cCI6MjA4OTQ4MTcwNH0."
-    "54OcvlXRN9Bb7yhxUw2ufhWT2GypqCu3wH26fJuCuRA"
-)
+SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+if not SERVICE_KEY:
+    raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY env var is required. Set it in .env")
 
 
 def slugify(s: str) -> str:

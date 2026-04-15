@@ -31,7 +31,7 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
   }).length;
 
   // Últimos 5 leads
-  const ultimosLeads = leads
+  const ultimosLeads = [...leads]
     .sort((a, b) => {
       const fechaA = a.fecha_contacto ? new Date(a.fecha_contacto).getTime() : 0;
       const fechaB = b.fecha_contacto ? new Date(b.fecha_contacto).getTime() : 0;
@@ -48,6 +48,7 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
   }, 0);
 
   const vehiculosConPrecio = stock.filter((v) => v.precio_compra && v.precio_venta).length;
+  const warningClickable = leadsSinSeguimiento > 0 && !!onNavigate;
 
   return (
     <>
@@ -141,15 +142,18 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
         {/* Leads sin seguimiento */}
         <section
           className={`panel dashboard-card ${leadsSinSeguimiento > 0 ? "warning-card" : ""}`}
-          style={leadsSinSeguimiento > 0 ? { cursor: "pointer" } : undefined}
-          onClick={leadsSinSeguimiento > 0 && onNavigate ? () => onNavigate("reminders") : undefined}
+          tabIndex={warningClickable ? 0 : undefined}
+          role={warningClickable ? "button" : undefined}
+          aria-label={warningClickable ? `${leadsSinSeguimiento} lead${leadsSinSeguimiento !== 1 ? "s" : ""} sin contactar — ver recordatorios` : undefined}
+          onClick={warningClickable ? () => onNavigate!("reminders") : undefined}
+          onKeyDown={warningClickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigate!("reminders"); } } : undefined}
         >
           <div className="dashboard-header">
             <p className="eyebrow">{leadsSinSeguimiento > 0 ? "Alerta" : "Seguimiento"}</p>
             <h3>Leads sin contactar</h3>
           </div>
           <div className="warning-content">
-            <p className="warning-number" role={leadsSinSeguimiento > 0 ? "alert" : "status"} style={leadsSinSeguimiento > 0 ? { color: "#e53e3e", fontSize: "2.5rem" } : undefined}>
+            <p className={`warning-number${leadsSinSeguimiento > 0 ? " is-alert" : ""}`} role={leadsSinSeguimiento > 0 ? "alert" : "status"}>
               {leadsSinSeguimiento}
             </p>
             {leadsSinSeguimiento > 0 ? (
@@ -159,8 +163,7 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
                 </p>
                 <button
                   type="button"
-                  className="button"
-                  style={{ marginTop: "0.5rem", background: "#e53e3e", color: "#fff", border: "none" }}
+                  className="button danger"
                   onClick={(e) => {
                     e.stopPropagation();
                     onNavigate?.("reminders");
@@ -170,7 +173,7 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
                 </button>
               </>
             ) : (
-              <p className="warning-text" style={{ color: "#38a169" }}>Todos los leads estan al dia</p>
+              <p className="warning-text text-success">Todos los leads estan al dia</p>
             )}
           </div>
         </section>
