@@ -232,13 +232,17 @@ button {
 }
 
 .nav-item {
-  padding: 0.95rem 1rem;
+  padding: 0.75rem 1rem;
   border-radius: var(--radius-lg);
   text-align: left;
   background: rgba(255, 255, 255, 0.07);
   color: inherit;
   transition: background var(--transition-normal), border-color var(--transition-normal);
   border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--text-sm);
 }
 
 .nav-item:hover:not(.active):not(.disabled) {

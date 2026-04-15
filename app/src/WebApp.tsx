@@ -13,6 +13,21 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import ConfirmDialog from "./components/web/ConfirmDialog";
 import EmptyState from "./components/web/EmptyState";
 import Spinner from "./components/web/Spinner";
+import { LayoutDashboard } from "lucide-react/dist/esm/icons/layout-dashboard";
+import { Car } from "lucide-react/dist/esm/icons/car";
+import { Receipt } from "lucide-react/dist/esm/icons/receipt";
+import { ShoppingCart } from "lucide-react/dist/esm/icons/shopping-cart";
+import { Landmark } from "lucide-react/dist/esm/icons/landmark";
+import { Truck } from "lucide-react/dist/esm/icons/truck";
+import { Users } from "lucide-react/dist/esm/icons/users";
+import { UserCheck } from "lucide-react/dist/esm/icons/user-check";
+import { ClipboardCheck } from "lucide-react/dist/esm/icons/clipboard-check";
+import { Building2 } from "lucide-react/dist/esm/icons/building-2";
+import { User } from "lucide-react/dist/esm/icons/user";
+import { LogOut } from "lucide-react/dist/esm/icons/log-out";
+import { Search } from "lucide-react/dist/esm/icons/search";
+import { Menu } from "lucide-react/dist/esm/icons/menu";
+import { X } from "lucide-react/dist/esm/icons/x";
 import "./App.css";
 
 // Detect app mode based on hostname
@@ -909,18 +924,18 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseReco
   );
 }
 
-const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "stock", label: "Stock" },
-  { key: "sales", label: "Ventas" },
-  { key: "purchases", label: "Compras" },
-  { key: "bank", label: "Banco" },
-  { key: "suppliers", label: "Proveedores" },
-  { key: "leads", label: "Leads" },
-  { key: "clients", label: "Clientes" },
+const NAV_ITEMS: Array<{ key: ViewKey; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "stock", label: "Stock", icon: Car },
+  { key: "sales", label: "Ventas", icon: Receipt },
+  { key: "purchases", label: "Compras", icon: ShoppingCart },
+  { key: "bank", label: "Banco", icon: Landmark },
+  { key: "suppliers", label: "Proveedores", icon: Truck },
+  { key: "leads", label: "Leads", icon: Users },
+  { key: "clients", label: "Clientes", icon: UserCheck },
   // Recordatorios eliminado (sesión Ricard 2026-04-04): los recordatorios
   // ahora son inline en stock/leads (chips de checklist).
-  { key: "revision", label: "Revision" },
+  { key: "revision", label: "Revision", icon: ClipboardCheck },
 ];
 
 function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: api.LoginResult; onLogout: () => void; onOpenPlatform?: () => void }) {
@@ -983,22 +998,22 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       <button
         type="button"
         className="mobile-menu-btn"
-        aria-label="Abrir menu"
+        aria-label={mobileMenuOpen ? "Cerrar menu" : "Abrir menu"}
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
       >
-        {mobileMenuOpen ? "✕" : "☰"}
+        {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
       {mobileMenuOpen && <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)} />}
       <aside className={`sidebar ${mobileMenuOpen ? "sidebar-open" : ""}`}>
         <div>
-          <p className="eyebrow">Cars Control</p>
+          <p className="eyebrow"><Car size={14} style={{ verticalAlign: "-2px", marginRight: "0.3rem" }} />Cars Control</p>
           <button
             type="button"
             className="sidebar-link"
             onClick={() => { setCurrentView("company"); setMobileMenuOpen(false); }}
             title="Editar datos de empresa"
           >
-            <h1 className="sidebar-title">{session.company.trade_name}</h1>
+            <h1 className="sidebar-title"><Building2 size={16} style={{ verticalAlign: "-2px", marginRight: "0.4rem", opacity: 0.7 }} />{session.company.trade_name}</h1>
           </button>
           <button
             type="button"
@@ -1006,15 +1021,16 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
             onClick={() => { setCurrentView("profile"); setMobileMenuOpen(false); }}
             title="Editar mi perfil"
           >
-            <p className="muted" style={{ margin: 0 }}>{session.user.full_name} ({session.user.role})</p>
+            <p className="muted" style={{ margin: 0 }}><User size={13} style={{ verticalAlign: "-2px", marginRight: "0.3rem", opacity: 0.7 }} />{session.user.full_name} ({session.user.role})</p>
           </button>
         </div>
         <div style={{ position: "relative" }}>
+          <Search size={15} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", opacity: 0.5, pointerEvents: "none" }} />
           <input
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
             placeholder="Buscar vehículos, leads, clientes..."
-            style={{ width: "100%", padding: "0.7rem 1rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "inherit", fontSize: "0.88rem" }}
+            style={{ width: "100%", padding: "0.7rem 1rem 0.7rem 2.2rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "inherit", fontSize: "0.88rem" }}
           />
           {globalSearch.trim().length >= 2 && (
             <GlobalSearchResults
@@ -1032,16 +1048,20 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
           )}
         </div>
         <nav className="nav">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={currentView === item.key ? "nav-item active" : "nav-item"}
-              onClick={() => { setCurrentView(item.key); setSelectedVehicle(null); setMobileMenuOpen(false); }}
-            >
-              {item.label}
-            </button>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={currentView === item.key ? "nav-item active" : "nav-item"}
+                onClick={() => { setCurrentView(item.key); setSelectedVehicle(null); setMobileMenuOpen(false); }}
+              >
+                <Icon size={18} />
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
         <div className="sidebar-tools panel">
           {onOpenPlatform && isSuperAdmin(session.user.role) && (
@@ -1050,7 +1070,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
             </button>
           )}
           <button type="button" className="button danger full-width" onClick={onLogout}>
-            Cerrar sesión
+            <LogOut size={16} style={{ verticalAlign: "-3px", marginRight: "0.4rem" }} />Cerrar sesión
           </button>
         </div>
       </aside>
