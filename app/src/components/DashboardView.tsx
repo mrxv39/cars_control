@@ -1,3 +1,4 @@
+import { Car, Users, TrendingUp, AlertTriangle } from "lucide-react";
 import { StockVehicle, Lead } from "../types";
 
 interface Props {
@@ -69,7 +70,7 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
       <section className="dashboard-grid">
         <section className="panel dashboard-card">
           <div className="dashboard-header">
-            <p className="eyebrow">Stock</p>
+            <p className="eyebrow"><Car size={14} style={{ verticalAlign: "-2px", marginRight: "0.3rem" }} />Stock</p>
             <h3>Vehículos en inventario</h3>
           </div>
           <div className="dashboard-stats">
@@ -95,7 +96,7 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
         {/* Leads Overview */}
         <section className="panel dashboard-card">
           <div className="dashboard-header">
-            <p className="eyebrow">Leads</p>
+            <p className="eyebrow"><Users size={14} style={{ verticalAlign: "-2px", marginRight: "0.3rem" }} />Leads</p>
             <h3>Estado de contactos</h3>
           </div>
           <div className="dashboard-stats">
@@ -121,7 +122,7 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
         {/* Beneficio Potencial */}
         <section className="panel dashboard-card beneficio-card">
           <div className="dashboard-header">
-            <p className="eyebrow">Financiero</p>
+            <p className="eyebrow"><TrendingUp size={14} style={{ verticalAlign: "-2px", marginRight: "0.3rem" }} />Financiero</p>
             <h3>Beneficio potencial</h3>
           </div>
           <div className="beneficio-content">
@@ -149,7 +150,7 @@ export function DashboardView({ stock, leads, onReload, onNavigate }: Props) {
           onKeyDown={warningClickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigate!("reminders"); } } : undefined}
         >
           <div className="dashboard-header">
-            <p className="eyebrow">{leadsSinSeguimiento > 0 ? "Alerta" : "Seguimiento"}</p>
+            <p className="eyebrow">{leadsSinSeguimiento > 0 ? <><AlertTriangle size={14} style={{ verticalAlign: "-2px", marginRight: "0.3rem" }} />Alerta</> : "Seguimiento"}</p>
             <h3>Leads sin contactar</h3>
           </div>
           <div className="warning-content">
