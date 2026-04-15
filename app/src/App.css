@@ -2372,3 +2372,116 @@ select:focus-visible {
     transition: none;
   }
 }
+
+/* ── Undo Toast ── */
+.undo-toast {
+  position: fixed;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 0.85rem 1.15rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-text);
+  color: var(--color-bg);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  animation: toast-in 0.3s ease;
+  overflow: hidden;
+  min-width: 280px;
+}
+.undo-toast-btn {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  font-weight: var(--font-bold);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  padding: 0;
+  white-space: nowrap;
+}
+.undo-toast-btn:hover { text-decoration: underline; }
+.undo-toast-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+  margin-left: auto;
+}
+.undo-toast-close:hover { color: rgba(255,255,255,0.9); }
+.undo-toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: #60a5fa;
+  transition: width 100ms linear;
+}
+
+/* ── Onboarding Tour ── */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 300;
+}
+.onboarding-card {
+  max-width: 420px;
+  width: 100%;
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  animation: toast-in 0.3s ease;
+}
+.onboarding-step-indicator {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.12);
+  transition: background 150ms ease;
+}
+.onboarding-dot.active { background: var(--color-primary); }
+.onboarding-dot.done { background: var(--color-success); }
+.onboarding-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  margin: 0;
+  text-align: center;
+}
+.onboarding-desc {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+}
+.onboarding-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-sm);
+}
+
+/* ── Pulse animation for FAB first-time discovery ── */
+@keyframes fab-pulse {
+  0% { box-shadow: 0 4px 16px rgba(29, 78, 216, 0.35); }
+  50% { box-shadow: 0 4px 16px rgba(29, 78, 216, 0.35), 0 0 0 10px rgba(29, 78, 216, 0.15); }
+  100% { box-shadow: 0 4px 16px rgba(29, 78, 216, 0.35), 0 0 0 20px rgba(29, 78, 216, 0); }
+}
+.feedback-fab.pulse {
+  animation: fab-pulse 2s ease-in-out 3;
+}
