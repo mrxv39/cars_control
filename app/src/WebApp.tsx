@@ -2023,9 +2023,11 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
   const [form, setForm] = useState(vehicle);
   const [photos, setPhotos] = useState<api.VehiclePhoto[]>([]);
   const [docs, setDocs] = useState<api.VehicleDocument[]>([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2035,12 +2037,12 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
 
   React.useEffect(() => { void loadPhotos(); void loadDocs(); }, [vehicle.id]);
 
-  async function loadPhotos() { setPhotos(await api.listVehiclePhotos(vehicle.id)); }
+  async function loadPhotos() { try { setPhotos(await api.listVehiclePhotos(vehicle.id)); } finally { setLoadingPhotos(false); } }
   async function loadDocs() { setDocs(await api.listVehicleDocuments(vehicle.id)); }
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) { setError("El nombre del vehículo es obligatorio."); return; }
+    if (!form.name.trim()) { setError("El nombre del vehículo es obligatorio."); setTimeout(() => document.querySelector<HTMLInputElement>(".input-error")?.focus(), 50); return; }
     setSaving(true); setError(null);
     try {
       await api.updateVehicle(vehicle.id, {
@@ -2057,11 +2059,15 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
     const files = e.target.files; if (!files) return;
     setUploading(true); setError(null);
     try {
-      for (let i = 0; i < files.length; i++) await api.uploadVehiclePhoto(vehicle.id, files[i]);
+      const total = files.length;
+      for (let i = 0; i < total; i++) {
+        setUploadProgress(`${i + 1}/${total}`);
+        await api.uploadVehiclePhoto(vehicle.id, files[i]);
+      }
       await loadPhotos();
       onReload?.();
     } catch (err) { setError(`Error subiendo fotos: ${translateError(err)}`); }
-    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
+    finally { setUploading(false); setUploadProgress(""); if (fileRef.current) fileRef.current.value = ""; }
   }
 
   function handleDeletePhoto(photo: api.VehiclePhoto) {
@@ -2100,7 +2106,7 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
 
   const marginWarning = form.precio_compra && form.precio_venta && form.precio_venta < form.precio_compra ? "Margen negativo — el precio de venta es menor que el de compra" : null;
 
-  return { form, setForm, photos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadingDoc, success, error, setError,
+  return { form, setForm, photos, loadingPhotos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadProgress, uploadingDoc, success, error, setError,
     fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleSetPrimary, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, marginWarning, loadPhotos, dialog };
 }
 
@@ -2126,41 +2132,31 @@ function VDHero({ vehicle, onBack, onDelete, margin, leadsCount }: { vehicle: ap
 }
 
 // Shared: Photos gallery
-function VDPhotos({ photos, fileRef, uploading, handleUpload, handleDeletePhoto, handleSetPrimary, setSelectedPhoto }: { photos: api.VehiclePhoto[]; fileRef: React.RefObject<HTMLInputElement | null>; uploading: boolean; handleUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; handleDeletePhoto: (p: api.VehiclePhoto) => void; handleSetPrimary?: (p: api.VehiclePhoto) => void; setSelectedPhoto: (id: number) => void }) {
+function VDPhotos({ photos, fileRef, uploading, uploadProgress, handleUpload, handleDeletePhoto, handleSetPrimary, setSelectedPhoto }: { photos: api.VehiclePhoto[]; fileRef: React.RefObject<HTMLInputElement | null>; uploading: boolean; uploadProgress?: string; handleUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; handleDeletePhoto: (p: api.VehiclePhoto) => void; handleSetPrimary?: (p: api.VehiclePhoto) => void; setSelectedPhoto: (id: number) => void }) {
   return (
     <section className="panel" style={{ padding: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <div><p className="eyebrow">Fotografias</p><p className="muted" style={{ margin: 0 }}>{photos.length} foto{photos.length !== 1 ? "s" : ""} · click en ⭐ para marcar como principal</p></div>
         <div>
           <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => void handleUpload(e)} style={{ display: "none" }} />
-          <button type="button" className="button primary" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? "Subiendo..." : "Subir fotos"}</button>
+          <button type="button" className="button primary" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? `Subiendo ${uploadProgress}...` : "Subir fotos"}</button>
         </div>
       </div>
       {photos.length > 0 ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "0.75rem" }}>
+        <div className="vd-photo-grid">
           {photos.map((p) => (
-            <div key={p.id} style={{ position: "relative", border: p.is_primary ? "3px solid #f59e0b" : "3px solid transparent", borderRadius: 14 }}>
-              <img src={p.url} loading="lazy" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 12, cursor: "pointer" }} onClick={() => setSelectedPhoto(p.id)} />
+            <div key={p.id} className={`vd-photo-card ${p.is_primary ? "primary" : ""}`}>
+              <img src={p.url} loading="lazy" className="vd-photo-img" onClick={() => setSelectedPhoto(p.id)} alt="" />
               {handleSetPrimary && (
-                <button
-                  type="button"
-                  onClick={() => void handleSetPrimary(p)}
-                  title={p.is_primary ? "Foto principal" : "Marcar como principal"}
-                  style={{
-                    position: "absolute", top: 6, left: 6,
-                    background: p.is_primary ? "#f59e0b" : "rgba(0,0,0,0.6)",
-                    color: "#fff", border: "none", borderRadius: 8,
-                    padding: "4px 8px", fontSize: "0.85rem", cursor: "pointer", fontWeight: 700,
-                  }}
-                >
+                <button type="button" onClick={() => void handleSetPrimary(p)} title={p.is_primary ? "Foto principal" : "Marcar como principal"} className={`vd-photo-btn vd-photo-btn-star ${p.is_primary ? "active" : ""}`}>
                   {p.is_primary ? "★" : "☆"}
                 </button>
               )}
-              <button type="button" onClick={() => void handleDeletePhoto(p)} title="Eliminar foto" aria-label="Eliminar foto" style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 8, padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}>X</button>
+              <button type="button" onClick={() => void handleDeletePhoto(p)} title="Eliminar foto" aria-label="Eliminar foto" className="vd-photo-btn vd-photo-btn-delete">✕</button>
             </div>
           ))}
         </div>
-      ) : <p className="muted">Sin fotos. Pulsa "Subir fotos" para anadir imagenes.</p>}
+      ) : <EmptyState icon="📷" title="Sin fotos" description="Pulsa 'Subir fotos' para añadir imágenes del vehículo." />}
     </section>
   );
 }
@@ -2171,7 +2167,7 @@ function VDFactura({ facturas, docFileRef, uploadingDoc, handleUploadDoc, handle
     <>
       <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Factura de compra</p>
       {facturas.map((d) => (
-        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem", background: "#f8fafc", borderRadius: 8, marginBottom: "0.35rem" }}>
+        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem", background: "var(--color-bg-secondary, #f8fafc)", borderRadius: 8, marginBottom: "0.35rem" }}>
           <span style={{ flex: 1, fontSize: "0.85rem" }}>{d.file_name}</span>
           <a href={d.url} target="_blank" rel="noopener noreferrer" className="button secondary xs">Ver</a>
           <button type="button" className="button danger xs" onClick={() => void handleDeleteDoc(d)}>Eliminar</button>
@@ -2190,7 +2186,7 @@ function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
       {vehicleLeads.map((l) => (
-        <div key={l.id} style={{ padding: "0.65rem 0.75rem", background: "#f8fafc", borderRadius: 10, border: "1px solid rgba(0,0,0,0.06)" }}>
+        <div key={l.id} style={{ padding: "0.65rem 0.75rem", background: "var(--color-bg-secondary, #f8fafc)", borderRadius: 10, border: "1px solid rgba(0,0,0,0.06)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}><span className={`lead-status-dot ${l.estado || "nuevo"}`} />{l.name}</span>
             <span className="muted" style={{ fontSize: "0.7rem" }}>{l.canal} · {l.estado}</span>
@@ -2220,7 +2216,9 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps
       {/* ── Hero con foto principal ── */}
       <header className="vd-hero">
         <div className="vd-hero-left">
-          {h.mainPhoto ? (
+          {h.loadingPhotos ? (
+            <div className="vd-hero-photo skeleton-line" style={{ animationDuration: "1.5s" }} />
+          ) : h.mainPhoto ? (
             <img src={h.mainPhoto} className="vd-hero-photo" alt={vehicle.name} />
           ) : (
             <div className="vd-hero-photo vd-hero-photo-empty">Sin foto</div>
@@ -2269,7 +2267,8 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps
 
           <div className="vd-hero-actions">
             <button type="button" className="button secondary" onClick={onBack}>← Volver al stock</button>
-            <button type="button" className="button danger" onClick={handleDeleteVehicle}>Eliminar vehículo</button>
+            <span style={{ flex: 1 }} />
+            <button type="button" className="button danger" onClick={handleDeleteVehicle}>Eliminar</button>
           </div>
         </div>
       </header>
@@ -2314,7 +2313,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps
             {h.marginWarning && <p className="vd-margin-warning">⚠ {h.marginWarning}</p>}
             <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
             <div><label className="field-label">Notas</label><textarea value={h.form.notes || ""} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} placeholder="Observaciones, reparaciones, historial..." /></div>
-            {h.error && <p className="error-banner" role="alert">{h.error}</p>}
+            {h.error && <p className="error-banner" role="alert">{h.error} <button type="button" onClick={() => h.setError(null)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontWeight: 700, marginLeft: "0.5rem" }}>✕</button></p>}
             {h.success && <p className="success-banner" role="status">✓ Guardado correctamente</p>}
             <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar cambios"}</button>
           </form>
@@ -2338,7 +2337,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, onBack, onReload }: VDProps
       </div>
 
       {/* ── Fotos ── */}
-      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
+      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} uploadProgress={h.uploadProgress} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
       <VehicleSpecs vehicle={vehicle} />
       <VehicleListingsLink vehicle={vehicle} />
       <VehicleDocsList vehicle={vehicle} />
@@ -2656,7 +2655,7 @@ function VehicleDetailB({ vehicle, suppliers, leads, onBack, onReload }: VDProps
         {activeTab === "documentos" && (
           <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "2rem" }}>
             <div><VDFactura facturas={h.facturas} docFileRef={h.docFileRef} uploadingDoc={h.uploadingDoc} handleUploadDoc={h.handleUploadDoc} handleDeleteDoc={h.handleDeleteDoc} /></div>
-            <div><VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} /></div>
+            <div><VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} uploadProgress={h.uploadProgress} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} /></div>
           </div>
         )}
       </section>
@@ -2737,7 +2736,7 @@ function VehicleDetailC({ vehicle, suppliers, leads, onBack, onReload }: VDProps
           </section>
         </div>
       </div>
-      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
+      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} uploadProgress={h.uploadProgress} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
     </>
   );
 }
