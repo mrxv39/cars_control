@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-web/
+build/
 target/
 *.db
 *.pyc
@@ -10,6 +11,13 @@ __pycache__/
 .env.*
 .vite/
 app-dev.log
+
+# Credenciales criptográficas — nunca commitear
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
 
 # Datos sensibles
 data/
@@ -43,3 +51,22 @@ cuenta_*.xlsx
 
 # Vercel CLI — project link local, no commitear
 .vercel/
+
+# Python — entornos virtuales y artefactos de tests
+.venv/
+venv/
+.pytest_cache/
+htmlcov/
+
+# TypeScript — build incremental y coverage JS
+*.tsbuildinfo
+coverage/
+
+# Supabase CLI — estado local y ramas de desarrollo
+.supabase/
+supabase/.branches/
+
+# Playwright — auth state y resultados
+app/e2e/.auth/
+app/playwright-report/
+app/test-results/
