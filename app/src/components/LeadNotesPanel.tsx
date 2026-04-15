@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { LeadNote } from "../types";
+import ConfirmDialog from "./web/ConfirmDialog";
 
 interface Props {
   leadId: number;
@@ -13,6 +14,8 @@ export function LeadNotesPanel({ leadId, notes, onNotesUpdated, submitting }: Pr
   const [newNoteContent, setNewNoteContent] = useState("");
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmNoteId, setConfirmNoteId] = useState<number | null>(null);
+  const cancelConfirm = useCallback(() => setConfirmNoteId(null), []);
 
   async function handleAddNote() {
     if (!newNoteContent.trim()) return;
@@ -33,8 +36,7 @@ export function LeadNotesPanel({ leadId, notes, onNotesUpdated, submitting }: Pr
   }
 
   async function handleDeleteNote(noteId: number) {
-    if (!window.confirm("¿Eliminar esta nota?")) return;
-
+    setConfirmNoteId(null);
     setLoadingNotes(true);
     setError(null);
     try {
@@ -50,6 +52,14 @@ export function LeadNotesPanel({ leadId, notes, onNotesUpdated, submitting }: Pr
   }
 
   return (
+    <>
+    <ConfirmDialog
+      open={confirmNoteId !== null}
+      title="Eliminar nota"
+      message="¿Eliminar esta nota?"
+      onConfirm={() => { if (confirmNoteId !== null) void handleDeleteNote(confirmNoteId); }}
+      onCancel={cancelConfirm}
+    />
     <section className="panel notes-panel">
       <div className="notes-header">
         <h3>Historial de Notas</h3>
@@ -90,7 +100,7 @@ export function LeadNotesPanel({ leadId, notes, onNotesUpdated, submitting }: Pr
                   type="button"
                   className="button small danger"
                   aria-label="Eliminar nota"
-                  onClick={() => void handleDeleteNote(note.id)}
+                  onClick={() => setConfirmNoteId(note.id)}
                   disabled={loadingNotes || submitting}
                 >
                   ✕
@@ -106,5 +116,6 @@ export function LeadNotesPanel({ leadId, notes, onNotesUpdated, submitting }: Pr
         )}
       </div>
     </section>
+    </>
   );
 }

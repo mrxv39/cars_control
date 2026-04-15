@@ -37,9 +37,22 @@ import { LeadModal as LeadModalComponent } from "./components/LeadModal";
 import { ClientModal as ClientModalComponent } from "./components/ClientModal";
 import { FeedbackButton } from "./components/FeedbackButton";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import ConfirmDialog from "./components/web/ConfirmDialog";
 import { isSuperAdmin } from "./lib/platform-types";
 import { PlatformLayout } from "./components/platform/PlatformLayout";
 import "./App.css";
+
+function useConfirmDialog() {
+  const [state, setState] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  const onConfirmRef = React.useRef(state.onConfirm);
+  onConfirmRef.current = state.onConfirm;
+  const requestConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
+    setState({ open: true, title, message, onConfirm });
+  }, []);
+  const cancel = useCallback(() => setState((s) => ({ ...s, open: false })), []);
+  const confirm = useCallback(() => { onConfirmRef.current(); setState((s) => ({ ...s, open: false })); }, []);
+  return { confirmProps: { open: state.open, title: state.title, message: state.message, onConfirm: confirm, onCancel: cancel }, requestConfirm };
+}
 
 const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
   { key: "dashboard", label: "Dashboard" },
@@ -154,6 +167,7 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
   const [stockVehicleForm, setStockVehicleForm] = useState<StockVehicleForm>(EMPTY_STOCK_VEHICLE_FORM);
   const { records: salesRecords, setRecords: setSalesRecords, reload: reloadSales } = useRecords<SalesRecord>("get_sales_records");
   const { records: purchaseRecords, setRecords: setPurchaseRecords, reload: reloadPurchases } = useRecords<PurchaseRecord>("get_purchase_records");
+  const dialog = useConfirmDialog();
 
   // Load thumbnails when stock changes
   React.useEffect(() => {
@@ -326,7 +340,13 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
     }
   }
 
-  async function confirmDelete(kind: "vehicle" | "lead" | "client" | "sales_record" | "purchase_record", idOrPath: number | string, name: string) {
+  function confirmDelete(kind: "vehicle" | "lead" | "client" | "sales_record" | "purchase_record", idOrPath: number | string, name: string) {
+    const title =
+      kind === "vehicle" ? "Eliminar vehículo"
+        : kind === "lead" ? "Eliminar lead"
+          : kind === "client" ? "Eliminar cliente"
+            : kind === "purchase_record" ? "Eliminar compra"
+              : "Eliminar venta";
     const message =
       kind === "vehicle"
         ? `¿Eliminar ${name}? Se borrará la carpeta y todo su contenido.`
@@ -337,7 +357,7 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
             : kind === "purchase_record"
               ? `¿Eliminar el registro de compra ${name}?`
               : `¿Eliminar el registro de venta ${name}?`;
-    if (!window.confirm(message)) return;
+    dialog.requestConfirm(title, message, async () => {
     setSubmitting(true);
     setError(null);
     try {
@@ -365,6 +385,7 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
     } finally {
       setSubmitting(false);
     }
+    });
   }
 
   // Display error state
@@ -647,6 +668,8 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
         clients={appState.clients}
         selectedVehicle={selectedVehicle}
       />
+
+      <ConfirmDialog {...dialog.confirmProps} />
     </main>
   );
 }

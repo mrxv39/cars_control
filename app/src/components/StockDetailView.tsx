@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, FormEvent } from "react";
+import { useState, useEffect, useRef, useCallback, FormEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { StockVehicle, StockVehicleForm } from "../types";
+import ConfirmDialog from "./web/ConfirmDialog";
 
 interface VehiclePhoto {
   file_name: string;
@@ -31,6 +32,8 @@ export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, on
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [confirmPhotoDelete, setConfirmPhotoDelete] = useState<string | null>(null);
+  const cancelPhotoConfirm = useCallback(() => setConfirmPhotoDelete(null), []);
 
   // Photos
   const [photos, setPhotos] = useState<VehiclePhoto[]>([]);
@@ -82,7 +85,7 @@ export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, on
   }
 
   async function handleDeletePhoto(fileName: string) {
-    if (!window.confirm(`Eliminar foto ${fileName}?`)) return;
+    setConfirmPhotoDelete(null);
     try {
       await invoke("delete_vehicle_photo", { folderPath: vehicle.folder_path, fileName });
       setPhotos((prev) => prev.filter((p) => p.file_name !== fileName));
@@ -109,7 +112,7 @@ export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, on
     try {
       await onSave(name, form);
       setSuccess(true);
-      setTimeout(() => setSuccess(false), 2000);
+      setTimeout(() => setSuccess(false), 4000);
     } catch (err) {
       setError(String(err));
     } finally {
@@ -119,6 +122,13 @@ export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, on
 
   return (
     <>
+      <ConfirmDialog
+        open={confirmPhotoDelete !== null}
+        title="Eliminar foto"
+        message={`Eliminar foto ${confirmPhotoDelete}?`}
+        onConfirm={() => { if (confirmPhotoDelete) void handleDeletePhoto(confirmPhotoDelete); }}
+        onCancel={cancelPhotoConfirm}
+      />
       <header className="hero">
         <div>
           <p className="eyebrow">Stock</p>
@@ -248,7 +258,7 @@ export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, on
                 />
                 <button
                   type="button"
-                  onClick={() => void handleDeletePhoto(photo.file_name)}
+                  onClick={() => setConfirmPhotoDelete(photo.file_name)}
                   style={{
                     position: "absolute", top: 6, right: 6,
                     background: "rgba(0,0,0,0.6)", color: "#fff",
