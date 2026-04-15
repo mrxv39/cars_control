@@ -14,7 +14,6 @@ import ConfirmDialog from "./components/web/ConfirmDialog";
 import EmptyState from "./components/web/EmptyState";
 import Spinner from "./components/web/Spinner";
 import { SkeletonGrid } from "./components/web/Skeleton";
-import UndoToast from "./components/web/UndoToast";
 import OnboardingTour from "./components/web/OnboardingTour";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
