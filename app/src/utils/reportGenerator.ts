@@ -58,16 +58,23 @@ export function generateSalesReportPDF(
   const colWidths = [60, 30, 30, 40];
   const cellHeight = 6;
 
-  // Dibujar header
-  doc.setFillColor(200, 200, 200);
-  doc.setFontSize(9);
-  let xPos = margin;
-  for (let i = 0; i < headers.length; i++) {
-    doc.rect(xPos, yPosition - 5, colWidths[i], cellHeight, "F");
-    doc.text(headers[i], xPos + 2, yPosition, { maxWidth: colWidths[i] - 4 });
-    xPos += colWidths[i];
+  // Helper: dibuja header de tabla en la posición actual
+  function drawTableHeader() {
+    doc.setFillColor(200, 200, 200);
+    doc.setFontSize(9);
+    doc.setTextColor(0);
+    let x = margin;
+    for (let i = 0; i < headers.length; i++) {
+      doc.rect(x, yPosition - 5, colWidths[i], cellHeight, "F");
+      doc.text(headers[i], x + 2, yPosition, { maxWidth: colWidths[i] - 4 });
+      x += colWidths[i];
+    }
+    yPosition += cellHeight;
+    doc.setFontSize(8);
   }
-  yPosition += cellHeight;
+
+  // Dibujar header
+  drawTableHeader();
 
   // Datos de tabla
   doc.setFontSize(8);
@@ -76,7 +83,8 @@ export function generateSalesReportPDF(
     // Verificar si necesitamos nueva página
     if (yPosition > pageHeight - 20) {
       doc.addPage();
-      yPosition = margin;
+      yPosition = margin + 10;
+      drawTableHeader();
     }
 
     const vehicle = vehicleMap.get(record.vehicle_folder_path);
@@ -85,7 +93,7 @@ export function generateSalesReportPDF(
     const precio = `€${record.price_final.toLocaleString("es-ES", { maximumFractionDigits: 2 })}`;
     const notas = record.notes || "-";
 
-    xPos = margin;
+    let xPos = margin;
     doc.setFillColor(240, 240, 240);
 
     // Dibujar celdas

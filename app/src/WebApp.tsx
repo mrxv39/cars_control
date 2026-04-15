@@ -15,6 +15,18 @@ import EmptyState from "./components/web/EmptyState";
 import Spinner from "./components/web/Spinner";
 import "./App.css";
 
+// Detect app mode based on hostname
+type AppMode = "store" | "admin" | "both";
+function getAppMode(): AppMode {
+  const host = window.location.hostname;
+  if (host.includes("codinacars")) return "store";
+  if (host.includes("carscontrol")) return "admin";
+  return "both"; // localhost / legacy domain
+}
+const APP_MODE = getAppMode();
+const STORE_URL = "https://codinacars.vercel.app";
+const ADMIN_URL = "https://carscontrol.vercel.app";
+
 function useConfirmDialog() {
   const [state, setState] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
   const onConfirmRef = React.useRef(state.onConfirm);
@@ -39,6 +51,8 @@ function WebApp() {
       }
     } catch { /* ignore */ }
     localStorage.removeItem("cc_session");
+    // Admin domain skips catalog, goes straight to login
+    if (APP_MODE === "admin") return "login";
     return "catalog";
   });
   const [session, setSession] = useState<api.LoginResult | null>(() => {
@@ -156,7 +170,10 @@ function WebApp() {
   if (page === "login" && !session) {
     return (
       <div className="catalog-page">
-        <CatalogHeader onLogin={() => setPage("login")} onCatalog={() => setPage("catalog")} isAdmin={false} />
+        <CatalogHeader onLogin={() => setPage("login")} onCatalog={() => {
+          if (APP_MODE === "admin") { window.location.href = STORE_URL; return; }
+          setPage("catalog");
+        }} />
         <main className="page-container-narrow">
           <section className="panel" style={{ padding: "2rem" }}>
             <p className="eyebrow">Acceso usuarios</p>
@@ -220,23 +237,26 @@ function WebApp() {
 
   // Admin panel
   if (page === "admin" && session) {
-    return <AuthenticatedWebApp session={session} onLogout={() => { void platformApi.signOutOAuth(); localStorage.removeItem("cc_session"); setSession(null); setPage("catalog"); }} onOpenPlatform={() => setPage("platform")} />;
+    return <AuthenticatedWebApp session={session} onLogout={() => { void platformApi.signOutOAuth(); localStorage.removeItem("cc_session"); setSession(null); setPage(APP_MODE === "admin" ? "login" : "catalog"); }} onOpenPlatform={() => setPage("platform")} />;
   }
 
   // Public catalog (default)
-  return <PublicCatalog onLogin={() => setPage("login")} />;
+  return <PublicCatalog onLogin={() => {
+    if (APP_MODE === "store") { window.location.href = ADMIN_URL; return; }
+    setPage("login");
+  }} />;
 }
 
 // ============================================================
 // Header for public pages
 // ============================================================
-function CatalogHeader({ onLogin, onCatalog, isAdmin: _isAdmin }: { onLogin: () => void; onCatalog: () => void; isAdmin: boolean }) {
+function CatalogHeader({ onLogin, onCatalog }: { onLogin: () => void; onCatalog: () => void }) {
   return (
     <header className="catalog-topbar">
       <div className="catalog-topbar-inner">
-        <div className="catalog-brand" onClick={onCatalog} style={{ cursor: "pointer" }}>
+        <button type="button" className="catalog-brand" onClick={onCatalog} aria-label="Ir al catálogo">
           <img src="/logo.png" alt="CodinaCars" className="catalog-logo-img" />
-        </div>
+        </button>
         <nav className="catalog-nav">
           <a href="tel:+34646131565" className="catalog-nav-link">646 13 15 65</a>
           <button type="button" className="catalog-nav-btn" onClick={onLogin}>
@@ -253,27 +273,82 @@ function CatalogHeader({ onLogin, onCatalog, isAdmin: _isAdmin }: { onLogin: () 
 // ============================================================
 function PublicCatalog({ onLogin }: { onLogin: () => void }) {
   const [vehicles, setVehicles] = useState<api.Vehicle[]>([]);
+  const [thumbs, setThumbs] = useState<Map<number, api.VehiclePhoto>>(new Map());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState<api.Vehicle | null>(null);
 
+  // Filtros estructurados
+  const [fuelFilter, setFuelFilter] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [yearMin, setYearMin] = useState("");
+  const [sortBy, setSortBy] = useState<"" | "price-asc" | "price-desc" | "year-desc" | "km-asc">("");
+
   React.useEffect(() => {
-    void api.listVehicles(1).then((v) => { setVehicles(v); setLoading(false); });
+    void api.listVehicles(1).then(async (v) => {
+      setVehicles(v);
+      // Batch: una sola query para todas las fotos primarias
+      const photos = await api.listPrimaryPhotos(v.map((x) => x.id));
+      setThumbs(photos);
+      setLoading(false);
+    });
   }, []);
 
+  // Opciones de filtro derivadas de los datos
+  const fuelOptions = useMemo(() =>
+    [...new Set(vehicles.map((v) => v.fuel).filter(Boolean))].sort(),
+    [vehicles]
+  );
+
   const filtered = useMemo(() => {
+    let result = vehicles;
+
+    // Búsqueda de texto libre
     const q = search.toLowerCase().trim();
-    if (!q) return vehicles;
-    return vehicles.filter((v) =>
-      [v.name, v.fuel, String(v.anio || ""), String(v.precio_venta || "")]
-        .some((f) => f.toLowerCase().includes(q))
-    );
-  }, [vehicles, search]);
+    if (q) {
+      result = result.filter((v) =>
+        [v.name, v.fuel, String(v.anio || ""), String(v.precio_venta || "")]
+          .some((f) => f.toLowerCase().includes(q))
+      );
+    }
+
+    // Filtro por combustible
+    if (fuelFilter) {
+      result = result.filter((v) => v.fuel === fuelFilter);
+    }
+
+    // Filtro por precio máximo
+    const maxPrice = Number(priceMax);
+    if (maxPrice > 0) {
+      result = result.filter((v) => v.precio_venta && v.precio_venta <= maxPrice);
+    }
+
+    // Filtro por año mínimo
+    const minYear = Number(yearMin);
+    if (minYear > 0) {
+      result = result.filter((v) => v.anio && v.anio >= minYear);
+    }
+
+    // Ordenar
+    if (sortBy) {
+      result = [...result].sort((a, b) => {
+        switch (sortBy) {
+          case "price-asc": return (a.precio_venta || 0) - (b.precio_venta || 0);
+          case "price-desc": return (b.precio_venta || 0) - (a.precio_venta || 0);
+          case "year-desc": return (b.anio || 0) - (a.anio || 0);
+          case "km-asc": return (a.km || 0) - (b.km || 0);
+          default: return 0;
+        }
+      });
+    }
+
+    return result;
+  }, [vehicles, search, fuelFilter, priceMax, yearMin, sortBy]);
 
   if (selectedVehicle) {
     return (
       <div className="catalog-page">
-        <CatalogHeader onLogin={onLogin} onCatalog={() => setSelectedVehicle(null)} isAdmin={false} />
+        <CatalogHeader onLogin={onLogin} onCatalog={() => setSelectedVehicle(null)} />
         <PublicVehicleDetail vehicle={selectedVehicle} onBack={() => setSelectedVehicle(null)} />
       </div>
     );
@@ -281,7 +356,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="catalog-page">
-      <CatalogHeader onLogin={onLogin} onCatalog={() => setSelectedVehicle(null)} isAdmin={false} />
+      <CatalogHeader onLogin={onLogin} onCatalog={() => setSelectedVehicle(null)} />
 
       <section className="catalog-hero-banner">
         <h1>Vehículos de ocasión</h1>
@@ -299,29 +374,72 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
           <span className="muted">{filtered.length} vehículo{filtered.length !== 1 ? "s" : ""}</span>
         </div>
 
+        <div className="catalog-filters">
+          <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)}>
+            <option value="">Combustible</option>
+            {fuelOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <select value={priceMax} onChange={(e) => setPriceMax(e.target.value)}>
+            <option value="">Precio máx.</option>
+            <option value="8000">Hasta 8.000 €</option>
+            <option value="12000">Hasta 12.000 €</option>
+            <option value="18000">Hasta 18.000 €</option>
+            <option value="25000">Hasta 25.000 €</option>
+            <option value="35000">Hasta 35.000 €</option>
+          </select>
+          <select value={yearMin} onChange={(e) => setYearMin(e.target.value)}>
+            <option value="">Año desde</option>
+            <option value="2024">2024+</option>
+            <option value="2022">2022+</option>
+            <option value="2020">2020+</option>
+            <option value="2018">2018+</option>
+            <option value="2015">2015+</option>
+          </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
+            <option value="">Ordenar por</option>
+            <option value="price-asc">Precio: menor a mayor</option>
+            <option value="price-desc">Precio: mayor a menor</option>
+            <option value="year-desc">Más recientes</option>
+            <option value="km-asc">Menos kilómetros</option>
+          </select>
+          {(fuelFilter || priceMax || yearMin || sortBy) && (
+            <button type="button" className="button xs" onClick={() => { setFuelFilter(""); setPriceMax(""); setYearMin(""); setSortBy(""); }}>
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+
         {loading ? (
           <div style={{ textAlign: "center", padding: "3rem" }}><Spinner label="Cargando vehículos..." /></div>
+        ) : filtered.length === 0 ? (
+          <EmptyState message="No se encontraron vehículos con estos filtros" />
         ) : (
           <div className="catalog-grid">
-            {filtered.map((v) => (
-              <article key={v.id} className="catalog-card" onClick={() => setSelectedVehicle(v)}>
-                <CatalogThumb vehicleId={v.id} vehicleName={v.name} />
-                <div className="catalog-card-body">
-                  <h3 className="catalog-card-title">{v.name}</h3>
-                  <div className="catalog-card-specs">
-                    {v.anio && <span>{v.anio}</span>}
-                    {v.km && <span>{v.km.toLocaleString()} km</span>}
-                    {v.fuel && <span>{v.fuel}</span>}
+            {filtered.map((v) => {
+              const thumb = thumbs.get(v.id);
+              const imgUrl = thumb?.thumbUrl || thumb?.url || null;
+              return (
+                <article key={v.id} className="catalog-card" onClick={() => setSelectedVehicle(v)}>
+                  <div className="catalog-card-img">
+                    {imgUrl ? <img src={imgUrl} alt={v.name || ""} loading="lazy" /> : <div className="catalog-card-noimg">Sin foto</div>}
                   </div>
-                  {v.precio_venta && (
-                    <p className="catalog-card-price">{v.precio_venta.toLocaleString("es-ES")} €</p>
-                  )}
-                  {v.notes && v.notes.startsWith("Desde") && (
-                    <p className="catalog-card-financing">{v.notes.split("|")[0].trim()}</p>
-                  )}
-                </div>
-              </article>
-            ))}
+                  <div className="catalog-card-body">
+                    <h3 className="catalog-card-title">{v.name}</h3>
+                    <div className="catalog-card-specs">
+                      {v.anio && <span>{v.anio}</span>}
+                      {v.km && <span>{v.km.toLocaleString()} km</span>}
+                      {v.fuel && <span>{v.fuel}</span>}
+                    </div>
+                    {v.precio_venta && (
+                      <p className="catalog-card-price">{v.precio_venta.toLocaleString("es-ES")} €</p>
+                    )}
+                    {v.notes && v.notes.startsWith("Desde") && (
+                      <p className="catalog-card-financing">{v.notes.split("|")[0].trim()}</p>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </main>
@@ -330,24 +448,6 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
         <p>CodinaCars · C/ Sant Antoni Maria Claret 3, Bajos 2, 08750 Molins de Rei (Barcelona)</p>
         <p>Tel: 646 13 15 65 · codinacars@gmail.com</p>
       </footer>
-    </div>
-  );
-}
-
-// ============================================================
-// Catalog Thumbnail
-// ============================================================
-function CatalogThumb({ vehicleId, vehicleName }: { vehicleId: number; vehicleName?: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  React.useEffect(() => {
-    void api.listVehiclePhotos(vehicleId).then((photos) => {
-      if (photos.length > 0) setUrl(photos[0].url);
-    });
-  }, [vehicleId]);
-
-  return (
-    <div className="catalog-card-img">
-      {url ? <img src={url} alt={vehicleName || ""} loading="lazy" /> : <div className="catalog-card-noimg">Sin foto</div>}
     </div>
   );
 }

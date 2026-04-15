@@ -535,6 +535,36 @@ export async function deleteVehicle(id: number): Promise<void> {
 // Vehicle Photos
 // ============================================================
 
+/** Batch: una sola query para obtener la foto principal (o primera) de cada vehículo. */
+export async function listPrimaryPhotos(vehicleIds: number[]): Promise<Map<number, VehiclePhoto>> {
+  if (vehicleIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from("vehicle_photos")
+    .select("*")
+    .in("vehicle_id", vehicleIds)
+    .order("is_primary", { ascending: false })
+    .order("created_at")
+    .order("id");
+  if (error) throw new Error(error.message);
+
+  const map = new Map<number, VehiclePhoto>();
+  for (const p of data || []) {
+    if (map.has(p.vehicle_id)) continue; // ya tenemos la primary/primera
+    map.set(p.vehicle_id, {
+      ...p,
+      url: p.storage_path
+        ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path).data.publicUrl
+        : (p.source_url || ""),
+      thumbUrl: p.storage_path
+        ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path, {
+            transform: { width: 400, quality: 70 },
+          }).data.publicUrl
+        : null,
+    });
+  }
+  return map;
+}
+
 export async function listVehiclePhotos(vehicleId: number): Promise<VehiclePhoto[]> {
   // Foto principal primero (validado Ricard 2026-04-08): la "primaria" es la
   // foto frontal-lateral 3/4 que Ricard usa como hero. Si no hay primaria
