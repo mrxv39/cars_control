@@ -43,10 +43,8 @@ vi.mock('../lib/hash', () => ({
 
 import { login, listVehicles, createVehicle, deleteVehicle } from '../lib/api'
 import { supabase } from '../lib/supabase'
-import { verifyPassword } from '../lib/hash'
 
 const mockedSupabase = vi.mocked(supabase)
-const mockedVerifyPassword = vi.mocked(verifyPassword)
 
 beforeEach(() => {
   vi.clearAllMocks()
