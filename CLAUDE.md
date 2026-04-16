@@ -94,13 +94,13 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 
 - Re-subir fotos a Storage nuevo (buckets no existen tras migración Supabase)
 - Template factura REBU/IVA (datos fiscales Ricard en tabla `companies`)
-- Tablas responsive en móvil (colapsar a card layout)
+- ~~Tablas responsive en móvil~~ (implementado: card layout <768px, commit e64b2f4)
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
 - Descargar fotos coches.net a Storage propio
 - Lazy-load IntersectionObserver en listado Stock
 - Banco: ventana match ±21 días, reconciliador MOV_INTERNO, Fase 2/3 (ver `supabase/CLAUDE.md`)
 - Sync-leads: migrar a pg_cron, bloqueado por OAuth2 Gmail de Ricard (ver `supabase/CLAUDE.md`)
-- BankList.tsx (777 líneas): extraer sub-componentes para legibilidad
+- ~~BankList.tsx (777 líneas)~~: refactorizado a 531 líneas (commit 45e7da1, extraído LinkPurchaseModal y bank-utils)
 - Tests Python: añadir pytest suite para scripts/ (import, OCR, extractores)
 
 ## Sesiones de validación
