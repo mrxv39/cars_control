@@ -93,7 +93,6 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 ## Pendiente
 
 - Re-subir fotos a Storage nuevo (buckets no existen tras migración Supabase)
-- Verificar que catálogo público carga vehículos (posible RLS issue sin auth)
 - Template factura REBU/IVA (datos fiscales Ricard en tabla `companies`)
 - Tablas responsive en móvil (colapsar a card layout)
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
@@ -101,6 +100,8 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - Lazy-load IntersectionObserver en listado Stock
 - Banco: ventana match ±21 días, reconciliador MOV_INTERNO, Fase 2/3 (ver `supabase/CLAUDE.md`)
 - Sync-leads: migrar a pg_cron, bloqueado por OAuth2 Gmail de Ricard (ver `supabase/CLAUDE.md`)
+- BankList.tsx (777 líneas): extraer sub-componentes para legibilidad
+- Tests Python: añadir pytest suite para scripts/ (import, OCR, extractores)
 
 ## Sesiones de validación
 
@@ -112,3 +113,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - 2026-04-15: migración Supabase dedicado, RLS auth.uid(), dos dominios Vercel
 - 2026-04-15b: migración Supabase Auth (login+Google OAuth), fotos Storage pendientes
 - 2026-04-15c: security fixes, Playwright E2E, filtros catálogo, iconos sidebar, skeleton, a11y modales
+- 2026-04-16: mantenimiento — git cleanup, dep-update (0 vulns), useEscapeKey hook, audit CLAUDE.md
