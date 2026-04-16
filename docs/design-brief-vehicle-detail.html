@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Brief — Ficha Vehículo v2</title>
+<style>
+  :root { --blue: #2563eb; --blue-light: #dbeafe; --green: #16a34a; --red: #dc2626; --gray-50: #f8fafc; --gray-100: #f1f5f9; --gray-200: #e2e8f0; --gray-300: #cbd5e1; --gray-500: #64748b; --gray-700: #334155; --gray-900: #0f172a; --radius: 12px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--gray-50); color: var(--gray-900); line-height: 1.6; padding: 2rem; max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--gray-500); font-size: 0.95rem; margin-bottom: 2rem; }
+  .section { background: white; border-radius: var(--radius); padding: 1.75rem; margin-bottom: 1.5rem; border: 1px solid var(--gray-200); }
+  .section-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .section-desc { color: var(--gray-500); font-size: 0.88rem; margin-bottom: 1.25rem; }
+  label { display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; color: var(--gray-700); }
+  .field { margin-bottom: 1.25rem; }
+  select, textarea, input[type="text"], input[type="color"] { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 0.88rem; font-family: inherit; background: white; transition: border-color 0.15s; }
+  select:focus, textarea:focus, input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  textarea { resize: vertical; min-height: 70px; }
+  .hint { font-size: 0.8rem; color: var(--gray-500); margin-top: 0.3rem; line-height: 1.5; }
+  .options-explained { background: var(--gray-100); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 0.75rem; font-size: 0.82rem; line-height: 1.65; color: var(--gray-700); }
+  .options-explained strong { color: var(--gray-900); }
+  .options-explained ul { margin: 0.35rem 0 0 1.2rem; padding: 0; }
+  .options-explained li { margin-bottom: 0.2rem; }
+  .zone-map { margin-bottom: 1rem; }
+  .zone-map svg { width: 100%; max-width: 750px; height: auto; display: block; margin: 0 auto; }
+  .checkbox-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .checkbox-item { display: flex; align-items: flex-start; gap: 0.5rem; }
+  .checkbox-item input[type="checkbox"] { margin-top: 0.25rem; accent-color: var(--blue); }
+  .checkbox-item span { font-size: 0.88rem; }
+  .checkbox-item .cb-desc { font-size: 0.78rem; color: var(--gray-500); }
+  .output-box { background: var(--gray-900); color: #e2e8f0; border-radius: var(--radius); padding: 1.25rem; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; max-height: 500px; overflow-y: auto; display: none; margin-top: 1.5rem; }
+  .output-box.visible { display: block; }
+  .btn { padding: 0.7rem 1.5rem; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-copy { background: var(--gray-700); color: white; margin-left: 0.75rem; }
+  .btn-copy:hover { background: var(--gray-900); }
+  .btn-copy.copied { background: var(--green); }
+  .actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  .color-row { display: flex; align-items: center; gap: 0.75rem; }
+  .color-row input[type="color"] { width: 48px; height: 36px; padding: 2px; cursor: pointer; flex-shrink: 0; }
+  .color-row input[type="text"] { flex: 1; }
+  @media (max-width: 600px) { body { padding: 1rem; } }
+</style>
+</head>
+<body>
+
+<h1>Design Brief — Ficha del Vehiculo (v2)</h1>
+<p class="subtitle">Cada seccion tiene una imagen de la zona que estamos hablando + texto libre para que escribas lo que quieras. Rellena solo lo que te importe. Al final, "Generar prompt" y me lo pegas.</p>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- MAPA DE ZONAS -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-title">Mapa de la pagina</p>
+  <p class="section-desc">Antes de nada, esta es la pagina entera dividida en zonas. Cada seccion del formulario corresponde a una zona numerada.</p>
+  <div class="zone-map">
+    <svg viewBox="0 0 750 520" xmlns="http://www.w3.org/2000/svg">
+      <!-- Background -->
+      <rect width="750" height="520" fill="#f8fafc" rx="8"/>
+
+      <!-- ZONA 1: Hero -->
+      <rect x="20" y="15" width="710" height="115" fill="#dbeafe" stroke="#2563eb" stroke-width="2" rx="8" stroke-dasharray="6,3"/>
+      <rect x="30" y="25" width="90" height="70" fill="#94a3b8" rx="6"/>
+      <text x="75" y="65" text-anchor="middle" font-size="11" fill="white" font-weight="bold">FOTO</text>
+      <text x="140" y="42" font-size="13" font-weight="bold" fill="#0f172a">SEAT IBIZA 1.0 MPI Reference Plus</text>
+      <rect x="140" y="48" width="65" height="18" fill="#3b82f6" rx="9"/>
+      <text x="172" y="61" text-anchor="middle" font-size="9" fill="white">DISPONIBLE</text>
+      <text x="215" y="61" font-size="9" fill="#64748b">2022 · 99.000 km · Gasolina · Blanco</text>
+      <rect x="140" y="72" width="55" height="16" fill="#e2e8f0" rx="4"/>
+      <text x="167" y="83" text-anchor="middle" font-size="8" fill="#334155">Disponible</text>
+      <rect x="200" y="72" width="55" height="16" fill="#e2e8f0" rx="4"/>
+      <text x="227" y="83" text-anchor="middle" font-size="8" fill="#334155">Reservado</text>
+      <rect x="260" y="72" width="45" height="16" fill="#e2e8f0" rx="4"/>
+      <text x="282" y="83" text-anchor="middle" font-size="8" fill="#334155">Vendido</text>
+      <!-- Stats -->
+      <text x="140" y="100" font-size="8" fill="#64748b">Compra: 8.500€  Venta: 12.990€  Margen: +4.490€</text>
+      <!-- Botones -->
+      <rect x="140" y="106" width="40" height="14" fill="#e2e8f0" rx="4"/>
+      <text x="160" y="116" text-anchor="middle" font-size="7" fill="#334155">Volver</text>
+      <rect x="185" y="106" width="48" height="14" fill="#e2e8f0" rx="4"/>
+      <text x="209" y="116" text-anchor="middle" font-size="7" fill="#334155">WhatsApp</text>
+      <rect x="238" y="106" width="35" height="14" fill="#e2e8f0" rx="4"/>
+      <text x="255" y="116" text-anchor="middle" font-size="7" fill="#334155">Copiar</text>
+      <rect x="278" y="106" width="65" height="14" fill="#2563eb" rx="4"/>
+      <text x="310" y="116" text-anchor="middle" font-size="7" fill="white">Registrar venta</text>
+      <!-- Label -->
+      <rect x="630" y="20" width="90" height="22" fill="#2563eb" rx="6"/>
+      <text x="675" y="35" text-anchor="middle" font-size="10" fill="white" font-weight="bold">ZONA 1: Hero</text>
+
+      <!-- ZONA 2: Thumbnails -->
+      <rect x="20" y="138" width="710" height="35" fill="#fef3c7" stroke="#f59e0b" stroke-width="2" rx="6" stroke-dasharray="6,3"/>
+      <rect x="30" y="144" width="32" height="22" fill="#94a3b8" rx="3"/>
+      <rect x="66" y="144" width="32" height="22" fill="#94a3b8" rx="3"/>
+      <rect x="102" y="144" width="32" height="22" fill="#94a3b8" rx="3"/>
+      <rect x="138" y="144" width="32" height="22" fill="#94a3b8" rx="3"/>
+      <rect x="174" y="144" width="32" height="22" fill="#94a3b8" rx="3"/>
+      <rect x="210" y="144" width="32" height="22" fill="#94a3b8" rx="3"/>
+      <rect x="246" y="144" width="32" height="22" fill="#94a3b8" rx="3"/>
+      <rect x="282" y="144" width="32" height="22" fill="#94a3b8" rx="3"/>
+      <text x="340" y="159" font-size="8" fill="#92400e">...</text>
+      <rect x="590" y="140" width="130" height="22" fill="#f59e0b" rx="6"/>
+      <text x="655" y="155" text-anchor="middle" font-size="10" fill="white" font-weight="bold">ZONA 2: Thumbnails</text>
+
+      <!-- Tabs nav -->
+      <text x="30" y="195" font-size="10" fill="#2563eb" font-weight="bold">Datos</text>
+      <text x="75" y="195" font-size="10" fill="#64748b">Fotos (34)</text>
+      <text x="140" y="195" font-size="10" fill="#64748b">Specs</text>
+      <line x1="25" y1="200" x2="58" y2="200" stroke="#2563eb" stroke-width="2"/>
+
+      <!-- ZONA 3: Formulario -->
+      <rect x="20" y="208" width="440" height="195" fill="#dcfce7" stroke="#16a34a" stroke-width="2" rx="8" stroke-dasharray="6,3"/>
+      <text x="35" y="228" font-size="9" fill="#64748b" text-transform="uppercase" letter-spacing="1">DATOS DEL VEHICULO</text>
+      <text x="35" y="246" font-size="8" fill="#334155" font-weight="bold">MARCA Y MODELO</text>
+      <rect x="35" y="250" width="410" height="18" fill="white" stroke="#cbd5e1" rx="4"/>
+      <text x="42" y="263" font-size="8" fill="#334155">SEAT IBIZA 1.0 MPI Reference Plus</text>
+      <text x="35" y="282" font-size="8" fill="#334155" font-weight="bold">AÑO</text>
+      <text x="180" y="282" font-size="8" fill="#334155" font-weight="bold">KILOMETROS</text>
+      <text x="320" y="282" font-size="8" fill="#334155" font-weight="bold">ESTADO</text>
+      <rect x="35" y="286" width="130" height="18" fill="white" stroke="#cbd5e1" rx="4"/>
+      <rect x="175" y="286" width="130" height="18" fill="white" stroke="#cbd5e1" rx="4"/>
+      <rect x="315" y="286" width="130" height="18" fill="white" stroke="#cbd5e1" rx="4"/>
+      <text x="35" y="322" font-size="8" fill="#334155" font-weight="bold">COMBUSTIBLE</text>
+      <text x="245" y="322" font-size="8" fill="#334155" font-weight="bold">COLOR</text>
+      <rect x="35" y="326" width="195" height="18" fill="white" stroke="#cbd5e1" rx="4"/>
+      <rect x="240" y="326" width="205" height="18" fill="white" stroke="#cbd5e1" rx="4"/>
+      <text x="35" y="362" font-size="8" fill="#334155" font-weight="bold">PRECIO COMPRA</text>
+      <text x="245" y="362" font-size="8" fill="#334155" font-weight="bold">PRECIO VENTA</text>
+      <rect x="35" y="366" width="195" height="18" fill="white" stroke="#cbd5e1" rx="4"/>
+      <rect x="240" y="366" width="205" height="18" fill="white" stroke="#cbd5e1" rx="4"/>
+      <rect x="310" y="210" width="140" height="22" fill="#16a34a" rx="6"/>
+      <text x="380" y="225" text-anchor="middle" font-size="10" fill="white" font-weight="bold">ZONA 3: Formulario</text>
+
+      <!-- ZONA 4: Sidebar -->
+      <rect x="475" y="208" width="255" height="195" fill="#fce7f3" stroke="#ec4899" stroke-width="2" rx="8" stroke-dasharray="6,3"/>
+      <text x="490" y="228" font-size="9" fill="#64748b" text-transform="uppercase" letter-spacing="1">LEADS (0)</text>
+      <text x="530" y="260" font-size="10" fill="#94a3b8" text-anchor="middle">Sin leads</text>
+      <text x="490" y="260" font-size="0" fill="#94a3b8"></text>
+      <rect x="490" y="240" width="225" height="50" fill="white" stroke="#f9a8d4" rx="6" stroke-dasharray="4,2"/>
+      <text x="602" y="268" text-anchor="middle" font-size="9" fill="#94a3b8">Sin leads</text>
+      <text x="490" y="310" font-size="9" fill="#64748b" text-transform="uppercase" letter-spacing="1">DOCUMENTOS</text>
+      <text x="490" y="328" font-size="8" fill="#334155" font-weight="bold">FACTURA DE COMPRA</text>
+      <text x="490" y="342" font-size="8" fill="#94a3b8">No hay factura adjunta.</text>
+      <rect x="490" y="350" width="80" height="16" fill="#e2e8f0" rx="4"/>
+      <text x="530" y="361" text-anchor="middle" font-size="7" fill="#334155">Adjuntar factura</text>
+      <rect x="560" y="210" width="160" height="22" fill="#ec4899" rx="6"/>
+      <text x="640" y="225" text-anchor="middle" font-size="10" fill="white" font-weight="bold">ZONA 4: Sidebar</text>
+
+      <!-- ZONA 5: Secciones inferiores -->
+      <rect x="20" y="415" width="710" height="90" fill="#f3e8ff" stroke="#8b5cf6" stroke-width="2" rx="8" stroke-dasharray="6,3"/>
+      <text x="35" y="438" font-size="9" fill="#64748b" letter-spacing="1">NOTA RAPIDA</text>
+      <rect x="35" y="442" width="400" height="18" fill="white" stroke="#cbd5e1" rx="4"/>
+      <text x="35" y="478" font-size="9" fill="#64748b" letter-spacing="1">GASTOS · FOTOS GRID · SPECS · ANUNCIOS · DOCUMENTOS · FUSION</text>
+      <rect x="530" y="420" width="190" height="22" fill="#8b5cf6" rx="6"/>
+      <text x="625" y="435" text-anchor="middle" font-size="10" fill="white" font-weight="bold">ZONA 5: Resto de secciones</text>
+    </svg>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- ZONA 1: HERO -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-title">Zona 1: Hero / Cabecera (azul en el mapa)</p>
+  <p class="section-desc">Es todo lo que se ve arriba antes de los thumbnails: la foto principal, el nombre del coche, los badges de estado (Disponible/Reservado/Vendido), los numeros (precio compra/venta/margen), y los botones (Volver, WhatsApp, Copiar, Registrar venta, Eliminar).</p>
+
+  <div class="field">
+    <label>¿Que te gusta y que no te gusta de esta zona?</label>
+    <textarea name="hero" rows="4" placeholder="Escribe libremente. Ejemplos de cosas que puedes comentar:
+- La foto deberia ser mas grande / mas pequeña / no hace falta
+- Los numeros (compra/venta/margen) estan bien ahi o los pondrias en otro sitio
+- Hay demasiados botones / faltan botones
+- Los badges de estado me sobran aqui
+- Quiero que el nombre sea mas grande / mas discreto
+- etc."></textarea>
+    <p class="hint">Todo lo que escribas aqui se aplica SOLO a esta zona superior. Si no tienes opinion, dejalo vacio.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- ZONA 2: THUMBNAILS -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-title">Zona 2: Tira de thumbnails (amarillo en el mapa)</p>
+  <p class="section-desc">La fila horizontal de fotos pequeñas que aparece debajo del hero. Sirve para navegar entre fotos sin bajar al grid grande.</p>
+
+  <div class="field">
+    <label>¿Que opinas de los thumbnails?</label>
+    <textarea name="thumbnails" rows="3" placeholder="Ejemplos:
+- Son demasiado pequeños, no se ve nada
+- Estan bien, pero sobran (ya hay grid de fotos abajo)
+- Me gustaria que fueran mas grandes
+- Prefiero un carrusel con flechas
+- etc."></textarea>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- ZONA 3: FORMULARIO -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-title">Zona 3: Formulario de datos (verde en el mapa)</p>
+  <p class="section-desc">El panel de la izquierda con los campos editables: Marca y modelo, Año, Km, Estado, Combustible, Color, Precio compra, Precio venta, Proveedor, Notas. Con boton "Guardar cambios".</p>
+
+  <div class="field">
+    <label>¿Que te gusta y que cambiarias del formulario?</label>
+    <textarea name="form" rows="4" placeholder="Ejemplos:
+- El formulario es demasiado ancho, lo quiero mas estrecho
+- Los campos estan bien pero quiero que precio compra/venta se vean mas destacados
+- Falta campo para matricula
+- El campo de notas deberia ser mas grande
+- Me gustaria que los campos no fueran editables hasta que pulse un boton 'Editar'
+- Los labels estan bien / los quiero encima del campo / los quiero dentro del campo
+- etc."></textarea>
+    <p class="hint">Ya me dijiste que lo quieres mas estrecho — puedes añadir mas detalles aqui si quieres.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- ZONA 4: SIDEBAR -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-title">Zona 4: Sidebar — Leads + Documentos (rosa en el mapa)</p>
+  <p class="section-desc">La columna de la derecha. Arriba muestra los leads (personas interesadas en el coche) y abajo los documentos (facturas adjuntas).</p>
+
+  <div class="field">
+    <label>¿Que opinas del sidebar?</label>
+    <textarea name="sidebar" rows="4" placeholder="Ejemplos:
+- Me gusta que este a la derecha
+- Prefiero que leads y docs esten debajo del formulario, no al lado
+- El sidebar deberia ser mas ancho
+- Me gustaria poder colapsarlo/esconderlo
+- La seccion de leads esta bien pero le falta X
+- La seccion de documentos deberia mostrar tambien ficha tecnica, permiso...
+- etc."></textarea>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- ZONA 5: SECCIONES INFERIORES -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-title">Zona 5: Resto de secciones (morado en el mapa)</p>
+  <p class="section-desc">Todo lo que aparece debajo del formulario+sidebar. Incluye:</p>
+
+  <div class="checkbox-group" style="margin-bottom: 1rem;">
+    <label class="checkbox-item">
+      <input type="checkbox" name="sections" value="nota-rapida" checked>
+      <span><strong>Nota rapida</strong> — campo para añadir notas con un click<br><span class="cb-desc">Un input + boton "Añadir" que agrega texto con fecha a las notas del vehiculo</span></span>
+    </label>
+    <label class="checkbox-item">
+      <input type="checkbox" name="sections" value="gastos" checked>
+      <span><strong>Gastos asociados</strong> — tabla de gastos del vehiculo<br><span class="cb-desc">Muestra compra, reparaciones, etc. con total y beneficio real calculado</span></span>
+    </label>
+    <label class="checkbox-item">
+      <input type="checkbox" name="sections" value="fotos-grid" checked>
+      <span><strong>Grid de fotos</strong> — galeria completa con subir/borrar/marcar principal<br><span class="cb-desc">Todas las fotos en cuadricula, con boton estrella y boton borrar</span></span>
+    </label>
+    <label class="checkbox-item">
+      <input type="checkbox" name="sections" value="specs" checked>
+      <span><strong>Specs</strong> — datos tecnicos extendidos del vehiculo<br><span class="cb-desc">Informacion extra importada del anuncio (potencia, puertas, etc.)</span></span>
+    </label>
+    <label class="checkbox-item">
+      <input type="checkbox" name="sections" value="anuncios" checked>
+      <span><strong>Anuncios externos</strong> — links a coches.net<br><span class="cb-desc">Si el coche tiene anuncio en coches.net, aparece el enlace aqui</span></span>
+    </label>
+    <label class="checkbox-item">
+      <input type="checkbox" name="sections" value="docs-list" checked>
+      <span><strong>Lista de documentos</strong> — todos los docs agrupados por tipo<br><span class="cb-desc">Factura compra, ficha tecnica, permiso circulacion, etc.</span></span>
+    </label>
+    <label class="checkbox-item">
+      <input type="checkbox" name="sections" value="merge" checked>
+      <span><strong>Fusion de duplicados</strong> — para unir dos fichas del mismo coche<br><span class="cb-desc">Si el mismo coche aparece dos veces (importado y manual), se pueden fusionar aqui</span></span>
+    </label>
+  </div>
+  <p class="hint" style="margin-bottom: 0.75rem;">Desmarca las que quieras ocultar. Las marcadas se mantienen.</p>
+
+  <div class="field">
+    <label>Comentarios sobre estas secciones</label>
+    <textarea name="sections-comments" rows="3" placeholder="Ejemplos:
+- Las fotos deberian ir primero, antes que gastos
+- La nota rapida me parece innecesaria, ya hay campo de notas en el formulario
+- Me falta una seccion de historial de cambios de estado
+- etc."></textarea>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- LOOK & FEEL GENERAL -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-title">Look & feel general</p>
+  <p class="section-desc">Colores, tipografia, sensacion visual de toda la pagina.</p>
+
+  <div class="field">
+    <label>¿Quieres cambiar el color principal? (ahora es azul)</label>
+    <div class="color-row">
+      <input type="color" id="color-primary" value="#2563eb">
+      <input type="text" name="color" placeholder="O escribe: un color, 'como BMW', 'mas oscuro', 'rojo', etc.">
+    </div>
+    <p class="hint">El selector de la izquierda abre un color picker. O escribe texto a la derecha.</p>
+  </div>
+
+  <div class="field">
+    <label>Sensacion general que quieres</label>
+    <textarea name="look-feel" rows="3" placeholder="Ejemplos:
+- Que parezca profesional, como un concesionario premium
+- Que sea limpio y simple, sin distracciones
+- Mas oscuro / mas claro
+- Me gusta como se ve ahora, solo quiero cambiar X
+- Me gusta la web de [nombre], quiero que se parezca
+- etc."></textarea>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- REFERENCIAS -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-title">Referencias (opcional)</p>
+  <p class="section-desc">Si hay alguna web, app o imagen que te guste como referencia, ponla aqui.</p>
+
+  <div class="field">
+    <label>Webs o apps que te gustan</label>
+    <textarea name="references" rows="2" placeholder="Ej: AutoScout24, Wallapop, la app de Tesla, el dashboard de Stripe..."></textarea>
+  </div>
+
+  <div class="field">
+    <label>Cosas que NO quieres</label>
+    <textarea name="avoid" rows="2" placeholder="Ej: que no parezca un Excel, que no haya demasiadas animaciones, que no sea muy colorido..."></textarea>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- NOTAS LIBRES -->
+<!-- ══════════════════════════════════════════ -->
+<div class="section">
+  <p class="section-title">Notas libres</p>
+  <p class="section-desc">Cualquier otra cosa que quieras decirme sobre el diseno de esta pagina.</p>
+  <div class="field">
+    <textarea name="notes" rows="5" placeholder="Escribe lo que quieras. Puede ser:
+- Problemas que tienes ahora con la vista
+- Ideas que se te ocurren
+- Cosas que te molestan
+- Prioridades (que es lo mas importante para ti)
+- Cualquier detalle que no encaje en las secciones anteriores"></textarea>
+  </div>
+</div>
+
+<div class="actions">
+  <button type="button" class="btn btn-primary" onclick="generatePrompt()">Generar prompt</button>
+  <button type="button" class="btn btn-copy" id="copyBtn" onclick="copyPrompt()">Copiar al portapapeles</button>
+</div>
+
+<div class="output-box" id="output"></div>
+
+<script>
+function getText(name) {
+  const el = document.querySelector(`[name="${name}"]`);
+  return el ? el.value.trim() : '';
+}
+function getChecked(name) {
+  return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+}
+
+function generatePrompt() {
+  const lines = [];
+  lines.push('=== DESIGN BRIEF: Ficha del Vehiculo (VehicleDetailA) ===');
+  lines.push('Componente: WebApp.tsx > VehicleDetailA (linea ~2243)');
+  lines.push('Vista: detalle de un vehiculo en el panel admin');
+  lines.push('Prioridad: consulta rapida de info');
+  lines.push('Densidad: equilibrada');
+  lines.push('Formulario: mantener a la izquierda pero mucho mas estrecho');
+  lines.push('Responsive: movil no es prioridad (uso desktop)');
+  lines.push('');
+
+  const hero = getText('hero');
+  if (hero) { lines.push('## Zona 1: Hero / Cabecera'); lines.push(hero); lines.push(''); }
+
+  const thumbs = getText('thumbnails');
+  if (thumbs) { lines.push('## Zona 2: Thumbnails'); lines.push(thumbs); lines.push(''); }
+
+  const form = getText('form');
+  if (form) { lines.push('## Zona 3: Formulario'); lines.push(form); lines.push(''); }
+
+  const sidebar = getText('sidebar');
+  if (sidebar) { lines.push('## Zona 4: Sidebar'); lines.push(sidebar); lines.push(''); }
+
+  const allSections = ['nota-rapida','gastos','fotos-grid','specs','anuncios','docs-list','merge'];
+  const checked = getChecked('sections');
+  const unchecked = allSections.filter(s => !checked.includes(s));
+  const sectionsComments = getText('sections-comments');
+  if (unchecked.length > 0 || sectionsComments) {
+    lines.push('## Zona 5: Secciones inferiores');
+    if (unchecked.length > 0) lines.push(`Ocultar: ${unchecked.join(', ')}`);
+    if (sectionsComments) lines.push(sectionsComments);
+    lines.push('');
+  }
+
+  const colorText = getText('color');
+  const colorPicker = document.getElementById('color-primary').value;
+  const lookFeel = getText('look-feel');
+  if (colorText || lookFeel || colorPicker !== '#2563eb') {
+    lines.push('## Look & feel');
+    if (colorText) lines.push(`Color: ${colorText}`);
+    else if (colorPicker !== '#2563eb') lines.push(`Color primario: ${colorPicker}`);
+    if (lookFeel) lines.push(lookFeel);
+    lines.push('');
+  }
+
+  const refs = getText('references');
+  const avoid = getText('avoid');
+  if (refs || avoid) {
+    lines.push('## Referencias');
+    if (refs) lines.push(`Inspiracion: ${refs}`);
+    if (avoid) lines.push(`Evitar: ${avoid}`);
+    lines.push('');
+  }
+
+  const notes = getText('notes');
+  if (notes) { lines.push('## Notas'); lines.push(notes); lines.push(''); }
+
+  if (lines.length <= 9) {
+    lines.push('(No se ha rellenado ninguna seccion — rellena al menos una para generar instrucciones utiles)');
+  }
+
+  const output = lines.join('\n');
+  const el = document.getElementById('output');
+  el.textContent = output;
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth' });
+}
+
+function copyPrompt() {
+  const text = document.getElementById('output').textContent;
+  if (!text) generatePrompt();
+  navigator.clipboard.writeText(document.getElementById('output').textContent).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copiado!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copiar al portapapeles'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>
