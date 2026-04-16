@@ -705,7 +705,7 @@ function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
   const hasResults = matchedVehicles.length > 0 || matchedLeads.length > 0 || matchedClients.length > 0;
 
   return (
-    <div style={{
+    <div role="listbox" aria-label="Resultados de búsqueda" style={{
       position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100,
       background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "12px",
       marginTop: "0.35rem", maxHeight: "320px", overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
@@ -802,15 +802,15 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseReco
       </header>
 
       <div className="sales-stats-grid">
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <p className="sales-stat-label">Stock disponible</p>
           <p className="sales-stat-value sales-stat-primary">{stockDisponible}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <p className="sales-stat-label">Reservados</p>
           <p className="sales-stat-value">{stockReservado}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <p className="sales-stat-label">Vendidos</p>
           <p className="sales-stat-value sales-stat-success">{stockVendido}</p>
         </section>
@@ -821,26 +821,26 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseReco
       </div>
 
       <div className="sales-stats-grid">
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <p className="sales-stat-label">Leads nuevos</p>
           <p className="sales-stat-value">{leadsNuevos}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <p className="sales-stat-label">Contactados</p>
           <p className="sales-stat-value">{leadsContactados}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <p className="sales-stat-label">Negociando</p>
           <p className="sales-stat-value">{leadsNegociando}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <p className="sales-stat-label">Cerrados / Perdidos</p>
           <p className="sales-stat-value">{leadsCerrados} / {leadsPerdidos}</p>
         </section>
       </div>
 
       <div className="sales-stats-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("sales")} role="button" tabIndex={0}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("sales")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <p className="sales-stat-label">Ventas este mes</p>
           <p className="sales-stat-value sales-stat-primary">{ventasMes.length}</p>
           <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
@@ -1129,6 +1129,8 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
             placeholder="Buscar... (pulsa / para enfocar)"
+            aria-expanded={globalSearch.trim().length >= 2}
+            aria-haspopup="listbox"
             style={{ width: "100%", padding: "0.7rem 1rem 0.7rem 2.2rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "inherit", fontSize: "0.88rem" }}
           />
           {globalSearch.trim().length >= 2 && (

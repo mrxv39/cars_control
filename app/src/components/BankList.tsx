@@ -288,6 +288,7 @@ export function BankList({ companyId }: Props) {
                 <button
                   key={c.category}
                   type="button"
+                  aria-pressed={filterCategory === c.category}
                   onClick={() =>
                     setFilterCategory(filterCategory === c.category ? "" : c.category)
                   }
