@@ -1,4 +1,5 @@
-import { FormEvent, useEffect } from "react";
+import { FormEvent } from "react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { StockVehicleForm, StockModal as StockModalType } from "../types";
 
 interface Props {
@@ -28,12 +29,7 @@ export function StockModal({
   onSubmit,
   onClose,
 }: Props) {
-  useEffect(() => {
-    if (!modal) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [modal, onClose]);
+  useEscapeKey(!!modal, onClose);
 
   if (!modal) return null;
 

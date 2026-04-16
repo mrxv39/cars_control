@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -23,15 +24,7 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Escape key handler
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open, onCancel]);
+  useEscapeKey(open, onCancel);
 
   // Auto-focus the cancel button when dialog opens
   useEffect(() => {
