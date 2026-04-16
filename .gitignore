@@ -75,3 +75,20 @@ supabase/.branches/
 app/e2e/.auth/
 app/playwright-report/
 app/test-results/
+
+# Capturas de pantalla UX (generadas por auditorías)
+app/ux-screenshots/
+
+# Reportes generados por agentes (no son código)
+PERF-REPORT.md
+SECURITY-AUDIT.md
+
+# Skills lock (configuración local de Claude Code)
+skills-lock.json
+
+# Archivos de scraping guardados localmente
+MAZDA*/
+
+# Formularios de mantenimiento generados
+docs/maintenance-form-*.html
+docs/ux-audit-*
