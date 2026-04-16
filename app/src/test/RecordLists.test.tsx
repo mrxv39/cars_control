@@ -55,6 +55,7 @@ function makeVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     transmission: '',
     color: 'Blanco',
     notes: '',
+    supplier_id: null,
     ...overrides,
   }
 }

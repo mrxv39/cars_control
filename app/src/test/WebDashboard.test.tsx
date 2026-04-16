@@ -20,6 +20,7 @@ function makeVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     transmission: '',
     color: 'Blanco',
     notes: '',
+    supplier_id: null,
     ...overrides,
   }
 }
@@ -38,39 +39,6 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
     canal: 'web',
     company_id: 1,
     vehicle_id: null,
-    ...overrides,
-  }
-}
-
-function makeSalesRecord(overrides: Partial<SalesRecord> = {}): SalesRecord {
-  return {
-    id: 1,
-    vehicle_id: 1,
-    client_id: 1,
-    date: '2026-04-10',
-    price_final: 10500,
-    notes: '',
-    company_id: 1,
-    ...overrides,
-  }
-}
-
-function makePurchaseRecord(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
-  return {
-    id: 1,
-    expense_type: 'COMPRA_VEHICULO',
-    vehicle_name: 'Seat Ibiza',
-    plate: '1234ABC',
-    supplier_name: 'AutoVenta',
-    purchase_date: '2026-01-15',
-    purchase_price: 8000,
-    invoice_number: 'F-001',
-    payment_method: 'transferencia',
-    notes: '',
-    source_file: '',
-    created_at: '2026-01-15',
-    company_id: 1,
-    vehicle_id: 1,
     ...overrides,
   }
 }

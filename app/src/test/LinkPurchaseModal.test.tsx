@@ -37,7 +37,6 @@ function makePurchase(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
   return {
     id: 1,
     expense_type: 'compra_vehiculo',
-    vehicle_folder_path: '/stock/seat-ibiza',
     vehicle_name: 'SEAT Ibiza 2019',
     plate: '1234ABC',
     supplier_name: 'AUTO1',
@@ -48,6 +47,8 @@ function makePurchase(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
     notes: '',
     source_file: '',
     created_at: '2026-03-14',
+    company_id: 1,
+    vehicle_id: null,
     ...overrides,
   }
 }

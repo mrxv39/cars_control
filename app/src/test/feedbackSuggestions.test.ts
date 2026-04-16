@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { generateSuggestions, getViewContext } from '../lib/feedbackSuggestions'
-import type { FBVehicle, FBLead, FBClient } from '../lib/feedbackSuggestions'
+import type { FBVehicle, FBLead } from '../lib/feedbackSuggestions'
 
 const emptyDismissed = new Set<string>()
 
