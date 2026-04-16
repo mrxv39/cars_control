@@ -397,53 +397,54 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
           <span>Molins de Rei</span>
           <span>+15 años</span>
         </div>
-        {/* Search + filtros integrados en el hero */}
-        <div className="catalog-hero-search-row">
-          <div className="catalog-hero-search">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="catalog-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input
-              className="catalog-search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar marca, modelo..."
-              aria-label="Buscar vehículos"
-            />
-          </div>
-          <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)} aria-label="Combustible" className={`catalog-chip-select ${fuelFilter ? "active" : ""}`}>
-            <option value="">Combustible</option>
-            {fuelOptions.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
-          <select value={priceMax} onChange={(e) => setPriceMax(e.target.value)} aria-label="Precio máximo" className={`catalog-chip-select ${priceMax ? "active" : ""}`}>
-            <option value="">Precio máx.</option>
-            <option value="8000">8.000 €</option>
-            <option value="12000">12.000 €</option>
-            <option value="18000">18.000 €</option>
-            <option value="25000">25.000 €</option>
-            <option value="35000">35.000 €</option>
-          </select>
-          <select value={yearMin} onChange={(e) => setYearMin(e.target.value)} aria-label="Año mínimo" className={`catalog-chip-select ${yearMin ? "active" : ""}`}>
-            <option value="">Año</option>
-            <option value="2024">2024+</option>
-            <option value="2022">2022+</option>
-            <option value="2020">2020+</option>
-            <option value="2018">2018+</option>
-            <option value="2015">2015+</option>
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} aria-label="Ordenar" className={`catalog-chip-select ${sortBy ? "active" : ""}`}>
-            <option value="">Ordenar</option>
-            <option value="price-asc">Precio ↑</option>
-            <option value="price-desc">Precio ↓</option>
-            <option value="year-desc">Recientes</option>
-            <option value="km-asc">Menos km</option>
-          </select>
-          {(fuelFilter || priceMax || yearMin || sortBy) && (
-            <button type="button" className="catalog-chip-clear" onClick={() => { setFuelFilter(""); setPriceMax(""); setYearMin(""); setSortBy(""); }}>✕</button>
-          )}
+        {/* Search solo en el hero */}
+        <div className="catalog-hero-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="catalog-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input
+            className="catalog-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar marca, modelo..."
+            aria-label="Buscar vehículos"
+          />
         </div>
       </section>
 
       <main className="catalog-main">
-        <div className="catalog-result-bar">
+        {/* Filtros en el contenido, no en el hero */}
+        <div className="catalog-filter-bar">
+          <div className="catalog-filter-chips">
+            <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)} aria-label="Combustible" className={`catalog-chip-select ${fuelFilter ? "active" : ""}`}>
+              <option value="">Combustible</option>
+              {fuelOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <select value={priceMax} onChange={(e) => setPriceMax(e.target.value)} aria-label="Precio máximo" className={`catalog-chip-select ${priceMax ? "active" : ""}`}>
+              <option value="">Precio máx.</option>
+              <option value="8000">8.000 €</option>
+              <option value="12000">12.000 €</option>
+              <option value="18000">18.000 €</option>
+              <option value="25000">25.000 €</option>
+              <option value="35000">35.000 €</option>
+            </select>
+            <select value={yearMin} onChange={(e) => setYearMin(e.target.value)} aria-label="Año mínimo" className={`catalog-chip-select ${yearMin ? "active" : ""}`}>
+              <option value="">Año</option>
+              <option value="2024">2024+</option>
+              <option value="2022">2022+</option>
+              <option value="2020">2020+</option>
+              <option value="2018">2018+</option>
+              <option value="2015">2015+</option>
+            </select>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} aria-label="Ordenar" className={`catalog-chip-select ${sortBy ? "active" : ""}`}>
+              <option value="">Ordenar</option>
+              <option value="price-asc">Precio ↑</option>
+              <option value="price-desc">Precio ↓</option>
+              <option value="year-desc">Recientes</option>
+              <option value="km-asc">Menos km</option>
+            </select>
+            {(fuelFilter || priceMax || yearMin || sortBy) && (
+              <button type="button" className="catalog-chip-clear" onClick={() => { setFuelFilter(""); setPriceMax(""); setYearMin(""); setSortBy(""); }}>✕</button>
+            )}
+          </div>
           <span className="catalog-result-count">{filtered.length} vehículo{filtered.length !== 1 ? "s" : ""}</span>
         </div>
 
