@@ -575,9 +575,7 @@ export async function listPrimaryPhotos(vehicleIds: number[]): Promise<Map<numbe
         ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path).data.publicUrl
         : (p.source_url || ""),
       thumbUrl: p.storage_path
-        ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path, {
-            transform: { width: 400, quality: 70 },
-          }).data.publicUrl
+        ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path).data.publicUrl
         : null,
     });
   }
