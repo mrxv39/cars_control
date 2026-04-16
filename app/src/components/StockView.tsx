@@ -118,7 +118,7 @@ export function StockView({
                           onClick={() => onEditVehicle(vehicle)}
                         >
                           <div className="thumb-frame">
-                            <img src={thumbnails[vehicle.folder_path] ?? ""} alt={vehicle.name} className="thumb-image" />
+                            <img src={thumbnails[vehicle.folder_path] ?? ""} alt={vehicle.name} className="thumb-image" loading="lazy" />
                           </div>
                           <div className="vehicle-copy">
                             <h3>{vehicle.name}</h3>
