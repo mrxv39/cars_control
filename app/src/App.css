@@ -1112,7 +1112,7 @@ select:focus-visible {
   background: linear-gradient(135deg, #0c1220 0%, #1a2744 40%, #0f2027 100%);
   color: #fff;
   text-align: center;
-  padding: 4.5rem 2rem 3.5rem;
+  padding: 4rem 2rem 2.5rem;
   position: relative;
   overflow: hidden;
 }
@@ -1167,11 +1167,19 @@ select:focus-visible {
   .catalog-hero-stats span::before { display: none; }
 }
 
-/* ── Search (inside hero) ── */
+/* ── Hero bar: search + filter chips, one row ── */
+.catalog-hero-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 860px;
+  margin: 1.5rem auto 0;
+  position: relative;
+}
 .catalog-hero-search {
   position: relative;
-  max-width: 480px;
-  margin: 1.5rem auto 0;
+  flex: 1;
+  min-width: 160px;
 }
 .catalog-search-icon {
   position: absolute;
@@ -1200,68 +1208,59 @@ select:focus-visible {
   background: rgba(255,255,255,0.22);
   box-shadow: 0 0 0 3px rgba(255,255,255,0.08);
 }
-/* ── Filter Bar (below hero, in content) ── */
-.catalog-filter-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-.catalog-filter-chips {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.catalog-chip-select {
+/* ── Hero chips (glass style, next to search) ── */
+.catalog-hero-chip {
   appearance: none;
   -webkit-appearance: none;
-  padding: 0.45rem 1.5rem 0.45rem 0.7rem;
-  border-radius: 100px;
-  border: 1.5px solid rgba(0,0,0,0.1);
-  background: #fff url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 0.55rem center;
-  font-size: 0.8rem;
+  padding: 0.5rem 1.5rem 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08) url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.45)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 0.5rem center;
+  font-size: 0.78rem;
   font-weight: 500;
-  color: var(--color-text-secondary, #475569);
+  color: rgba(255,255,255,0.65);
   cursor: pointer;
-  transition: border-color 150ms ease, background-color 150ms ease;
+  transition: border-color 150ms ease, background 150ms ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
-.catalog-chip-select:hover {
-  border-color: rgba(0,0,0,0.22);
-  background-color: #f8fafc;
+.catalog-hero-chip:hover {
+  border-color: rgba(255,255,255,0.35);
+  background-color: rgba(255,255,255,0.12);
 }
-.catalog-chip-select:focus {
+.catalog-hero-chip:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  border-color: rgba(255,255,255,0.5);
 }
-.catalog-chip-select.active {
-  background-color: #eff6ff;
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+.catalog-hero-chip.active {
+  background-color: rgba(96, 165, 250, 0.2);
+  border-color: rgba(96, 165, 250, 0.5);
+  color: #93c5fd;
   font-weight: 600;
 }
-.catalog-chip-clear {
-  padding: 0.4rem 0.7rem;
-  border-radius: 100px;
-  border: 1.5px solid rgba(220, 38, 38, 0.2);
-  background: #fef2f2;
-  color: #dc2626;
-  font-size: 0.75rem;
-  font-weight: 600;
+.catalog-hero-chip-clear {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  font-size: 0.72rem;
+  font-weight: 700;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
   transition: background 150ms ease;
 }
-.catalog-chip-clear:hover {
-  background: #fee2e2;
-}
+.catalog-hero-chip-clear:hover { background: rgba(239, 68, 68, 0.45); color: #fff; }
+
+/* ── Result bar ── */
+.catalog-result-bar { margin-bottom: 0.75rem; }
 .catalog-result-count {
   font-size: 0.82rem;
   color: var(--color-text-muted);
   font-weight: 500;
-  white-space: nowrap;
 }
 
 /* ── Main Container ── */
@@ -1274,10 +1273,9 @@ select:focus-visible {
 }
 
 @media (max-width: 700px) {
-  .catalog-filter-bar { flex-direction: column; align-items: stretch; }
-  .catalog-filter-chips { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
-  .catalog-chip-select { flex-shrink: 0; }
-  .catalog-result-count { text-align: center; }
+  .catalog-hero-bar { flex-wrap: wrap; gap: 0.3rem; }
+  .catalog-hero-search { flex: 1 1 100%; margin-bottom: 0.2rem; }
+  .catalog-hero-chip { font-size: 0.72rem; padding: 0.4rem 1.3rem 0.4rem 0.55rem; }
 }
 
 /* ── Vehicle Grid ── */
@@ -2721,7 +2719,7 @@ select:focus-visible {
   .catalog-main { overflow-x: hidden; }
   .catalog-nav-btn { min-height: 44px; padding: 0.65rem 1.2rem; }
   .catalog-nav-link { min-height: 44px; display: inline-flex; align-items: center; }
-  .catalog-chip-select { min-height: 44px; }
+  .catalog-hero-chip { min-height: 44px; }
   .catalog-search { min-height: 44px; }
 }
 
