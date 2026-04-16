@@ -8,6 +8,7 @@ import { PlatformLayout } from "./components/platform/PlatformLayout";
 import { RegistrationPage } from "./components/platform/RegistrationPage";
 import * as platformApi from "./lib/platform-api";
 import { exportToCSV } from "./lib/csv-export";
+import { generateInvoicePDF } from "./utils/invoiceGenerator";
 import { usePagination } from "./hooks/usePagination";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import ConfirmDialog from "./components/web/ConfirmDialog";
@@ -1197,7 +1198,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         )}
         {currentView === "leads" && <LeadsList leads={leads} vehicles={vehicles} companyId={companyId} onReload={loadAll} />}
         {currentView === "clients" && <ClientsList clients={clients} companyId={companyId} onReload={loadAll} />}
-        {currentView === "sales" && <SalesList records={salesRecords} vehicles={vehicles} clients={clients} companyId={companyId} onReload={loadAll} />}
+        {currentView === "sales" && <SalesList records={salesRecords} vehicles={vehicles} clients={clients} companyId={companyId} company={session.company} onReload={loadAll} />}
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}
         {currentView === "bank" && <BankList companyId={companyId} />}
         {currentView === "suppliers" && <SuppliersList suppliers={suppliers} companyId={companyId} onReload={loadAll} />}
@@ -3199,7 +3200,7 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
 // ============================================================
 // Sales List
 // ============================================================
-function SalesList({ records, vehicles, clients, companyId: _companyId, onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; onReload: () => void }) {
+function SalesList({ records, vehicles, clients, companyId: _companyId, company, onReload }: { records: api.SalesRecord[]; vehicles: api.Vehicle[]; clients: api.Client[]; companyId: number; company: api.Company; onReload: () => void }) {
   const dialog = useConfirmDialog();
   const vehicleMap = useMemo(() => new Map(vehicles.map((v) => [v.id, v])), [vehicles]);
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
@@ -3242,18 +3243,43 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
                 <th className="sales-th">Cliente</th>
                 <th className="sales-th">Fecha</th>
                 <th className="sales-th sales-th-right">Precio</th>
-                <th className="sales-th" style={{ width: "4rem" }}></th>
+                <th className="sales-th" style={{ width: "10rem" }}></th>
               </tr></thead>
               <tbody>
                 {pagedSales.map((r) => {
-                  const vName = r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "Venta" : "Venta";
+                  const vehicle = r.vehicle_id ? vehicleMap.get(r.vehicle_id) : null;
+                  const vName = vehicle?.name || "Venta";
+                  const client = r.client_id ? clientMap.get(r.client_id) : null;
                   return (
                     <tr key={r.id} className="sales-row">
-                      <td className="sales-td">{r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "—" : "—"}</td>
-                      <td className="sales-td">{r.client_id ? clientMap.get(r.client_id)?.name || "—" : "—"}</td>
+                      <td className="sales-td">{vName !== "Venta" ? vName : "—"}</td>
+                      <td className="sales-td">{client?.name || "—"}</td>
                       <td className="sales-td">{new Date(r.date).toLocaleDateString("es-ES")}</td>
                       <td className="sales-td sales-td-right"><span className="sales-price">{r.price_final.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
-                      <td className="sales-td"><button type="button" className="button danger xs" onClick={() => void handleDeleteSale(r.id, vName)}>Eliminar</button></td>
+                      <td className="sales-td" style={{ display: "flex", gap: "0.4rem" }}>
+                        <button type="button" className="button secondary xs" onClick={() => {
+                          const year = new Date(r.date).getFullYear();
+                          const idx = records.filter(s => new Date(s.date).getFullYear() === year && s.id <= r.id).length;
+                          generateInvoicePDF({
+                            invoiceNumber: `F-${year}-${String(idx).padStart(3, "0")}`,
+                            date: new Date(r.date).toLocaleDateString("es-ES"),
+                            type: "REBU",
+                            companyName: company.trade_name,
+                            companyLegalName: company.legal_name || company.trade_name,
+                            companyCif: company.cif || "",
+                            companyAddress: company.address || "",
+                            companyPhone: company.phone || "",
+                            companyEmail: company.email || "",
+                            buyerName: client?.name || "—",
+                            buyerDni: client?.dni || "",
+                            buyerPhone: client?.phone,
+                            vehicleName: vName,
+                            purchasePrice: vehicle?.precio_compra || 0,
+                            salePrice: r.price_final,
+                          });
+                        }}>Factura</button>
+                        <button type="button" className="button danger xs" onClick={() => void handleDeleteSale(r.id, vName)}>Eliminar</button>
+                      </td>
                     </tr>
                   );
                 })}
