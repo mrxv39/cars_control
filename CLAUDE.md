@@ -92,17 +92,25 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - Foto principal = frontal-lateral 3/4. Campo `vehicle_photos.is_primary`.
 - Heurística auto: `1.jpg` / `1.jpeg` se marca como principal al importar.
 
+## Archivos grandes (referencia para agentes)
+
+| Archivo | Líneas | Notas |
+|---------|--------|-------|
+| `app/src/WebApp.tsx` | ~3870 | Monolito principal web — candidato a extracción |
+| `app/src/lib/api.ts` | ~1200 | Capa Supabase — queries y mutations |
+| `app/src/components/FeedbackButton.tsx` | ~570 | Widget feedback con lógica de envío |
+| `app/src/components/BankList.tsx` | ~530 | Listado banco con categorización |
+| `app/src/components/PurchasesView.tsx` | ~350 | Vista compras |
+
 ## Pendiente
 
 - Re-subir fotos a Storage nuevo (buckets no existen tras migración Supabase)
 - Template factura REBU/IVA (datos fiscales Ricard en tabla `companies`)
-- ~~Tablas responsive en móvil~~ (implementado: card layout <768px, commit e64b2f4)
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
 - Descargar fotos coches.net a Storage propio
 - Lazy-load IntersectionObserver en listado Stock
 - Banco: ventana match ±21 días, reconciliador MOV_INTERNO, Fase 2/3 (ver `supabase/CLAUDE.md`)
 - Sync-leads: migrar a pg_cron, bloqueado por OAuth2 Gmail de Ricard (ver `supabase/CLAUDE.md`)
-- ~~BankList.tsx (777 líneas)~~: refactorizado a 531 líneas (commit 45e7da1, extraído LinkPurchaseModal y bank-utils)
 - Tests Python: añadir pytest suite para scripts/ (import, OCR, extractores)
 
 ## Sesiones de validación
