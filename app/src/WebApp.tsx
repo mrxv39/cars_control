@@ -392,6 +392,11 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
       <section className="catalog-hero-banner">
         <h1>Vehículos de ocasión</h1>
         <p>Compraventa de coches en Molins de Rei, Barcelona</p>
+        <div className="catalog-hero-stats">
+          <span>{vehicles.filter((v) => v.precio_venta && v.estado !== "vendido").length} vehículos disponibles</span>
+          <span>Molins de Rei, Barcelona</span>
+          <span>+15 años de experiencia</span>
+        </div>
       </section>
 
       <main className="catalog-main">
@@ -401,16 +406,17 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por marca, modelo, año..."
+            aria-label="Buscar vehículos"
           />
           <span className="muted">{filtered.length} vehículo{filtered.length !== 1 ? "s" : ""}</span>
         </div>
 
         <div className="catalog-filters">
-          <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)}>
+          <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)} aria-label="Filtrar por combustible" className={fuelFilter ? "filter-active" : ""}>
             <option value="">Combustible</option>
             {fuelOptions.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
-          <select value={priceMax} onChange={(e) => setPriceMax(e.target.value)}>
+          <select value={priceMax} onChange={(e) => setPriceMax(e.target.value)} aria-label="Precio máximo" className={priceMax ? "filter-active" : ""}>
             <option value="">Precio máx.</option>
             <option value="8000">Hasta 8.000 €</option>
             <option value="12000">Hasta 12.000 €</option>
@@ -418,7 +424,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
             <option value="25000">Hasta 25.000 €</option>
             <option value="35000">Hasta 35.000 €</option>
           </select>
-          <select value={yearMin} onChange={(e) => setYearMin(e.target.value)}>
+          <select value={yearMin} onChange={(e) => setYearMin(e.target.value)} aria-label="Año mínimo" className={yearMin ? "filter-active" : ""}>
             <option value="">Año desde</option>
             <option value="2024">2024+</option>
             <option value="2022">2022+</option>
@@ -426,7 +432,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
             <option value="2018">2018+</option>
             <option value="2015">2015+</option>
           </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} aria-label="Ordenar resultados" className={sortBy ? "filter-active" : ""}>
             <option value="">Ordenar por</option>
             <option value="price-asc">Precio: menor a mayor</option>
             <option value="price-desc">Precio: mayor a menor</option>
@@ -450,7 +456,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
               const thumb = thumbs.get(v.id);
               const imgUrl = thumb?.thumbUrl || thumb?.url || null;
               return (
-                <article key={v.id} className="catalog-card" onClick={() => setSelectedVehicle(v)}>
+                <article key={v.id} className="catalog-card" tabIndex={0} role="button" onClick={() => setSelectedVehicle(v)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedVehicle(v); } }}>
                   <div className="catalog-card-img">
                     {imgUrl ? <img src={imgUrl} alt={v.name || ""} loading="lazy" /> : <div className="catalog-card-noimg">Sin foto</div>}
                     {v.estado === "reservado" && <span className="catalog-badge-reserved">Reservado</span>}
@@ -477,8 +483,10 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
       </main>
 
       <footer className="catalog-footer">
-        <p>CodinaCars · C/ Sant Antoni Maria Claret 3, Bajos 2, 08750 Molins de Rei (Barcelona)</p>
-        <p>Tel: 646 13 15 65 · codinacars@gmail.com</p>
+        <p style={{ fontWeight: 600, fontSize: "0.9rem", color: "rgba(255,255,255,0.85)", marginBottom: "0.5rem" }}>CodinaCars</p>
+        <p><a href="https://maps.google.com/?q=C/+Sant+Antoni+Maria+Claret+3,+08750+Molins+de+Rei" target="_blank" rel="noopener" style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: "2px" }}>C/ Sant Antoni Maria Claret 3, Bajos 2, 08750 Molins de Rei (Barcelona)</a></p>
+        <p>Tel: <a href="tel:+34646131565" style={{ color: "inherit" }}>646 13 15 65</a> · codinacars@gmail.com</p>
+        <p>Lunes a Viernes 10:00–14:00 / 16:00–20:00 · Sábados con cita previa</p>
       </footer>
 
       {/* WhatsApp FAB — visible on mobile for quick contact */}
@@ -626,12 +634,12 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
       <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Contactar por este vehículo</p>
       <div className="form-grid-2">
         <div>
-          <label className="field-label">Nombre</label>
-          <input name="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" required maxLength={100} />
+          <label className="field-label" htmlFor="contact-name">Nombre</label>
+          <input id="contact-name" name="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" required maxLength={100} />
         </div>
         <div>
-          <label className="field-label">Teléfono</label>
-          <input name="Telefono" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="600 123 456" required pattern="[0-9\s\+]{9,15}" title="Introduce un teléfono válido (9-15 dígitos)" />
+          <label className="field-label" htmlFor="contact-phone">Teléfono</label>
+          <input id="contact-phone" name="Telefono" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="600 123 456" required pattern="[0-9\s\+]{9,15}" title="Introduce un teléfono válido (9-15 dígitos)" />
         </div>
       </div>
       <button type="submit" className="button primary" style={{ width: "100%", marginTop: "0.75rem" }}>
