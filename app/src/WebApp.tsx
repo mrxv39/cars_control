@@ -10,6 +10,7 @@ import * as platformApi from "./lib/platform-api";
 import { exportToCSV } from "./lib/csv-export";
 import { generateInvoicePDF } from "./utils/invoiceGenerator";
 import { usePagination } from "./hooks/usePagination";
+import { useConfirmDialog } from "./hooks/useConfirmDialog";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import ConfirmDialog from "./components/web/ConfirmDialog";
 import EmptyState from "./components/web/EmptyState";
@@ -56,18 +57,6 @@ function translateError(err: unknown): string {
   if (msg.includes("PGRST")) return "Error del servidor. Inténtalo de nuevo en unos minutos.";
   console.error("[translateError] Unhandled:", msg);
   return "Ha ocurrido un error inesperado. Inténtalo de nuevo.";
-}
-
-function useConfirmDialog() {
-  const [state, setState] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({ open: false, title: "", message: "", onConfirm: () => {} });
-  const onConfirmRef = React.useRef(state.onConfirm);
-  onConfirmRef.current = state.onConfirm;
-  const requestConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
-    setState({ open: true, title, message, onConfirm });
-  }, []);
-  const cancel = useCallback(() => setState((s) => ({ ...s, open: false })), []);
-  const confirm = useCallback(() => { onConfirmRef.current(); setState((s) => ({ ...s, open: false })); }, []);
-  return { confirmProps: { open: state.open, title: state.title, message: state.message, onConfirm: confirm, onCancel: cancel }, requestConfirm };
 }
 
 type ViewKey = "dashboard" | "stock" | "stock_detail" | "leads" | "clients" | "sales" | "purchases" | "suppliers" | "bank" | "revision" | "profile" | "company";
@@ -1508,7 +1497,7 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
       setImportPreview(null);
       setSelectedToImport(new Set());
       await onReload();
-      alert(`Importación completada: ${created} coches nuevos.`);
+      setImportError(`Importación completada: ${created} coches nuevos.`);
     } catch (e: any) {
       setImportError(e.message || "Error importando");
     } finally {

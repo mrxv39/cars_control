@@ -138,7 +138,7 @@ export function BankList({ companyId }: Props) {
         prev.map((t) => (t.id === txId ? { ...t, category, reviewed_by_user: true } : t)),
       );
     } catch (e) {
-      alert("Error al cambiar categoría: " + (e as Error).message);
+      console.error("Error al cambiar categoría:", e);
     }
   }
 

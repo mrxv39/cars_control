@@ -1111,7 +1111,7 @@ export async function listBankCategoryRules(companyId: number): Promise<BankCate
 /**
  * Sugiere purchase_records que podrían vincularse a un movimiento bancario.
  * Heurística: importe igual (±5€ por errores de céntimos/redondeo) y fecha
- * dentro de ±15 días. Excluye purchases ya vinculados a otro movimiento.
+ * dentro de ±21 días. Excluye purchases ya vinculados a otro movimiento.
  */
 export async function suggestPurchasesForTransaction(
   companyId: number,
@@ -1121,10 +1121,10 @@ export async function suggestPurchasesForTransaction(
   const target = Math.abs(amount);
   const lo = target - 5;
   const hi = target + 5;
-  // ±15 días (cliente filtrará después por fecha; PostgREST no soporta date math fácil)
+  // ±21 días (cliente filtrará después por fecha; PostgREST no soporta date math fácil)
   const dateObj = new Date(bookingDate);
-  const fromDate = new Date(dateObj.getTime() - 15 * 86400000).toISOString().slice(0, 10);
-  const toDate = new Date(dateObj.getTime() + 15 * 86400000).toISOString().slice(0, 10);
+  const fromDate = new Date(dateObj.getTime() - 21 * 86400000).toISOString().slice(0, 10);
+  const toDate = new Date(dateObj.getTime() + 21 * 86400000).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("purchase_records")
     .select("*")

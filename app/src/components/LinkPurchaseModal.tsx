@@ -40,7 +40,7 @@ export function LinkPurchaseModal({ tx, companyId, onClose, onLinked }: Props) {
       onLinked();
       onClose();
     } catch (e) {
-      alert("Error al vincular: " + (e as Error).message);
+      console.error("Error al vincular:", e);
     } finally {
       setLinking(null);
     }
