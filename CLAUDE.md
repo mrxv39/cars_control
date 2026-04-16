@@ -108,7 +108,7 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - Template factura REBU/IVA (datos fiscales Ricard en tabla `companies`)
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
 - Descargar fotos coches.net a Storage propio
-- Lazy-load IntersectionObserver en listado Stock
+- ~~Lazy-load IntersectionObserver en listado Stock~~ (ya tiene loading=lazy en imgs; IntersectionObserver card-level innecesario con <50 coches)
 - Banco: ventana match ±21 días, reconciliador MOV_INTERNO, Fase 2/3 (ver `supabase/CLAUDE.md`)
 - Sync-leads: migrar a pg_cron, bloqueado por OAuth2 Gmail de Ricard (ver `supabase/CLAUDE.md`)
 - Tests Python: añadir pytest suite para scripts/ (import, OCR, extractores)
