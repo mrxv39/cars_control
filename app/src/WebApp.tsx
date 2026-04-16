@@ -54,7 +54,8 @@ function translateError(err: unknown): string {
   if (msg.includes("duplicate key") || msg.includes("unique constraint")) return "Este registro ya existe.";
   if (msg.includes("23503") || msg.includes("foreign key")) return "No se puede eliminar: hay datos vinculados.";
   if (msg.includes("PGRST")) return "Error del servidor. Inténtalo de nuevo en unos minutos.";
-  return msg;
+  console.error("[translateError] Unhandled:", msg);
+  return "Ha ocurrido un error inesperado. Inténtalo de nuevo.";
 }
 
 function useConfirmDialog() {
@@ -315,7 +316,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
   const [sortBy, setSortBy] = useState<"" | "price-asc" | "price-desc" | "year-desc" | "km-asc">("");
 
   React.useEffect(() => {
-    void api.listVehicles(1).then(async (v) => {
+    void api.listPublicVehicles(1).then(async (v) => {
       setVehicles(v);
       // Batch: una sola query para todas las fotos primarias
       const photos = await api.listPrimaryPhotos(v.map((x) => x.id));

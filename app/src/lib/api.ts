@@ -446,6 +446,20 @@ export async function updateCompany(companyId: number, fields: Partial<{
 // Vehicles
 // ============================================================
 
+/** Columnas seguras para el catálogo público (sin precio_compra, supplier_id, notes, plate, vin, needs_review) */
+const PUBLIC_VEHICLE_COLUMNS = "id,company_id,name,precio_venta,km,anio,estado,ad_url,ad_status,fuel,cv,transmission,color,version,doors,seats,body_type,displacement,emissions_co2,environmental_label,description,equipment,warranty,city,province" as const;
+
+export async function listPublicVehicles(companyId: number): Promise<Vehicle[]> {
+  const { data, error } = await supabase
+    .from("vehicles")
+    .select(PUBLIC_VEHICLE_COLUMNS)
+    .eq("company_id", companyId)
+    .neq("estado", "vendido")
+    .order("name");
+  if (error) throw new Error(error.message);
+  return (data || []) as Vehicle[];
+}
+
 export async function listVehicles(companyId: number): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from("vehicles")
