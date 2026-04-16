@@ -60,25 +60,7 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
   }
 }
 
-function makePurchaseRecord(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
-  return {
-    id: 1,
-    expense_type: 'COMPRA_VEHICULO',
-    vehicle_name: 'Seat Ibiza',
-    plate: '',
-    supplier_name: '',
-    purchase_date: '2026-03-01',
-    purchase_price: 8000,
-    invoice_number: '',
-    payment_method: '',
-    notes: '',
-    source_file: '',
-    created_at: '2026-03-01',
-    company_id: 1,
-    vehicle_id: 1,
-    ...overrides,
-  }
-}
+
 
 const defaultProps = {
   vehicles: [] as Vehicle[],

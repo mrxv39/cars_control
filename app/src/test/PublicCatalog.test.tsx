@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { PublicCatalog, CatalogHeader } from '../components/web/PublicCatalog'
-import type { Vehicle, VehiclePhoto } from '../lib/api'
+import type { Vehicle } from '../lib/api'
 
 vi.mock('../lib/supabase', () => ({
   supabase: { from: vi.fn(), storage: { from: vi.fn() } },
