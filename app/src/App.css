@@ -1999,8 +1999,48 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .sales-table {
+  .sales-table,
+  .sales-table thead,
+  .sales-table tbody,
+  .sales-table tr,
+  .sales-table th,
+  .sales-table td {
+    display: block;
+  }
+
+  .sales-table thead {
+    display: none;
+  }
+
+  .sales-row {
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-md);
+    background: #fff;
+  }
+
+  .sales-row:hover {
+    background: rgba(37, 99, 235, 0.03);
+  }
+
+  .sales-td {
+    padding: 0.25rem 0;
+    border-bottom: none;
     font-size: var(--text-sm);
+  }
+
+  .sales-td-right {
+    text-align: left;
+  }
+
+  .sales-td[data-label]::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .hero h2 {
