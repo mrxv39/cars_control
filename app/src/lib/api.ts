@@ -18,6 +18,11 @@ export async function tauriInvoke<T>(command: string, args?: Record<string, unkn
 // Re-exportar hashPassword para uso en platform-api.ts y otros módulos
 export { hashPassword } from "./hash";
 
+/** Throw on Supabase error — replaces 50+ identical `if (error) throw` guards. */
+function throwIfError(error: { message: string } | null): asserts error is null {
+  if (error) throw new Error(error.message);
+}
+
 // ============================================================
 // Types — extensiones Web/Supabase de los tipos base compartidos
 // ============================================================
@@ -127,7 +132,7 @@ export async function setPrimaryPhoto(vehicleId: number, photoId: number): Promi
   // Sólo una foto puede ser principal por coche.
   await supabase.from("vehicle_photos").update({ is_primary: false }).eq("vehicle_id", vehicleId);
   const { error } = await supabase.from("vehicle_photos").update({ is_primary: true }).eq("id", photoId);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -275,7 +280,7 @@ export async function listKnownExternalIds(companyId: number): Promise<string[]>
     .select("external_id, vehicles!inner(company_id)")
     .eq("external_source", "coches_net")
     .eq("vehicles.company_id", companyId);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return (data || []).map((r: { external_id: string }) => r.external_id);
 }
 
@@ -406,14 +411,14 @@ export async function markVehiclesNeedsReview(companyId: number, externalIds: st
 
 export async function updateUser(userId: number, fields: { full_name?: string; username?: string; email?: string }): Promise<void> {
   const { error } = await supabase.from("users").update(fields).eq("id", userId);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 export async function updateUserPassword(userId: number, newPassword: string): Promise<void> {
   const { hashPassword } = await import("./hash");
   const password_hash = await hashPassword(newPassword);
   const { error } = await supabase.from("users").update({ password_hash }).eq("id", userId);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 import type { Company as _Company, User as _User } from "../shared-types";
@@ -439,7 +444,7 @@ export async function updateCompany(companyId: number, fields: Partial<{
   website: string;
 }>): Promise<void> {
   const { error } = await supabase.from("companies").update(fields).eq("id", companyId);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -456,7 +461,7 @@ export async function listPublicVehicles(companyId: number): Promise<Vehicle[]> 
     .eq("company_id", companyId)
     .neq("estado", "vendido")
     .order("name");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return (data || []) as Vehicle[];
 }
 
@@ -467,7 +472,7 @@ export async function listVehicles(companyId: number): Promise<Vehicle[]> {
     .eq("company_id", companyId)
     .neq("estado", "vendido")
     .order("name");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
@@ -477,13 +482,13 @@ export async function listAllVehicles(companyId: number): Promise<Vehicle[]> {
     .select("*")
     .eq("company_id", companyId)
     .order("name");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
 export async function getVehicle(id: number): Promise<Vehicle> {
   const { data, error } = await supabase.from("vehicles").select("*").eq("id", id).single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
@@ -505,7 +510,7 @@ export async function createVehicle(companyId: number, fields: Partial<Vehicle> 
     })
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
@@ -516,7 +521,7 @@ export async function updateVehicle(id: number, updates: Partial<Vehicle>): Prom
     .eq("id", id)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
@@ -542,7 +547,7 @@ export async function deleteVehicle(id: number): Promise<void> {
   await supabase.from("vehicle_photos").delete().eq("vehicle_id", id);
 
   const { error } = await supabase.from("vehicles").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -559,7 +564,7 @@ export async function listPrimaryPhotos(vehicleIds: number[]): Promise<Map<numbe
     .order("is_primary", { ascending: false })
     .order("created_at")
     .order("id");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 
   const map = new Map<number, VehiclePhoto>();
   for (const p of data || []) {
@@ -590,7 +595,7 @@ export async function listVehiclePhotos(vehicleId: number): Promise<VehiclePhoto
     .order("is_primary", { ascending: false })
     .order("created_at")
     .order("id"); // tiebreaker (ver getStockPhotoSummary)
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 
   return (data || []).map((p) => ({
     ...p,
@@ -625,7 +630,7 @@ export async function uploadVehiclePhoto(vehicleId: number, file: File): Promise
     .insert({ vehicle_id: vehicleId, file_name: file.name, storage_path: storagePath })
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 
   return {
     ...data,
@@ -647,25 +652,25 @@ export async function deleteVehiclePhoto(photo: VehiclePhoto): Promise<void> {
 
 export async function listLeads(companyId: number): Promise<Lead[]> {
   const { data, error } = await supabase.from("leads").select("*").eq("company_id", companyId).order("name");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
 export async function createLead(companyId: number, input: Partial<Lead>): Promise<Lead> {
   const { data, error } = await supabase.from("leads").insert({ ...input, company_id: companyId }).select().single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
 export async function updateLead(id: number, input: Partial<Lead>): Promise<Lead> {
   const { data, error } = await supabase.from("leads").update(input).eq("id", id).select().single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
 export async function deleteLead(id: number): Promise<void> {
   const { error } = await supabase.from("leads").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -680,7 +685,7 @@ export async function listLeadNotes(leadId: number): Promise<LeadNote[]> {
     .select("*")
     .eq("lead_id", leadId)
     .order("timestamp", { ascending: false });
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
@@ -690,13 +695,13 @@ export async function createLeadNote(leadId: number, content: string): Promise<L
     .insert({ lead_id: leadId, content, timestamp: new Date().toISOString() })
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
 export async function deleteLeadNote(id: number): Promise<void> {
   const { error } = await supabase.from("lead_notes").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -719,7 +724,7 @@ export async function listLeadMessages(leadId: number): Promise<LeadMessage[]> {
     .select("*")
     .eq("lead_id", leadId)
     .order("timestamp", { ascending: true });
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data ?? [];
 }
 
@@ -729,25 +734,25 @@ export async function listLeadMessages(leadId: number): Promise<LeadMessage[]> {
 
 export async function listClients(companyId: number): Promise<Client[]> {
   const { data, error } = await supabase.from("clients").select("*").eq("company_id", companyId).order("name");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
 export async function createClient(companyId: number, input: Partial<Client>): Promise<Client> {
   const { data, error } = await supabase.from("clients").insert({ ...input, company_id: companyId }).select().single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
 export async function updateClient(id: number, input: Partial<Client>): Promise<Client> {
   const { data, error } = await supabase.from("clients").update(input).eq("id", id).select().single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
 export async function deleteClient(id: number): Promise<void> {
   const { error } = await supabase.from("clients").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -756,19 +761,19 @@ export async function deleteClient(id: number): Promise<void> {
 
 export async function listSalesRecords(companyId: number): Promise<SalesRecord[]> {
   const { data, error } = await supabase.from("sales_records").select("*").eq("company_id", companyId).order("date", { ascending: false });
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
 export async function addSalesRecord(companyId: number, input: Partial<SalesRecord>): Promise<SalesRecord> {
   const { data, error } = await supabase.from("sales_records").insert({ ...input, company_id: companyId }).select().single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
 export async function deleteSalesRecord(id: number): Promise<void> {
   const { error } = await supabase.from("sales_records").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -777,19 +782,19 @@ export async function deleteSalesRecord(id: number): Promise<void> {
 
 export async function listPurchaseRecords(companyId: number): Promise<PurchaseRecord[]> {
   const { data, error } = await supabase.from("purchase_records").select("*").eq("company_id", companyId).order("purchase_date", { ascending: false });
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
 export async function addPurchaseRecord(companyId: number, input: Partial<PurchaseRecord>): Promise<PurchaseRecord> {
   const { data, error } = await supabase.from("purchase_records").insert({ ...input, company_id: companyId }).select().single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
 export async function deletePurchaseRecord(id: number): Promise<void> {
   const { error } = await supabase.from("purchase_records").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -798,25 +803,25 @@ export async function deletePurchaseRecord(id: number): Promise<void> {
 
 export async function listSuppliers(companyId: number): Promise<Supplier[]> {
   const { data, error } = await supabase.from("suppliers").select("*").eq("company_id", companyId).order("name");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
 export async function createSupplier(companyId: number, input: Partial<Supplier>): Promise<Supplier> {
   const { data, error } = await supabase.from("suppliers").insert({ ...input, company_id: companyId }).select().single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
 export async function updateSupplier(id: number, input: Partial<Supplier>): Promise<Supplier> {
   const { data, error } = await supabase.from("suppliers").update(input).eq("id", id).select().single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data;
 }
 
 export async function deleteSupplier(id: number): Promise<void> {
   const { error } = await supabase.from("suppliers").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -847,7 +852,7 @@ export async function getStockPhotoSummary(
     // Postgres devuelve filas en orden físico y la batch + per-vehicle
     // queries pueden divergir mostrando fotos distintas por vehículo.
     .order("id");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   for (const row of data || []) {
     const entry = result.get(row.vehicle_id) ?? { count: 0, thumbUrl: null };
     entry.count += 1;
@@ -882,7 +887,7 @@ export async function getStockDocSummary(
     .from("vehicle_documents")
     .select("vehicle_id, doc_type")
     .in("vehicle_id", vehicleIds);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   for (const row of data || []) {
     if (!row.doc_type) continue;
     const entry = result.get(row.vehicle_id) ?? new Set<string>();
@@ -901,7 +906,7 @@ export async function listVehicleDocuments(vehicleId: number): Promise<VehicleDo
   // DNIs, contratos y datos personales. Usamos signed URLs (validez 1h)
   // en vez de getPublicUrl. NUNCA cambiar este bucket a público.
   const { data, error } = await supabase.from("vehicle_documents").select("*").eq("vehicle_id", vehicleId).order("created_at");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   const docs = data || [];
   if (docs.length === 0) return [];
   const paths = docs.map((d) => d.storage_path).filter(Boolean);
@@ -921,7 +926,7 @@ export async function uploadVehicleDocument(vehicleId: number, file: File, docTy
   const { data, error } = await supabase.from("vehicle_documents")
     .insert({ vehicle_id: vehicleId, file_name: file.name, storage_path: storagePath, doc_type: docType })
     .select().single();
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   // Signed URL para acceso temporal (vehicle-docs es privado)
   const { data: signed } = await supabase.storage.from("vehicle-docs").createSignedUrl(storagePath, 3600);
   return { ...data, url: signed?.signedUrl || "" };
@@ -955,13 +960,13 @@ export async function listVehicleInspections(vehicleId: number): Promise<Vehicle
     .select("*")
     .eq("vehicle_id", vehicleId)
     .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
 export async function deleteVehicleInspection(id: number): Promise<void> {
   const { error } = await supabase.from("vehicle_inspections").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 // ============================================================
@@ -1032,7 +1037,7 @@ export async function listBankAccounts(companyId: number): Promise<BankAccount[]
     .select("*")
     .eq("company_id", companyId)
     .order("id");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
@@ -1057,7 +1062,7 @@ export async function listBankTransactions(
   if (filters.onlyUnreviewed) q = q.eq("reviewed_by_user", false);
   if (filters.search) q = q.ilike("description", `%${filters.search}%`);
   const { data, error } = await q;
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
@@ -1070,7 +1075,7 @@ export async function updateBankTransactionCategory(
     .from("bank_transactions")
     .update({ category, reviewed_by_user: reviewed })
     .eq("id", id);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 export async function linkTransactionToPurchase(
@@ -1081,7 +1086,7 @@ export async function linkTransactionToPurchase(
     .from("bank_transactions")
     .update({ linked_purchase_id: purchaseId, reviewed_by_user: true })
     .eq("id", transactionId);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 export async function linkTransactionToSale(
@@ -1092,7 +1097,7 @@ export async function linkTransactionToSale(
     .from("bank_transactions")
     .update({ linked_sale_id: saleId, reviewed_by_user: true })
     .eq("id", transactionId);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
 }
 
 export async function listBankCategoryRules(companyId: number): Promise<BankCategoryRule[]> {
@@ -1101,7 +1106,7 @@ export async function listBankCategoryRules(companyId: number): Promise<BankCate
     .select("*")
     .eq("company_id", companyId)
     .order("priority");
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
@@ -1132,7 +1137,7 @@ export async function suggestPurchasesForTransaction(
     .lte("purchase_date", toDate)
     .order("purchase_date", { ascending: false })
     .limit(10);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   return data || [];
 }
 
@@ -1146,7 +1151,7 @@ export async function listPurchaseIdsWithBankLink(companyId: number): Promise<Se
     .from("bank_transactions")
     .select("linked_purchase_id, bank_account_id")
     .not("linked_purchase_id", "is", null);
-  if (error) throw new Error(error.message);
+  throwIfError(error);
   // Filtramos cliente-side por bank_accounts de la company (la RLS ya restringe pero
   // por defensa profundidad).
   const ids = new Set<number>();
