@@ -37,28 +37,6 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
   }
 }
 
-function makeVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
-  return {
-    id: 1,
-    company_id: 1,
-    name: 'Seat Ibiza 2019',
-    precio_compra: 8000,
-    precio_venta: 10500,
-    km: 50000,
-    anio: 2019,
-    estado: 'disponible',
-    ad_url: '',
-    ad_status: '',
-    fuel: 'Gasolina',
-    cv: '',
-    transmission: '',
-    color: 'Blanco',
-    notes: '',
-    supplier_id: null,
-    ...overrides,
-  }
-}
-
 const defaultProps = {
   leads: [] as Lead[],
   vehicles: [] as Vehicle[],

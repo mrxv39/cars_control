@@ -24,7 +24,7 @@ import { translateError, VehicleDetail } from '../components/web/VehicleDetailPa
 import * as api from '../lib/api'
 import type { Lead } from '../lib/api'
 
-const mockedApi = api as {
+const mockedApi = api as unknown as {
   listVehiclePhotos: ReturnType<typeof vi.fn>;
   listVehicleDocuments: ReturnType<typeof vi.fn>;
   listVehicleListings: ReturnType<typeof vi.fn>;
