@@ -1356,7 +1356,7 @@ select:focus-visible {
 }
 
 .catalog-card-img {
-  aspect-ratio: 16/10;
+  aspect-ratio: 4/3;
   overflow: hidden;
   background: linear-gradient(135deg, #e8ecf2 0%, #f1f5f9 100%);
   position: relative;
@@ -1375,6 +1375,7 @@ select:focus-visible {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 30%;
   display: block;
   transition: transform 250ms ease;
   will-change: transform;
