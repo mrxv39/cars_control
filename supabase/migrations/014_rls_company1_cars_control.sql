@@ -118,7 +118,7 @@ CREATE POLICY "cc_feedback_update" ON feedback FOR UPDATE
   USING (auth.role() = 'authenticated');
 CREATE POLICY "cc_feedback_delete" ON feedback FOR DELETE
   USING (auth.role() = 'authenticated');
--- TODO: feedback lacks company_id — add column in future migration
+-- DONE: feedback.company_id added in migration 015_feedback_company_id.sql
 
 -- ============================================================
 -- 6. Storage: vehicle-docs bucket MUST be private (RGPD)

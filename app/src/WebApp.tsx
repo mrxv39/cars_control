@@ -536,6 +536,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         leads={leads}
         clients={clients}
         selectedVehicle={selectedVehicle}
+        companyId={companyId}
       />
 
       {toast && (

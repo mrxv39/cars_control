@@ -10,11 +10,12 @@ interface Props {
   leads: FBLead[];
   clients: FBClient[];
   selectedVehicle?: FBVehicle | null;
+  companyId?: number;
 }
 
 const FAB_SEEN_KEY = "cc_fab_seen";
 
-export function FeedbackButton({ userName, currentView, stock, leads, clients, selectedVehicle }: Props) {
+export function FeedbackButton({ userName, currentView, stock, leads, clients, selectedVehicle, companyId }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"sugerencias" | "mensaje">("sugerencias");
   const [message, setMessage] = useState("");
@@ -53,6 +54,7 @@ export function FeedbackButton({ userName, currentView, stock, leads, clients, s
         category: "mensaje",
         message: message.trim(),
         page: currentView,
+        company_id: companyId ?? null,
         created_at: new Date().toISOString(),
       });
       setSent(true);
@@ -75,6 +77,7 @@ export function FeedbackButton({ userName, currentView, stock, leads, clients, s
         category: "sugerencia_" + response,
         message: `[${suggestion.id}] ${suggestion.title}`,
         page: currentView,
+        company_id: companyId ?? null,
         created_at: new Date().toISOString(),
       });
     } catch (err) {
