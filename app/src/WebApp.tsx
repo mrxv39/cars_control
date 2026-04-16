@@ -2109,7 +2109,7 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
         name: form.name, anio: form.anio, km: form.km,
         precio_compra: form.precio_compra, precio_venta: form.precio_venta,
         ad_url: form.ad_url, estado: form.estado, fuel: form.fuel, color: form.color, notes: form.notes,
-        supplier_id: form.supplier_id,
+        supplier_id: form.supplier_id, plate: form.plate || null,
       });
       setSuccess(true); setTimeout(() => setSuccess(false), 4000);
     } catch (err) { setError(translateError(err)); } finally { setSaving(false); }
@@ -2167,10 +2167,11 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
   const marginWarning = form.precio_compra && form.precio_venta && form.precio_venta < form.precio_compra ? "Margen negativo — el precio de venta es menor que el de compra" : null;
 
   return { form, setForm, photos, loadingPhotos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadProgress, uploadingDoc, success, error, setError,
-    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleSetPrimary, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, marginWarning, loadPhotos, dialog };
+    fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleSetPrimary, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, marginWarning, loadPhotos, loadDocs, dialog };
 }
 
-// Shared: Photos gallery
+// Shared: Photos gallery (available for future layouts)
+// @ts-ignore unused — hidden by design brief, kept for future layouts
 function VDPhotos({ photos, fileRef, uploading, uploadProgress, handleUpload, handleDeletePhoto, handleSetPrimary, setSelectedPhoto }: { photos: api.VehiclePhoto[]; fileRef: React.RefObject<HTMLInputElement | null>; uploading: boolean; uploadProgress?: string; handleUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; handleDeletePhoto: (p: api.VehiclePhoto) => void; handleSetPrimary?: (p: api.VehiclePhoto) => void; setSelectedPhoto: (id: number) => void }) {
   return (
     <section className="panel" style={{ padding: "1.5rem" }}>
@@ -2239,43 +2240,136 @@ function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
   );
 }
 
+// ── Documentación del vehículo (ficha técnica, permiso, seguro) ──
+function VDVehicleDocs({ docs, vehicleId, onReload }: { docs: api.VehicleDocument[]; vehicleId: number; onReload: () => void }) {
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [uploadType, setUploadType] = React.useState<string | null>(null);
+
+  const DOC_TYPES = [
+    { key: "ficha_tecnica", label: "Ficha técnica" },
+    { key: "permiso_circulacion", label: "Permiso de circulación" },
+    { key: "seguro", label: "Seguro del vehículo" },
+  ] as const;
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !uploadType) return;
+    setUploading(true);
+    try {
+      await api.uploadVehicleDocument(vehicleId, file, uploadType);
+      onReload();
+    } finally {
+      setUploading(false);
+      setUploadType(null);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function triggerUpload(docType: string) {
+    setUploadType(docType);
+    setTimeout(() => fileRef.current?.click(), 50);
+  }
+
+  return (
+    <section className="panel vd-sidebar-panel">
+      <div className="vd-section-header"><p className="eyebrow">Documentación vehículo</p></div>
+      <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: "none" }} onChange={(e) => void handleUpload(e)} />
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+        {DOC_TYPES.map(({ key, label }) => {
+          const doc = docs.find((d) => d.doc_type === key);
+          return (
+            <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 0.6rem", background: "var(--color-bg-secondary, #f8fafc)", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem" }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: doc ? "#16a34a" : "#cbd5e1", flexShrink: 0 }} />
+                <span style={{ fontWeight: 600 }}>{label}</span>
+              </div>
+              {doc ? (
+                <a href={doc.url} target="_blank" rel="noopener noreferrer" className="button secondary xs">Ver</a>
+              ) : (
+                <button type="button" className="button secondary xs" disabled={uploading} onClick={() => triggerUpload(key)}>
+                  {uploading && uploadType === key ? "..." : "Adjuntar"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ── Info compra (proveedor, factura, movimiento banco) ──
+function VDPurchaseInfo({ suppliers, supplierId, onSupplierChange, facturas, docFileRef, uploadingDoc, handleUploadDoc, handleDeleteDoc, purchaseRecords }: {
+  suppliers: api.Supplier[];
+  supplierId: number | null;
+  onSupplierChange: (id: number | null) => void;
+  facturas: api.VehicleDocument[];
+  docFileRef: React.RefObject<HTMLInputElement | null>;
+  uploadingDoc: boolean;
+  handleUploadDoc: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleDeleteDoc: (d: api.VehicleDocument) => void;
+  purchaseRecords: api.PurchaseRecord[];
+}) {
+  const purchaseRecord = purchaseRecords.find((p) => p.expense_type === "COMPRA_VEHICULO");
+  // Look for linked bank transaction via purchase_record
+  const [bankTx, setBankTx] = React.useState<api.BankTransaction | null>(null);
+  React.useEffect(() => {
+    if (!purchaseRecord) { setBankTx(null); return; }
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from("bank_transactions")
+          .select("*")
+          .eq("linked_purchase_id", purchaseRecord.id)
+          .limit(1);
+        setBankTx((data && data.length > 0) ? data[0] as api.BankTransaction : null);
+      } catch { setBankTx(null); }
+    })();
+  }, [purchaseRecord?.id]);
+
+  return (
+    <section className="panel vd-sidebar-panel">
+      <div className="vd-section-header"><p className="eyebrow">Info compra</p></div>
+      <div className="form-stack">
+        <div>
+          <label className="field-label">Proveedor</label>
+          <select value={supplierId || ""} onChange={(e) => onSupplierChange(e.target.value ? parseInt(e.target.value) : null)}>
+            <option value="">Sin proveedor</option>
+            {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="field-label">Factura de compra</label>
+          <VDFactura facturas={facturas} docFileRef={docFileRef} uploadingDoc={uploadingDoc} handleUploadDoc={handleUploadDoc} handleDeleteDoc={handleDeleteDoc} />
+        </div>
+        <div>
+          <label className="field-label">Movimiento del banco</label>
+          {bankTx ? (
+            <div style={{ padding: "0.5rem 0.6rem", background: "var(--color-bg-secondary, #f8fafc)", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)", fontSize: "0.85rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontWeight: 600 }}>{bankTx.counterparty_name || "Movimiento"}</span>
+                <span style={{ fontWeight: 700, color: bankTx.amount < 0 ? "#dc2626" : "#16a34a" }}>{bankTx.amount.toLocaleString("es-ES")} €</span>
+              </div>
+              <p className="muted" style={{ margin: "0.15rem 0 0", fontSize: "0.78rem" }}>{bankTx.booking_date} · {bankTx.category}</p>
+            </div>
+          ) : (
+            <p className="muted" style={{ fontSize: "0.85rem" }}>No hay movimiento vinculado</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── PROPOSAL A: Sidebar layout (redesigned) ──
 function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId, clients, onBack, onReload }: VDProps) {
   const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
 
-  // ── Quick status toggle ──
-  const [changingEstado, setChangingEstado] = useState(false);
-  async function quickSetEstado(newEstado: string) {
-    setChangingEstado(true);
-    try { await api.updateVehicle(vehicle.id, { estado: newEstado }); h.setForm({ ...h.form, estado: newEstado }); onReload?.(); }
-    finally { setChangingEstado(false); }
-  }
-
-  // ── WhatsApp share + Copy ──
-  const [copied, setCopied] = useState(false);
-  const vehicleSummary = [
-    vehicle.name,
-    vehicle.anio ? `Año: ${vehicle.anio}` : null,
-    vehicle.km != null ? `${vehicle.km.toLocaleString()} km` : null,
-    vehicle.fuel || null,
-    vehicle.color || null,
-    h.form.precio_venta ? `Precio: ${h.form.precio_venta.toLocaleString("es-ES")} €` : null,
-  ].filter(Boolean).join(" · ");
-  function shareWhatsApp() {
-    const text = encodeURIComponent(`🚗 ${vehicleSummary}`);
-    window.open(`https://wa.me/?text=${text}`, "_blank");
-  }
-  async function copyToClipboard() {
-    await navigator.clipboard.writeText(vehicleSummary);
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
-  }
-
-  // ── Days in stock ──
+  // ── Expenses ──
   const vehiclePurchases = purchaseRecords.filter((p) => p.vehicle_id === vehicle.id);
-  const purchaseDate = vehiclePurchases.find((p) => p.expense_type === "COMPRA_VEHICULO")?.purchase_date;
-  const daysInStock = purchaseDate ? Math.floor((Date.now() - new Date(purchaseDate).getTime()) / 86400000) : null;
   const totalExpenses = vehiclePurchases.reduce((s, p) => s + p.purchase_price, 0);
 
   // ── Quick sale ──
@@ -2295,22 +2389,6 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
     } finally { setSavingSale(false); }
   }
 
-  // ── Quick note ──
-  const [quickNote, setQuickNote] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
-  async function handleQuickNote() {
-    if (!quickNote.trim()) return;
-    setSavingNote(true);
-    try {
-      const currentNotes = h.form.notes || "";
-      const timestamp = new Date().toLocaleDateString("es-ES");
-      const updated = currentNotes ? `${currentNotes}\n\n[${timestamp}] ${quickNote.trim()}` : `[${timestamp}] ${quickNote.trim()}`;
-      await api.updateVehicle(vehicle.id, { notes: updated });
-      h.setForm({ ...h.form, notes: updated });
-      setQuickNote("");
-    } finally { setSavingNote(false); }
-  }
-
   const estadoColor = h.form.estado === "vendido" ? "#16a34a" : h.form.estado === "reservado" ? "#f59e0b" : "#3b82f6";
   const estadoLabel = h.form.estado === "vendido" ? "Vendido" : h.form.estado === "reservado" ? "Reservado" : "Disponible";
 
@@ -2318,8 +2396,8 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
     <>
       <ConfirmDialog {...h.dialog.confirmProps} />
 
-      {/* ── Hero con foto principal ── */}
-      <header className="vd-hero">
+      {/* ── Hero compacto: foto + título + estado + acciones ── */}
+      <header className="vd-hero vd-hero--compact">
         <div className="vd-hero-left">
           {h.loadingPhotos ? (
             <div className="vd-hero-photo skeleton-line" style={{ animationDuration: "1.5s" }} />
@@ -2334,96 +2412,19 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
           <h2 className="vd-vehicle-name">{vehicle.name}</h2>
           <div className="vd-meta-row">
             <span className="vd-estado-badge" style={{ background: estadoColor }}>{estadoLabel}</span>
-            {vehicle.anio && <span className="vd-meta-chip">{vehicle.anio}</span>}
-            {vehicle.km != null && <span className="vd-meta-chip">{vehicle.km.toLocaleString()} km</span>}
-            {vehicle.fuel && <span className="vd-meta-chip">{vehicle.fuel}</span>}
-            {vehicle.color && <span className="vd-meta-chip">{vehicle.color}</span>}
-            {daysInStock !== null && <span className="vd-meta-chip" title="Días desde la compra">{daysInStock}d en stock</span>}
           </div>
-
-          {/* Quick status toggle */}
-          <div className="vd-quick-status">
-            {(["disponible", "reservado", "vendido"] as const).map((est) => (
-              <button key={est} type="button" disabled={changingEstado}
-                className={`vd-status-btn ${h.form.estado === est ? "active" : ""}`}
-                style={{ "--status-color": est === "vendido" ? "#16a34a" : est === "reservado" ? "#f59e0b" : "#3b82f6" } as React.CSSProperties}
-                onClick={() => { if (h.form.estado !== est) void quickSetEstado(est); }}
-              >
-                {est === "disponible" ? "Disponible" : est === "reservado" ? "Reservado" : "Vendido"}
-              </button>
-            ))}
-          </div>
-
-          {/* Mini stats */}
-          <div className="vd-stats-row">
-            {h.form.precio_compra != null && (
-              <div className="vd-stat">
-                <span className="vd-stat-label">Compra</span>
-                <span className="vd-stat-value">{h.form.precio_compra.toLocaleString("es-ES")} €</span>
-              </div>
-            )}
-            {h.form.precio_venta != null && (
-              <div className="vd-stat">
-                <span className="vd-stat-label">Venta</span>
-                <span className="vd-stat-value">{h.form.precio_venta.toLocaleString("es-ES")} €</span>
-              </div>
-            )}
-            {h.margin !== null && (
-              <div className="vd-stat">
-                <span className="vd-stat-label">Margen</span>
-                <span className="vd-stat-value" style={{ color: h.margin >= 0 ? "#16a34a" : "#dc2626" }}>
-                  {h.margin >= 0 ? "+" : ""}{h.margin.toLocaleString("es-ES")} €
-                </span>
-              </div>
-            )}
-            {totalExpenses > 0 && (
-              <div className="vd-stat">
-                <span className="vd-stat-label">Gastos</span>
-                <span className="vd-stat-value">{totalExpenses.toLocaleString("es-ES")} €</span>
-              </div>
-            )}
-            {vehicleLeads.length > 0 && (
-              <div className="vd-stat">
-                <span className="vd-stat-label">Leads</span>
-                <span className="vd-stat-value">{vehicleLeads.length}</span>
-              </div>
-            )}
-          </div>
-
           <div className="vd-hero-actions">
-            <button type="button" className="button secondary" onClick={onBack}>← Volver</button>
-            <button type="button" className="button secondary" onClick={shareWhatsApp} title="Compartir por WhatsApp">WhatsApp</button>
-            <button type="button" className="button secondary" onClick={() => void copyToClipboard()} title="Copiar datos al portapapeles">{copied ? "✓ Copiado" : "Copiar"}</button>
-            {h.form.estado !== "vendido" && <button type="button" className="button primary" onClick={() => setShowQuickSale(true)}>Registrar venta</button>}
+            <button type="button" className="button secondary sm" onClick={onBack}>← Volver</button>
+            {h.form.estado !== "vendido" && <button type="button" className="button primary sm" onClick={() => setShowQuickSale(true)}>Registrar venta</button>}
             <span style={{ flex: 1 }} />
-            <button type="button" className="button danger" onClick={handleDeleteVehicle}>Eliminar</button>
+            <button type="button" className="button danger sm" onClick={handleDeleteVehicle}>Eliminar</button>
           </div>
         </div>
       </header>
 
-      {/* ── Thumbnails strip ── */}
-      {h.photos.length > 1 && (
-        <div className="vd-thumbs-strip">
-          {h.photos.map((p) => (
-            <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
-              className={`vd-thumb ${(h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "active" : ""} ${p.is_primary ? "primary" : ""}`}
-              alt="" />
-          ))}
-        </div>
-      )}
-
-      {/* ── Section nav (sticky) ── */}
-      <nav className="vd-section-nav">
-        <a href="#vd-datos" className="vd-section-nav-link">Datos</a>
-        <a href="#vd-fotos" className="vd-section-nav-link">Fotos ({h.photos.length})</a>
-        {vehicleLeads.length > 0 && <a href="#vd-leads" className="vd-section-nav-link">Leads ({vehicleLeads.length})</a>}
-        {vehiclePurchases.length > 0 && <a href="#vd-gastos" className="vd-section-nav-link">Gastos</a>}
-        <a href="#vd-specs" className="vd-section-nav-link">Specs</a>
-      </nav>
-
-      {/* ── Contenido principal: Formulario + Sidebar ── */}
-      <div className="vd-content-grid" id="vd-datos">
-        {/* Columna izquierda: Formulario */}
+      {/* ── Contenido principal: Formulario (estrecho) + Sidebar (ancho) ── */}
+      <div className="vd-content-grid vd-content-grid--narrow-form" id="vd-datos">
+        {/* Columna izquierda: Formulario + Documentos */}
         <section className="panel vd-form-panel">
           <div className="vd-section-header">
             <p className="eyebrow">Datos del vehículo</p>
@@ -2433,10 +2434,13 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
               <label className="field-label required">Marca y modelo</label>
               <input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} placeholder="Ej: SEAT Ibiza 1.0 MPI Style" className={!h.form.name.trim() ? "input-error" : ""} />
             </div>
-            <div className="form-grid-3">
+            <div className="form-grid-2">
               <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} placeholder="2020" min="1990" max="2030" /></div>
               <div><label className="field-label">Kilómetros</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} placeholder="125000" min="0" /></div>
+            </div>
+            <div className="form-grid-2">
               <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
+              <div><label className="field-label">Matrícula</label><input value={h.form.plate || ""} onChange={(e) => h.setForm({ ...h.form, plate: e.target.value })} placeholder="1234 ABC" style={{ textTransform: "uppercase" }} /></div>
             </div>
             <div className="form-grid-2">
               <div><label className="field-label">Combustible</label><select value={h.form.fuel || ""} onChange={(e) => h.setForm({ ...h.form, fuel: e.target.value })}><option value="">—</option><option value="Gasolina">Gasolina</option><option value="Diésel">Diésel</option><option value="Híbrido">Híbrido</option><option value="Eléctrico">Eléctrico</option><option value="GLP">GLP</option></select></div>
@@ -2448,15 +2452,29 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
               <div><label className="field-label">Precio venta</label><input type="number" step="100" min="0" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} placeholder="10500" /></div>
             </div>
             {h.marginWarning && <p className="vd-margin-warning">⚠ {h.marginWarning}</p>}
-            <div><label className="field-label">Proveedor</label><select value={h.form.supplier_id || ""} onChange={(e) => h.setForm({ ...h.form, supplier_id: e.target.value ? parseInt(e.target.value) : null })}><option value="">Sin proveedor</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-            <div><label className="field-label">Notas</label><textarea value={h.form.notes || ""} onChange={(e) => h.setForm({ ...h.form, notes: e.target.value })} rows={3} placeholder="Observaciones, reparaciones, historial..." /></div>
             {h.error && <p className="error-banner" role="alert">{h.error} <button type="button" onClick={() => h.setError(null)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontWeight: 700, marginLeft: "0.5rem" }}>✕</button></p>}
             {h.success && <p className="success-banner" role="status">✓ Guardado correctamente</p>}
             <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar cambios"}</button>
           </form>
         </section>
 
-        {/* Columna derecha: Info panels */}
+        {/* Columna central: Documentación vehículo + Info compra */}
+        <div className="vd-middle-col">
+          <VDVehicleDocs docs={h.docs} vehicleId={vehicle.id} onReload={() => { void h.loadDocs(); }} />
+          <VDPurchaseInfo
+            suppliers={suppliers}
+            supplierId={h.form.supplier_id}
+            onSupplierChange={(id) => { h.setForm({ ...h.form, supplier_id: id }); void api.updateVehicle(vehicle.id, { supplier_id: id }); }}
+            facturas={h.facturas}
+            docFileRef={h.docFileRef}
+            uploadingDoc={h.uploadingDoc}
+            handleUploadDoc={h.handleUploadDoc}
+            handleDeleteDoc={h.handleDeleteDoc}
+            purchaseRecords={vehiclePurchases}
+          />
+        </div>
+
+        {/* Columna derecha: Sidebar */}
         <div className="vd-sidebar">
           <section className="panel vd-sidebar-panel" id="vd-leads">
             <div className="vd-section-header">
@@ -2464,27 +2482,32 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
             </div>
             <VDLeads vehicleLeads={vehicleLeads} />
           </section>
-          <section className="panel vd-sidebar-panel">
-            <div className="vd-section-header">
-              <p className="eyebrow">Documentos</p>
-            </div>
-            <VDFactura facturas={h.facturas} docFileRef={h.docFileRef} uploadingDoc={h.uploadingDoc} handleUploadDoc={h.handleUploadDoc} handleDeleteDoc={h.handleDeleteDoc} />
-          </section>
         </div>
       </div>
 
-      {/* ── Nota rápida ── */}
-      <section className="panel" style={{ padding: "1.25rem" }} id="vd-nota">
-        <div className="vd-section-header"><p className="eyebrow">Nota rápida</p></div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <input value={quickNote} onChange={(e) => setQuickNote(e.target.value)} placeholder="Añade una nota..." style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") void handleQuickNote(); }} />
-          <button type="button" className="button primary" disabled={savingNote || !quickNote.trim()} onClick={() => void handleQuickNote()}>{savingNote ? "..." : "Añadir"}</button>
-        </div>
-      </section>
+      {/* ── Thumbnails strip (debajo del formulario) ── */}
+      {h.photos.length > 0 && (
+        <section className="panel" style={{ padding: "1rem 1.25rem", marginTop: "1rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <p className="eyebrow" style={{ margin: 0 }}>Fotos ({h.photos.length})</p>
+            <div>
+              <input ref={h.fileRef} type="file" accept="image/*" multiple onChange={(e) => void h.handleUpload(e)} style={{ display: "none" }} />
+              <button type="button" className="button primary sm" onClick={() => h.fileRef.current?.click()} disabled={h.uploading}>{h.uploading ? `Subiendo ${h.uploadProgress}...` : "Subir fotos"}</button>
+            </div>
+          </div>
+          <div className="vd-thumbs-strip">
+            {h.photos.map((p) => (
+              <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
+                className={`vd-thumb ${(h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "active" : ""} ${p.is_primary ? "primary" : ""}`}
+                alt="" />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Gastos del vehículo ── */}
       {vehiclePurchases.length > 0 && (
-        <section className="panel" style={{ padding: "1.25rem" }} id="vd-gastos">
+        <section className="panel" style={{ padding: "1.25rem", marginTop: "1rem" }} id="vd-gastos">
           <div className="vd-section-header"><p className="eyebrow">Gastos asociados ({vehiclePurchases.length})</p></div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
             {vehiclePurchases.map((p) => (
@@ -2507,16 +2530,9 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
         </section>
       )}
 
-      {/* ── Fotos ── */}
-      <div id="vd-fotos">
-        <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} uploadProgress={h.uploadProgress} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
-      </div>
-      <div id="vd-specs">
-        <VehicleSpecs vehicle={vehicle} />
-      </div>
+      {/* ── Anuncios externos + Documentos completos ── */}
       <VehicleListingsLink vehicle={vehicle} />
       <VehicleDocsList vehicle={vehicle} />
-      <VehicleMergePanel vehicle={vehicle} onMerged={onBack} />
 
       {/* ── Quick sale modal ── */}
       {showQuickSale && (
@@ -2633,6 +2649,7 @@ function VehicleDocsList({ vehicle }: { vehicle: api.Vehicle }) {
 // Caso de uso (validado Ricard 2026-04-08): mismo coche físico aparece
 // importado de coches.net y del zip de stock. Ricard los identifica
 // visualmente y los fusiona desde aquí.
+// @ts-ignore unused — hidden by design brief, kept for future use
 function VehicleMergePanel({ vehicle, onMerged }: { vehicle: api.Vehicle; onMerged: () => void }) {
   const dialog = useConfirmDialog();
   const [open, setOpen] = useState(false);
@@ -2734,6 +2751,7 @@ function VehicleMergePanel({ vehicle, onMerged }: { vehicle: api.Vehicle; onMerg
 
 // ── Especificaciones técnicas e info importada ──
 // Validado con Ricard 2026-04-08 (después de la primera importación de coches.net)
+// @ts-ignore unused — hidden by design brief, kept for future use
 function VehicleSpecs({ vehicle }: { vehicle: api.Vehicle }) {
   const specs: Array<[string, string | null | undefined]> = [
     ["Año", vehicle.anio ? String(vehicle.anio) : null],
