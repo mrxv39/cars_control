@@ -113,7 +113,7 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
 - Descargar fotos coches.net a Storage propio
 - ~~Lazy-load IntersectionObserver en listado Stock~~ (ya tiene loading=lazy en imgs; IntersectionObserver card-level innecesario con <50 coches)
-- Banco: ventana match ±21 días, reconciliador MOV_INTERNO, Fase 2/3 (ver `supabase/CLAUDE.md`)
+- Banco: ~~ventana match ±21 días~~ (completado), reconciliador MOV_INTERNO, Fase 2/3 (ver `supabase/CLAUDE.md`)
 - Sync-leads: migrar a pg_cron, bloqueado por OAuth2 Gmail de Ricard (ver `supabase/CLAUDE.md`)
 - ~~Tests Python: añadir pytest suite para scripts/~~ (completado 2026-04-16: 160 tests en 6 archivos)
 - ~~Simplificar api.ts (1204L)~~ (completado 2026-04-17: 4 módulos, api.ts ahora 115L fachada)
@@ -131,4 +131,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - 2026-04-15c: security fixes, Playwright E2E, filtros catálogo, iconos sidebar, skeleton, a11y modales
 - 2026-04-16: mantenimiento — git cleanup, dep-update (0 vulns), useEscapeKey hook, audit CLAUDE.md
 - 2026-04-16b: mantenimiento — WebApp 2269→1292L, 91 tests JS + 95 tests Python nuevos, 0 errores TS
-- 2026-04-17: mantenimiento — api.ts split (1204→115L), WebApp (1292→886L), VehicleDetailPanel (-191L), 59 tests nuevos (425 total), RLS audit OK
+- 2026-04-17: mantenimiento completo — api.ts split (1204→115L), WebApp (1292→886L), VehicleDetailPanel (-191L), feedback company_id migration, 80 tests nuevos (446 total)
