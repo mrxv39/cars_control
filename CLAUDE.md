@@ -84,7 +84,7 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 
 - **NUNCA** N+1: usar `.in()` batch en vez de `Promise.all(ids.map(...))`
 - Cards de listado reciben todo por **props** del padre (no fetch propio)
-- Thumbnails: `getPublicUrl(path, { transform: { width: 400, quality: 70 } })`
+- Thumbnails: URL directa sin transform (Supabase Image Transforms no disponible)
 - Fotos coches.net externas: no se pueden transformar (`thumbUrl` es null)
 
 ## Convenciones de fotos
@@ -98,7 +98,7 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 |---------|--------|-------|
 | `app/src/WebApp.tsx` | ~1292 | Shell web — login, sidebar, routing, catalog, inspección |
 | `app/src/lib/api.ts` | ~1200 | Capa Supabase — queries y mutations |
-| `app/src/components/web/VehicleDetailPanel.tsx` | ~755 | Ficha vehículo: detalle, fotos, docs, leads, merge, specs |
+| `app/src/components/web/VehicleDetailPanel.tsx` | ~564 | Ficha vehículo: detalle, fotos, docs, leads, compra |
 | `app/src/components/web/StockList.tsx` | ~594 | Listado stock admin con filtros e import coches.net |
 | `app/src/components/BankList.tsx` | ~530 | Listado banco con categorización |
 | `app/src/components/web/RecordLists.tsx` | ~428 | Clientes, ventas, compras, proveedores |
@@ -106,7 +106,7 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 
 ## Pendiente
 
-- Re-subir fotos a Storage nuevo (buckets no existen tras migración Supabase)
+- ~~Re-subir fotos a Storage nuevo~~ (completado 2026-04-16: 795 fotos subidas desde Google Drive)
 - Template factura REBU/IVA (datos fiscales Ricard en tabla `companies`)
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
 - Descargar fotos coches.net a Storage propio
@@ -114,6 +114,8 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - Banco: ventana match ±21 días, reconciliador MOV_INTERNO, Fase 2/3 (ver `supabase/CLAUDE.md`)
 - Sync-leads: migrar a pg_cron, bloqueado por OAuth2 Gmail de Ricard (ver `supabase/CLAUDE.md`)
 - ~~Tests Python: añadir pytest suite para scripts/~~ (completado 2026-04-16: 160 tests en 6 archivos)
+- Simplificar api.ts (1204L) — extraer módulos por dominio (vehicles, leads, bank)
+- Simplificar WebApp.tsx (1292L) — extraer secciones a componentes
 
 ## Sesiones de validación
 
@@ -127,3 +129,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - 2026-04-15c: security fixes, Playwright E2E, filtros catálogo, iconos sidebar, skeleton, a11y modales
 - 2026-04-16: mantenimiento — git cleanup, dep-update (0 vulns), useEscapeKey hook, audit CLAUDE.md
 - 2026-04-16b: mantenimiento — WebApp 2269→1292L, 91 tests JS + 95 tests Python nuevos, 0 errores TS
+- 2026-04-17: mantenimiento — dead code VehicleDetailPanel 755→564L, 42 tests nuevos (408 total), RLS audit OK, sync main
