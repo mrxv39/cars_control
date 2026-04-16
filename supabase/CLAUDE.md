@@ -24,8 +24,7 @@ Cuando Ricard recategoriza a mano, se ofrecerá "crear regla" en Fase 2.
 
 ## Banco — pendientes
 
-### 1. Ampliar ventana de match ±15 → ±21 días
-En `api.ts:suggestPurchasesForTransaction`, cambiar las dos constantes `* 86400000`.
+### ~~1. Ampliar ventana de match ±15 → ±21 días~~ (completado — ya usa 21 * 86400000)
 
 ### 2. Reconciliación "puente 2024-2025"
 Oct 2024 – Ene 2025: Ricard usó cuenta personal 2130 como puente para TRF.INTERNACIONAL a Auto 1
