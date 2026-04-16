@@ -100,9 +100,9 @@ function extractInitialProps(html: string): Record<string, unknown> | null {
 export function parseListing(html: string): CochesNetListingItem[] {
   const props = extractInitialProps(html);
   if (!props) return [];
-  const vehiclesList = (props as any).vehiclesList;
+  const vehiclesList = props.vehiclesList as { items?: Record<string, any>[] } | undefined;
   if (!vehiclesList?.items || !Array.isArray(vehiclesList.items)) return [];
-  return vehiclesList.items.map((it: any): CochesNetListingItem => {
+  return vehiclesList.items.map((it): CochesNetListingItem => {
     const url = typeof it.url === "string"
       ? (it.url.startsWith("http") ? it.url : `https://www.coches.net${it.url}`)
       : "";
@@ -153,9 +153,9 @@ function extractCo2(raw: unknown): string | null {
   if (raw == null) return null;
   if (typeof raw === "string" || typeof raw === "number") return String(raw);
   if (typeof raw === "object") {
-    const o = raw as any;
+    const o = raw as Record<string, unknown>;
     if (o.value != null) {
-      const unit = o.unitText || o.unitCode || "";
+      const unit = (o.unitText as string) || (o.unitCode as string) || "";
       return `${o.value} ${unit}`.trim();
     }
   }
@@ -226,7 +226,7 @@ export function parseDetail(html: string, fallbackUrl = ""): CochesNetVehicleDet
   const km = car.mileageFromOdometer?.value != null ? Number(car.mileageFromOdometer.value) : null;
   const year = car.vehicleModelDate ? Number(car.vehicleModelDate) : null;
 
-  const offers = car.offers as any;
+  const offers = car.offers;
   let price: number | null = null;
   let warranty: string | null = null;
   if (offers) {
@@ -244,7 +244,7 @@ export function parseDetail(html: string, fallbackUrl = ""): CochesNetVehicleDet
     }
   }
 
-  const engine = car.vehicleEngine as any;
+  const engine = car.vehicleEngine;
   const hpProp = engine?.power?.value ?? engine?.enginePower?.value ?? null;
   const hp = hpProp != null ? Number(hpProp) : null;
   const displacement = engine?.engineDisplacement?.value != null
@@ -263,7 +263,7 @@ export function parseDetail(html: string, fallbackUrl = ""): CochesNetVehicleDet
     }
   }
 
-  const images = car.image as any;
+  const images = car.image;
   const photoUrls: string[] = [];
   if (Array.isArray(images)) {
     for (const img of images) {
