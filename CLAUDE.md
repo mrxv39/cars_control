@@ -42,6 +42,8 @@ supabase/functions/   — Edge functions (sync-leads). Detalle en supabase/CLAUD
 - Estados: DISPONIBLE → LISTO PARA VENTA → RESERVADO → VENDIDO
 
 ### Leads
+- **Siempre vinculados a un vehículo** — todos llegan desde consultas por un anuncio concreto en coches.net
+- Matching: primero por ID numérico del anuncio (→ `vehicle_listings`), fallback fuzzy por nombre
 - Fuentes: chat coches.net (sync automático), llamada, WhatsApp, walk-in
 - Estados: NUEVO → CONTACTADO → EN NEGOCIACIÓN → COMPRA / NO COMPRA
 - Recordatorios automáticos por inactividad, desactivables al pasar a "no compra"
