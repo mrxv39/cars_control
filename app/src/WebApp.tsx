@@ -114,9 +114,8 @@ function WebApp() {
       try {
         const result = await platformApi.linkOAuthSession();
         if (result) {
-          const loginResult: api.LoginResult = { user: result.user as any, company: result.company as any };
-          localStorage.setItem("cc_session", JSON.stringify(loginResult));
-          setSession(loginResult);
+          localStorage.setItem("cc_session", JSON.stringify(result));
+          setSession(result);
           // Si es super_admin, ir al panel de plataforma directamente
           setPage(isSuperAdmin(result.user.role) ? "platform" : "admin");
         } else {
@@ -3701,7 +3700,7 @@ function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]; compa
               <option value="">-- Seleccionar vehículo --</option>
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
-                  {v.name} {v.anio ? `(${v.anio})` : ""} {(v as any).matricula ? `- ${(v as any).matricula}` : ""}
+                  {v.name} {v.anio ? `(${v.anio})` : ""} {v.plate ? `- ${v.plate}` : ""}
                 </option>
               ))}
             </select>
