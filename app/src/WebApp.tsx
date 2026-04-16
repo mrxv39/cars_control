@@ -240,8 +240,8 @@ function WebApp() {
 
             <form onSubmit={(e) => void handleLogin(e)}>
               <div style={{ marginBottom: "1rem" }}>
-                <label className="field-label required" htmlFor="login-user">Usuario</label>
-                <input id="login-user" type="text" className={loginFieldErrors.user ? "input-error" : ""} value={loginUsername} onChange={(e) => { setLoginUsername(e.target.value); setLoginFieldErrors((f) => ({ ...f, user: undefined })); }} placeholder="Usuario" autoFocus />
+                <label className="field-label required" htmlFor="login-user">Email o usuario</label>
+                <input id="login-user" type="text" className={loginFieldErrors.user ? "input-error" : ""} value={loginUsername} onChange={(e) => { setLoginUsername(e.target.value); setLoginFieldErrors((f) => ({ ...f, user: undefined })); }} placeholder="tu@email.com o nombre de usuario" autoFocus />
                 {loginFieldErrors.user && <p className="input-error-message">{loginFieldErrors.user}</p>}
               </div>
               <div style={{ marginBottom: "1rem" }}>
@@ -331,7 +331,8 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
   );
 
   const filtered = useMemo(() => {
-    let result = vehicles;
+    // Excluir coches sin precio o vendidos del catálogo público
+    let result = vehicles.filter((v) => v.precio_venta && v.precio_venta > 0 && v.estado !== "vendido");
 
     // Búsqueda de texto libre
     const q = search.toLowerCase().trim();
@@ -514,11 +515,14 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
     return () => document.removeEventListener("keydown", handler);
   }, [lightboxOpen]);
 
-  const mainPhoto = selectedPhoto != null ? photos.find((p) => p.id === selectedPhoto)?.url : photos[0]?.url;
+  const mainPhotoIdx = selectedPhoto != null ? photos.findIndex((p) => p.id === selectedPhoto) : 0;
+  const mainPhoto = photos[mainPhotoIdx >= 0 ? mainPhotoIdx : 0]?.url;
+  function prevPhoto() { if (mainPhotoIdx > 0) setSelectedPhoto(photos[mainPhotoIdx - 1].id); }
+  function nextPhoto() { if (mainPhotoIdx < photos.length - 1) setSelectedPhoto(photos[mainPhotoIdx + 1].id); }
 
   return (
     <main className="catalog-main">
-      <button type="button" className="catalog-back" onClick={onBack}>Volver al listado</button>
+      <button type="button" className="catalog-back" onClick={onBack}>← Volver al listado</button>
 
       {/* Lightbox */}
       {lightboxOpen && mainPhoto && (
@@ -532,9 +536,17 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
 
       <div className="catalog-detail">
         <div className="catalog-detail-gallery">
-          {mainPhoto && (
-            <div className="catalog-detail-main-img" onClick={() => setLightboxOpen(true)} style={{ cursor: "zoom-in" }}>
-              <img src={mainPhoto} alt={vehicle.name} loading="lazy" />
+          {mainPhoto ? (
+            <div className="catalog-detail-main-img" style={{ position: "relative" }}>
+              <img src={mainPhoto} alt={vehicle.name} loading="lazy" onClick={() => setLightboxOpen(true)} style={{ cursor: "zoom-in" }} />
+              {photos.length > 1 && mainPhotoIdx > 0 && <button type="button" className="gallery-arrow gallery-arrow-left" onClick={prevPhoto} aria-label="Foto anterior">‹</button>}
+              {photos.length > 1 && mainPhotoIdx < photos.length - 1 && <button type="button" className="gallery-arrow gallery-arrow-right" onClick={nextPhoto} aria-label="Foto siguiente">›</button>}
+              {photos.length > 1 && <span className="gallery-counter">{mainPhotoIdx + 1} / {photos.length}</span>}
+            </div>
+          ) : (
+            <div className="catalog-detail-main-img catalog-detail-noimg">
+              <span style={{ fontSize: "3rem" }}>🚗</span>
+              <span style={{ color: "var(--color-text-muted)", fontSize: "0.9rem" }}>Fotos no disponibles</span>
             </div>
           )}
           {photos.length > 1 && (
@@ -615,11 +627,11 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
       <div className="form-grid-2">
         <div>
           <label className="field-label">Nombre</label>
-          <input name="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" required />
+          <input name="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" required maxLength={100} />
         </div>
         <div>
           <label className="field-label">Teléfono</label>
-          <input name="Telefono" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="600 123 456" required />
+          <input name="Telefono" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="600 123 456" required pattern="[0-9\s\+]{9,15}" title="Introduce un teléfono válido (9-15 dígitos)" />
         </div>
       </div>
       <button type="submit" className="button primary" style={{ width: "100%", marginTop: "0.75rem" }}>
