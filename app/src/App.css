@@ -1488,8 +1488,13 @@ select:focus-visible {
 
 .catalog-detail {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 2rem;
+  max-width: 1100px;
+}
+
+.catalog-detail-gallery {
+  min-width: 0;
 }
 
 .catalog-detail-main-img {
@@ -1500,6 +1505,8 @@ select:focus-visible {
 
 .catalog-detail-main-img img {
   width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
   display: block;
 }
 
@@ -1508,6 +1515,23 @@ select:focus-visible {
   gap: 0.5rem;
   margin-top: 0.75rem;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.catalog-detail-thumbs > img {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  opacity: 0.7;
+  transition: opacity 150ms ease, border-color 150ms ease;
+}
+.catalog-detail-thumbs > img:hover { opacity: 1; }
+.catalog-detail-thumbs > img.active {
+  border-color: var(--color-primary);
+  opacity: 1;
 }
 
 .catalog-detail-thumb-btn {
