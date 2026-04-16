@@ -472,31 +472,52 @@ serve(async (req) => {
         }
       }
 
-      // Try to match vehicle in stock
+      // Match vehicle by coches.net ad URL, then by name
       let vehicle_id: number | null = null;
-      if (lead.vehicle_interest) {
+
+      // Strategy 1: Extract coches.net ad ID from email body/subject
+      const adIdMatch = (body + " " + subject).match(/coches\.net\/[^\s]*?-?(\d{7,9})/i);
+      if (adIdMatch) {
+        const adId = adIdMatch[1];
+        const { data: listings } = await sb
+          .from("vehicle_listings")
+          .select("vehicle_id")
+          .eq("external_source", "coches_net")
+          .ilike("external_url", `%${adId}%`);
+        if (listings && listings.length > 0) {
+          vehicle_id = listings[0].vehicle_id;
+          logs.push(`  MATCHED vehicle by ad ID ${adId} → vehicle_id=${vehicle_id}`);
+        }
+      }
+
+      // Strategy 2: Fuzzy name match (all estados)
+      if (!vehicle_id && lead.vehicle_interest) {
         const { data: vehicles } = await sb
           .from("vehicles")
           .select("id, name")
-          .eq("company_id", COMPANY_ID)
-          .eq("estado", "disponible");
+          .eq("company_id", COMPANY_ID);
 
         if (vehicles) {
-          const words = lead.vehicle_interest.split(/\s+/);
-          const firstTwoWords = words.slice(0, 2);
+          const words = lead.vehicle_interest.toLowerCase().split(/\s+/).filter((w: string) => w.length > 1);
+          let bestMatch: { id: number; name: string } | null = null;
+          let bestScore = 0;
           for (const v of vehicles) {
-            const vNameLower = v.name.toLowerCase();
-            if (
-              firstTwoWords.every((w: string) =>
-                vNameLower.includes(w.toLowerCase())
-              )
-            ) {
-              vehicle_id = v.id;
-              logs.push(`  MATCHED vehicle: ${v.name} (id=${vehicle_id})`);
-              break;
+            const vLower = v.name.toLowerCase();
+            const score = words.filter((w: string) => vLower.includes(w)).length;
+            if (score > bestScore && score >= Math.min(2, words.length)) {
+              bestScore = score;
+              bestMatch = v;
             }
           }
+          if (bestMatch) {
+            vehicle_id = bestMatch.id;
+            logs.push(`  MATCHED vehicle by name: ${bestMatch.name} (id=${vehicle_id}, score=${bestScore}/${words.length})`);
+          }
         }
+      }
+
+      if (!vehicle_id) {
+        logs.push("  NO vehicle match found");
       }
 
       // Insert lead

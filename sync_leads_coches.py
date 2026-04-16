@@ -288,6 +288,63 @@ def parse_coches_net_lead(subject, body):
     return lead
 
 
+def extract_coches_net_id(text):
+    """Extract the numeric coches.net ad ID from a URL in the text.
+
+    URLs look like: coches.net/...-70323451-covo.aspx
+    """
+    m = re.search(r'coches\.net/[^\s]*?-(\d{7,9})-covo', text, re.I)
+    if m:
+        return m.group(1)
+    # Fallback: just the numeric ID in a coches.net URL
+    m = re.search(r'coches\.net/[^\s]*?(\d{7,9})', text, re.I)
+    return m.group(1) if m else None
+
+
+def match_vehicle(sb, body, subject, vehicle_interest):
+    """Match a lead to a vehicle. Tries in order:
+    1. coches.net ad ID from email URL → vehicle_listings.external_url
+    2. Fuzzy name match against all vehicles (any estado)
+    """
+    # Strategy 1: Match by coches.net ad ID
+    ad_id = extract_coches_net_id(body) or extract_coches_net_id(subject)
+    if ad_id:
+        result = sb.table('vehicle_listings') \
+            .select('vehicle_id') \
+            .eq('external_source', 'coches_net') \
+            .ilike('external_url', f'%{ad_id}%') \
+            .execute()
+        if result.data:
+            vid = result.data[0]['vehicle_id']
+            print(f"  MATCHED vehicle by ad ID {ad_id} → vehicle_id={vid}")
+            return vid
+
+    # Strategy 2: Fuzzy name match (all estados, not just disponible)
+    if vehicle_interest:
+        vehicles = sb.table('vehicles') \
+            .select('id, name') \
+            .eq('company_id', COMPANY_ID) \
+            .execute()
+        if vehicles.data:
+            interest_words = vehicle_interest.lower().split()
+            # Filter out short/common words that cause false positives
+            interest_words = [w for w in interest_words if len(w) > 1]
+            best_match = None
+            best_score = 0
+            for v in vehicles.data:
+                v_lower = v['name'].lower()
+                score = sum(1 for w in interest_words if w in v_lower)
+                if score > best_score and score >= min(2, len(interest_words)):
+                    best_score = score
+                    best_match = v
+            if best_match:
+                print(f"  MATCHED vehicle by name: {best_match['name']} (id={best_match['id']}, score={best_score}/{len(interest_words)})")
+                return best_match['id']
+
+    print("  NO vehicle match found")
+    return None
+
+
 def main():
     if not GMAIL_APP_PASSWORD:
         print("ERROR: Set GMAIL_APP_PASSWORD environment variable")
@@ -363,24 +420,8 @@ def main():
                 print(f"  SKIP: lead with phone {lead['phone']} already exists")
                 continue
 
-        # Try to match vehicle in stock
-        vehicle_id = None
-        if lead['vehicle_interest']:
-            query = sb.table('vehicles').select('id, name').eq('company_id', COMPANY_ID).eq('estado', 'disponible')
-            vehicles = query.execute()
-            if vehicles.data:
-                interest_words = lead['vehicle_interest'].lower().split()
-                best_match = None
-                best_score = 0
-                for v in vehicles.data:
-                    v_lower = v['name'].lower()
-                    score = sum(1 for w in interest_words if w in v_lower)
-                    if score > best_score and score >= min(2, len(interest_words)):
-                        best_score = score
-                        best_match = v
-                if best_match:
-                    vehicle_id = best_match['id']
-                    print(f"  MATCHED vehicle: {best_match['name']} (id={vehicle_id})")
+        # Match vehicle by coches.net ad URL, then by name
+        vehicle_id = match_vehicle(sb, body, subject, lead['vehicle_interest'])
 
         # Create lead in Supabase
         lead_data = {
