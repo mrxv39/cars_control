@@ -290,9 +290,11 @@ function CatalogHeader({ onLogin, onCatalog }: { onLogin: () => void; onCatalog:
         </button>
         <nav className="catalog-nav">
           <a href="tel:+34646131565" className="catalog-nav-link">646 13 15 65</a>
-          <button type="button" className="catalog-nav-btn" onClick={onLogin}>
-            Acceso usuarios
-          </button>
+          {APP_MODE !== "store" && (
+            <button type="button" className="catalog-nav-btn" onClick={onLogin}>
+              Acceso usuarios
+            </button>
+          )}
         </nav>
       </div>
     </header>
@@ -617,6 +619,7 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
 function ContactForm({ vehicleName }: { vehicleName: string }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
 
   if (sent) {
@@ -648,6 +651,10 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
           <label className="field-label" htmlFor="contact-phone">Teléfono</label>
           <input id="contact-phone" name="Telefono" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="600 123 456" required pattern="[0-9\s\+]{9,15}" title="Introduce un teléfono válido (9-15 dígitos)" />
         </div>
+      </div>
+      <div style={{ marginTop: "0.5rem" }}>
+        <label className="field-label" htmlFor="contact-message">Mensaje (opcional)</label>
+        <textarea id="contact-message" name="Mensaje" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Ej: ¿Está disponible? ¿Se puede financiar?" rows={3} maxLength={500} />
       </div>
       <button type="submit" className="button primary" style={{ width: "100%", marginTop: "0.75rem" }}>
         Enviar consulta
@@ -796,15 +803,15 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseReco
       </header>
 
       <div className="sales-stats-grid">
-        <section className="panel sales-stat-card">
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0}>
           <p className="sales-stat-label">Stock disponible</p>
           <p className="sales-stat-value sales-stat-primary">{stockDisponible}</p>
         </section>
-        <section className="panel sales-stat-card">
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0}>
           <p className="sales-stat-label">Reservados</p>
           <p className="sales-stat-value">{stockReservado}</p>
         </section>
-        <section className="panel sales-stat-card">
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0}>
           <p className="sales-stat-label">Vendidos</p>
           <p className="sales-stat-value sales-stat-success">{stockVendido}</p>
         </section>
@@ -815,26 +822,26 @@ function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseReco
       </div>
 
       <div className="sales-stats-grid">
-        <section className="panel sales-stat-card">
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0}>
           <p className="sales-stat-label">Leads nuevos</p>
           <p className="sales-stat-value">{leadsNuevos}</p>
         </section>
-        <section className="panel sales-stat-card">
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0}>
           <p className="sales-stat-label">Contactados</p>
           <p className="sales-stat-value">{leadsContactados}</p>
         </section>
-        <section className="panel sales-stat-card">
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0}>
           <p className="sales-stat-label">Negociando</p>
           <p className="sales-stat-value">{leadsNegociando}</p>
         </section>
-        <section className="panel sales-stat-card">
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0}>
           <p className="sales-stat-label">Cerrados / Perdidos</p>
           <p className="sales-stat-value">{leadsCerrados} / {leadsPerdidos}</p>
         </section>
       </div>
 
       <div className="sales-stats-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-        <section className="panel sales-stat-card">
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("sales")} role="button" tabIndex={0}>
           <p className="sales-stat-label">Ventas este mes</p>
           <p className="sales-stat-value sales-stat-primary">{ventasMes.length}</p>
           <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
@@ -1162,8 +1169,8 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
               Panel plataforma
             </button>
           )}
-          <button type="button" className="button secondary full-width" onClick={() => setShowOnboarding(true)} style={{ marginBottom: "0.5rem" }}>
-            ? Ayuda / Tutorial
+          <button type="button" className="button primary full-width" onClick={() => setShowOnboarding(true)} style={{ marginBottom: "0.5rem", background: "rgba(59,130,246,0.15)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.3)" }}>
+            <ClipboardCheck size={15} style={{ verticalAlign: "-2px", marginRight: "0.4rem" }} />Ayuda / Tutorial
           </button>
           <button type="button" className="button danger full-width" onClick={onLogout}>
             <LogOut size={16} style={{ verticalAlign: "-3px", marginRight: "0.4rem" }} />Cerrar sesión
@@ -1171,6 +1178,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         </div>
       </aside>
       <section className="content">
+        {loading && <div className="content-loading-bar" />}
         {currentView === "dashboard" && (
           <WebDashboard
             vehicles={vehicles}
@@ -1183,7 +1191,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
           />
         )}
         {currentView === "stock" && !selectedVehicle && (
-          <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} dealerWebsite={session.company.website || ""} onSelect={setSelectedVehicle} onReload={loadAll} />
+          <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} dealerWebsite={session.company.website || ""} onSelect={setSelectedVehicle} onReload={loadAll} externalSearch={globalSearch} />
         )}
         {currentView === "stock" && selectedVehicle && (
           <VehicleDetail vehicle={selectedVehicle} suppliers={suppliers} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} clients={clients} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
@@ -1215,7 +1223,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         </div>
       )}
 
-      <OnboardingTour show={showOnboarding || !loading} />
+      <OnboardingTour show={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </main>
   );
 }
@@ -1460,7 +1468,7 @@ const REQUIRED_DOC_TYPES = ["ficha_tecnica", "permiso_circulacion", "itv", "fact
 type StockSortKey = "dias" | "leads_pendientes" | "margen" | "recientes";
 type StockFilterKey = "todos" | "pendientes" | "leads_pendientes" | "listos" | "sin_precio";
 
-function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, dealerWebsite, onSelect, onReload }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; dealerWebsite: string; onSelect: (v: api.Vehicle) => void; onReload: () => void }) {
+function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, dealerWebsite, onSelect, onReload, externalSearch }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; dealerWebsite: string; onSelect: (v: api.Vehicle) => void; onReload: () => void; externalSearch?: string }) {
   const [importPreview, setImportPreview] = useState<api.ImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -1507,9 +1515,13 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
     }
   }
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(externalSearch || "");
+  React.useEffect(() => { if (externalSearch) setSearch(externalSearch); }, [externalSearch]);
   const [sortBy, setSortBy] = useState<StockSortKey>("dias");
   const [filterKey, setFilterKey] = useState<StockFilterKey>("todos");
+  const [fuelFilter, setFuelFilter] = useState("");
+  const [priceMaxFilter, setPriceMaxFilter] = useState("");
+  const [yearMinFilter, setYearMinFilter] = useState("");
   // Mapas precargados para poder filtrar/ordenar a nivel de lista por
   // contadores de fotos y documentos (no se puede esperar al fetch
   // perezoso de cada StockRow para filtrar a este nivel).
@@ -1600,6 +1612,11 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
     return REQUIRED_DOC_TYPES.every((t) => docs.has(t));
   }
 
+  const fuelOptions = useMemo(() =>
+    [...new Set(vehicles.map((v) => v.fuel).filter(Boolean))].sort(),
+    [vehicles]
+  );
+
   const filtered = useMemo(() => {
     let list = vehicles;
     if (filterKey === "pendientes") {
@@ -1611,6 +1628,11 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
     } else if (filterKey === "sin_precio") {
       list = list.filter((v) => !v.precio_venta);
     }
+    if (fuelFilter) list = list.filter((v) => v.fuel === fuelFilter);
+    const maxPrice = Number(priceMaxFilter);
+    if (maxPrice > 0) list = list.filter((v) => v.precio_venta && v.precio_venta <= maxPrice);
+    const minYear = Number(yearMinFilter);
+    if (minYear > 0) list = list.filter((v) => v.anio && v.anio >= minYear);
     const q = search.toLowerCase().trim();
     if (q) {
       list = list.filter((v) =>
@@ -1644,7 +1666,7 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
       // recientes
       return b.id - a.id;
     });
-  }, [vehicles, leads, search, sortBy, filterKey, purchaseDateByVehicle, leadCounts, photoCountMap, docTypesMap]);
+  }, [vehicles, leads, search, sortBy, filterKey, fuelFilter, priceMaxFilter, yearMinFilter, purchaseDateByVehicle, leadCounts, photoCountMap, docTypesMap]);
 
   const { paged: pagedStock, page: stockPage, totalPages: stockTotalPages, setPage: setStockPage } = usePagination(filtered);
 
@@ -1737,6 +1759,26 @@ function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, d
               </button>
             );
           })}
+          <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)} style={{ flex: "0 0 auto" }}>
+            <option value="">Combustible</option>
+            {fuelOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <select value={priceMaxFilter} onChange={(e) => setPriceMaxFilter(e.target.value)} style={{ flex: "0 0 auto" }}>
+            <option value="">Precio max</option>
+            <option value="8000">8.000 €</option>
+            <option value="12000">12.000 €</option>
+            <option value="18000">18.000 €</option>
+            <option value="25000">25.000 €</option>
+            <option value="35000">35.000 €</option>
+          </select>
+          <select value={yearMinFilter} onChange={(e) => setYearMinFilter(e.target.value)} style={{ flex: "0 0 auto" }}>
+            <option value="">Año min</option>
+            <option value="2024">2024+</option>
+            <option value="2022">2022+</option>
+            <option value="2020">2020+</option>
+            <option value="2018">2018+</option>
+            <option value="2015">2015+</option>
+          </select>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value as StockSortKey)} style={{ flex: "0 0 auto" }}>
             <option value="dias">↓ Días en stock</option>
             <option value="leads_pendientes">↓ Leads pendientes</option>
@@ -2013,33 +2055,11 @@ function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTyp
 // ============================================================
 // Vehicle Detail — wrapper with layout selector
 // ============================================================
-type VehicleLayout = "A" | "B" | "C";
+
 type VDProps = { vehicle: api.Vehicle; suppliers: api.Supplier[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; clients: api.Client[]; onBack: () => void; onReload: () => void };
 
 function VehicleDetail(props: VDProps) {
-  const [layout, setLayout] = useState<VehicleLayout>(() => {
-    return (localStorage.getItem("cc_vehicle_layout") as VehicleLayout) || "A";
-  });
-  function switchLayout(l: VehicleLayout) { setLayout(l); localStorage.setItem("cc_vehicle_layout", l); }
-  const btnStyle = (l: VehicleLayout): React.CSSProperties => ({
-    padding: "0.3rem 0.7rem", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
-    border: layout === l ? "2px solid #1d4ed8" : "2px solid #cbd5e1",
-    borderRadius: 6, background: layout === l ? "#1d4ed8" : "transparent",
-    color: layout === l ? "#fff" : "#475569",
-  });
-  return (
-    <>
-      <div style={{ display: "flex", gap: "0.35rem", marginBottom: "0.75rem" }}>
-        <span style={{ fontSize: "0.75rem", color: "#64748b", alignSelf: "center", marginRight: "0.25rem" }}>Vista:</span>
-        <button type="button" style={btnStyle("A")} onClick={() => switchLayout("A")}>Sidebar</button>
-        <button type="button" style={btnStyle("B")} onClick={() => switchLayout("B")}>Tabs</button>
-        <button type="button" style={btnStyle("C")} onClick={() => switchLayout("C")}>Dashboard</button>
-      </div>
-      {layout === "A" && <VehicleDetailA {...props} />}
-      {layout === "B" && <VehicleDetailB {...props} />}
-      {layout === "C" && <VehicleDetailC {...props} />}
-    </>
-  );
+  return <VehicleDetailA {...props} />;
 }
 
 // Shared hooks for all vehicle detail layouts.
@@ -2400,8 +2420,17 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
         </div>
       )}
 
+      {/* ── Section nav (sticky) ── */}
+      <nav className="vd-section-nav">
+        <a href="#vd-datos" className="vd-section-nav-link">Datos</a>
+        <a href="#vd-fotos" className="vd-section-nav-link">Fotos ({h.photos.length})</a>
+        {vehicleLeads.length > 0 && <a href="#vd-leads" className="vd-section-nav-link">Leads ({vehicleLeads.length})</a>}
+        {vehiclePurchases.length > 0 && <a href="#vd-gastos" className="vd-section-nav-link">Gastos</a>}
+        <a href="#vd-specs" className="vd-section-nav-link">Specs</a>
+      </nav>
+
       {/* ── Contenido principal: Formulario + Sidebar ── */}
-      <div className="vd-content-grid">
+      <div className="vd-content-grid" id="vd-datos">
         {/* Columna izquierda: Formulario */}
         <section className="panel vd-form-panel">
           <div className="vd-section-header">
@@ -2437,7 +2466,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
 
         {/* Columna derecha: Info panels */}
         <div className="vd-sidebar">
-          <section className="panel vd-sidebar-panel">
+          <section className="panel vd-sidebar-panel" id="vd-leads">
             <div className="vd-section-header">
               <p className="eyebrow">Leads ({vehicleLeads.length})</p>
             </div>
@@ -2453,7 +2482,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
       </div>
 
       {/* ── Nota rápida ── */}
-      <section className="panel" style={{ padding: "1.25rem" }}>
+      <section className="panel" style={{ padding: "1.25rem" }} id="vd-nota">
         <div className="vd-section-header"><p className="eyebrow">Nota rápida</p></div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <input value={quickNote} onChange={(e) => setQuickNote(e.target.value)} placeholder="Añade una nota..." style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") void handleQuickNote(); }} />
@@ -2463,7 +2492,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
 
       {/* ── Gastos del vehículo ── */}
       {vehiclePurchases.length > 0 && (
-        <section className="panel" style={{ padding: "1.25rem" }}>
+        <section className="panel" style={{ padding: "1.25rem" }} id="vd-gastos">
           <div className="vd-section-header"><p className="eyebrow">Gastos asociados ({vehiclePurchases.length})</p></div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
             {vehiclePurchases.map((p) => (
@@ -2487,8 +2516,12 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
       )}
 
       {/* ── Fotos ── */}
-      <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} uploadProgress={h.uploadProgress} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
-      <VehicleSpecs vehicle={vehicle} />
+      <div id="vd-fotos">
+        <VDPhotos photos={h.photos} fileRef={h.fileRef} uploading={h.uploading} uploadProgress={h.uploadProgress} handleUpload={h.handleUpload} handleDeletePhoto={h.handleDeletePhoto} handleSetPrimary={h.handleSetPrimary} setSelectedPhoto={h.setSelectedPhoto} />
+      </div>
+      <div id="vd-specs">
+        <VehicleSpecs vehicle={vehicle} />
+      </div>
       <VehicleListingsLink vehicle={vehicle} />
       <VehicleDocsList vehicle={vehicle} />
       <VehicleMergePanel vehicle={vehicle} onMerged={onBack} />
@@ -3094,7 +3127,7 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
       <header className="hero">
         <div>
           <p className="eyebrow">Leads</p>
-          <h2>Contactos</h2>
+          <h2>Leads</h2>
           <p className="muted">{leads.length} lead{leads.length !== 1 ? "s" : ""}</p>
         </div>
         {leads.length > 0 && (
@@ -3130,6 +3163,9 @@ function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads:
           </div>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar lead..." />
         </section>
+      )}
+      {leads.length === 0 && (
+        <EmptyState icon="📞" title="Sin leads todavía" description="Los leads aparecerán aquí cuando lleguen consultas desde coches.net, WhatsApp o llamadas. También puedes importarlos manualmente." />
       )}
       <PaginationControls page={leadsPage} totalPages={leadsTotalPages} setPage={setLeadsPage} />
       <section className="record-grid" aria-live="polite">
@@ -3293,6 +3329,9 @@ function ClientsList({ clients, companyId: _companyId, onReload }: { clients: ap
           </div>
         )}
       </header>
+      {clients.length === 0 && (
+        <EmptyState icon="👤" title="Sin clientes registrados" description="Los clientes se crean al convertir un lead en cliente desde la vista de Leads." />
+      )}
       <PaginationControls page={clientsPage} totalPages={clientsTotalPages} setPage={setClientsPage} />
       <section className="record-grid" aria-live="polite">
         {pagedClients.map((c) => (
@@ -3370,6 +3409,9 @@ function SalesList({ records, vehicles, clients, companyId: _companyId, onReload
           </div>
         )}
       </header>
+      {records.length === 0 && (
+        <EmptyState icon="🧾" title="Sin ventas registradas" description="Registra una venta desde la ficha de un vehículo con el botón 'Registrar venta'." />
+      )}
       {records.length > 0 && (
         <section className="panel sales-records-panel">
           <div className="sales-table-scroll">
@@ -3446,6 +3488,9 @@ function PurchasesList({ records, companyId, onReload }: { records: api.Purchase
           </div>
         )}
       </header>
+      {records.length === 0 && (
+        <EmptyState icon="🛒" title="Sin compras registradas" description="Registra compras de vehículos y gastos asociados (reparaciones, ITV, etc.)." />
+      )}
       {records.length > 0 && (
         <section className="panel sales-records-panel">
           <div className="sales-table-scroll">

@@ -816,6 +816,14 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+.sales-stat-card.clickable {
+  cursor: pointer;
+}
+.sales-stat-card.clickable:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
   padding: 1.25rem 1.4rem;
 }
 
@@ -1536,6 +1544,8 @@ select:focus-visible {
   margin: 0 0 0.5rem;
   font-size: var(--text-2xl);
   color: var(--color-text);
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .catalog-detail-price {
@@ -2593,6 +2603,8 @@ select:focus-visible {
   font-weight: 800;
   line-height: 1.15;
   color: var(--color-text);
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .vd-meta-row {
   display: flex;
@@ -2670,6 +2682,35 @@ select:focus-visible {
 .vd-thumb:hover { opacity: 1; }
 .vd-thumb.active { border-color: var(--color-primary); opacity: 1; }
 .vd-thumb.primary { border-color: #f59e0b; opacity: 1; }
+
+/* Section nav (sticky jump links in vehicle detail) */
+.vd-section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  background: var(--color-bg, #f5f5f5);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  margin-bottom: 0.75rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.vd-section-nav-link {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: background 150ms ease, color 150ms ease;
+}
+.vd-section-nav-link:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-primary);
+}
 
 /* Content grid */
 .vd-content-grid {
@@ -2758,6 +2799,13 @@ select:focus-visible {
   .catalog-nav-link { min-height: 44px; display: inline-flex; align-items: center; }
   .catalog-hero-chip { min-height: 44px; }
   .catalog-search { min-height: 44px; }
+  /* Admin touch targets */
+  .button { min-height: 44px; }
+  .button.xs { min-height: 36px; }
+  .nav-item { min-height: 44px; }
+  .sales-search, .filter-panel input { min-height: 44px; }
+  .filter-panel select { min-height: 44px; }
+  .vd-section-nav-link { min-height: 44px; display: inline-flex; align-items: center; }
 }
 
 /* ── Catalog grid fade-in ── */
@@ -2900,22 +2948,21 @@ select:focus-visible {
 /* ── Onboarding Tour ── */
 .onboarding-overlay {
   position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  bottom: 1.5rem;
+  right: 1.5rem;
   z-index: 300;
+  pointer-events: none;
 }
 .onboarding-card {
-  max-width: 420px;
+  max-width: 380px;
   width: 100%;
-  padding: var(--space-xl);
+  padding: var(--space-lg);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
   animation: toast-in 0.3s ease;
+  pointer-events: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
 .onboarding-step-indicator {
   display: flex;
@@ -2949,6 +2996,24 @@ select:focus-visible {
   justify-content: space-between;
   align-items: center;
   margin-top: var(--space-sm);
+}
+
+/* ── Content loading bar (thin animated bar at top of content) ── */
+.content-loading-bar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary) 0%, #60a5fa 50%, var(--color-primary) 100%);
+  background-size: 200% 100%;
+  animation: loading-slide 1.2s ease-in-out infinite;
+  z-index: 50;
+  border-radius: 0 0 2px 2px;
+}
+@keyframes loading-slide {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* ── Pulse animation for FAB first-time discovery ── */

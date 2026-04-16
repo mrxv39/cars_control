@@ -41,6 +41,11 @@ docs_legacy/
 *.log
 .coverage
 
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
 # Datos bancarios sensibles — NUNCA commitear PDFs de extractos
 tmp_caixa_eml/
 extractos/

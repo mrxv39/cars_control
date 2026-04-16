@@ -18,22 +18,22 @@ const STORAGE_KEY = "cc_onboarding_done";
 
 interface OnboardingTourProps {
   show: boolean;
+  onClose?: () => void;
 }
 
-export default function OnboardingTour({ show }: OnboardingTourProps) {
+export default function OnboardingTour({ show, onClose }: OnboardingTourProps) {
   const [step, setStep] = useState(0);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!show) return;
-    try {
-      if (localStorage.getItem(STORAGE_KEY)) return;
-    } catch { /* SSR / restricted */ }
+    if (!show) { setVisible(false); return; }
     setVisible(true);
+    setStep(0);
   }, [show]);
 
   function dismiss() {
     setVisible(false);
+    onClose?.();
     try { localStorage.setItem(STORAGE_KEY, "1"); } catch { /* ignore */ }
   }
 
