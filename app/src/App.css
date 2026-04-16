@@ -1114,7 +1114,7 @@ select:focus-visible {
   text-align: center;
   padding: 4rem 2rem 2.5rem;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 .catalog-hero-banner::before {
   content: "";
@@ -1223,9 +1223,7 @@ select:focus-visible {
   transition: border-color 150ms ease, background 150ms ease;
   white-space: nowrap;
   flex: 0 0 auto;
-  max-width: 110px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 120px;
 }
 .catalog-hero-chip:hover {
   border-color: rgba(255,255,255,0.35);
