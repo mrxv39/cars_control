@@ -96,11 +96,11 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 
 | Archivo | Líneas | Notas |
 |---------|--------|-------|
-| `app/src/WebApp.tsx` | ~3870 | Monolito principal web — candidato a extracción |
+| `app/src/WebApp.tsx` | ~2270 | Shell web — aún contiene VehicleDetail (~870L) y ProfileView/CompanyView (~220L) extraíbles |
 | `app/src/lib/api.ts` | ~1200 | Capa Supabase — queries y mutations |
-| `app/src/components/FeedbackButton.tsx` | ~570 | Widget feedback con lógica de envío |
+| `app/src/components/web/StockList.tsx` | ~594 | Listado stock admin con filtros e import coches.net |
 | `app/src/components/BankList.tsx` | ~530 | Listado banco con categorización |
-| `app/src/components/PurchasesView.tsx` | ~350 | Vista compras |
+| `app/src/components/web/RecordLists.tsx` | ~428 | Clientes, ventas, compras, proveedores |
 
 ## Pendiente
 
