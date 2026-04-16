@@ -529,9 +529,32 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
     <main className="catalog-main">
       <button type="button" className="catalog-back" onClick={onBack}>← Volver al listado</button>
 
-      {/* Lightbox */}
+      {/* Lightbox with focus trap */}
       {lightboxOpen && mainPhoto && (
-        <div className="lightbox-overlay" onClick={() => setLightboxOpen(false)} role="dialog" aria-label="Foto ampliada">
+        <div
+          className="lightbox-overlay"
+          onClick={() => setLightboxOpen(false)}
+          role="dialog"
+          aria-label="Foto ampliada"
+          aria-modal="true"
+          ref={(el) => {
+            if (!el) return;
+            // Focus the close button on open
+            const closeBtn = el.querySelector<HTMLButtonElement>(".lightbox-close");
+            closeBtn?.focus();
+            // Trap focus inside dialog
+            const trap = (e: KeyboardEvent) => {
+              if (e.key !== "Tab") return;
+              const focusable = el.querySelectorAll<HTMLElement>("button, [href], [tabindex]:not([tabindex='-1'])");
+              if (focusable.length === 0) return;
+              const first = focusable[0];
+              const last = focusable[focusable.length - 1];
+              if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+              else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            };
+            el.addEventListener("keydown", trap);
+          }}
+        >
           <button type="button" className="lightbox-close" onClick={() => setLightboxOpen(false)} aria-label="Cerrar">
             <X size={28} />
           </button>
