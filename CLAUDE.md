@@ -113,7 +113,7 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - ~~Lazy-load IntersectionObserver en listado Stock~~ (ya tiene loading=lazy en imgs; IntersectionObserver card-level innecesario con <50 coches)
 - Banco: ventana match ±21 días, reconciliador MOV_INTERNO, Fase 2/3 (ver `supabase/CLAUDE.md`)
 - Sync-leads: migrar a pg_cron, bloqueado por OAuth2 Gmail de Ricard (ver `supabase/CLAUDE.md`)
-- Tests Python: añadir pytest suite para scripts/ (import, OCR, extractores)
+- ~~Tests Python: añadir pytest suite para scripts/~~ (completado 2026-04-16: 160 tests en 6 archivos)
 
 ## Sesiones de validación
 
@@ -126,3 +126,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - 2026-04-15b: migración Supabase Auth (login+Google OAuth), fotos Storage pendientes
 - 2026-04-15c: security fixes, Playwright E2E, filtros catálogo, iconos sidebar, skeleton, a11y modales
 - 2026-04-16: mantenimiento — git cleanup, dep-update (0 vulns), useEscapeKey hook, audit CLAUDE.md
+- 2026-04-16b: mantenimiento — WebApp 2269→1292L, 91 tests JS + 95 tests Python nuevos, 0 errores TS
