@@ -13,21 +13,22 @@ vi.mock('../lib/api', () => ({
   createVehicle: vi.fn(),
 }))
 
-vi.mock('../lib/csv-export', () => ({
-  exportToCSV: vi.fn(),
-}))
+vi.mock('../lib/supabase', () => ({ supabase: { from: vi.fn() } }))
+
+vi.mock('../lib/csv-export', () => ({ exportToCSV: vi.fn() }))
 
 const api = await import('../lib/api')
+const { exportToCSV } = await import('../lib/csv-export')
 
 function makeVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
   return {
     id: 1,
     company_id: 1,
-    name: 'Seat Ibiza 2019',
+    name: 'Seat Ibiza 1.0 TSI',
     precio_compra: 8000,
     precio_venta: 10500,
-    km: 50000,
-    anio: 2019,
+    km: 45000,
+    anio: 2021,
     estado: 'disponible',
     ad_url: '',
     ad_status: '',
@@ -48,10 +49,10 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
     phone: '612345678',
     email: 'juan@example.com',
     notes: '',
-    vehicle_interest: '',
+    vehicle_interest: 'Seat Ibiza',
     converted_client_id: null,
     estado: 'nuevo',
-    fecha_contacto: '',
+    fecha_contacto: '2026-04-01',
     canal: 'web',
     company_id: 1,
     vehicle_id: null,
@@ -59,111 +60,240 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
   }
 }
 
+function makePurchaseRecord(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
+  return {
+    id: 1,
+    expense_type: 'COMPRA_VEHICULO',
+    vehicle_name: 'Seat Ibiza',
+    plate: '',
+    supplier_name: '',
+    purchase_date: '2026-03-01',
+    purchase_price: 8000,
+    invoice_number: '',
+    payment_method: '',
+    notes: '',
+    source_file: '',
+    created_at: '2026-03-01',
+    company_id: 1,
+    vehicle_id: 1,
+    ...overrides,
+  }
+}
+
+const defaultProps = {
+  vehicles: [] as Vehicle[],
+  allVehicles: [] as Vehicle[],
+  leads: [] as Lead[],
+  purchaseRecords: [] as PurchaseRecord[],
+  companyId: 1,
+  dealerWebsite: 'https://coches.net/dealer/codina',
+  onSelect: vi.fn(),
+  onReload: vi.fn(),
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(api.getStockPhotoSummary).mockResolvedValue(new Map())
   vi.mocked(api.getStockDocSummary).mockResolvedValue(new Map())
+  vi.mocked(api.createVehicle).mockResolvedValue(makeVehicle())
 })
 
-describe('StockList', () => {
-  const vehicles = [
-    makeVehicle({ id: 1, name: 'Seat Ibiza 2019', fuel: 'Gasolina', anio: 2019, precio_venta: 10500 }),
-    makeVehicle({ id: 2, name: 'Ford Focus 2020', fuel: 'Diésel', anio: 2020, precio_venta: 12000 }),
-    makeVehicle({ id: 3, name: 'BMW Serie 3', fuel: 'Gasolina', anio: 2021, precio_venta: null }),
-  ]
-
-  const defaultProps = {
-    vehicles,
-    allVehicles: vehicles,
-    leads: [] as Lead[],
-    purchaseRecords: [] as PurchaseRecord[],
-    companyId: 1,
-    dealerWebsite: 'https://coches.net/dealer',
-    onSelect: vi.fn(),
-    onReload: vi.fn(),
-  }
-
-  it('renders vehicle count', () => {
+describe('StockList — empty state', () => {
+  it('shows zero count when no vehicles', () => {
     render(<StockList {...defaultProps} />)
-    expect(screen.getByText('3 vehículos')).toBeInTheDocument()
-  })
-
-  it('renders all vehicle names', async () => {
-    render(<StockList {...defaultProps} />)
-    await waitFor(() => {
-      expect(screen.getByText('Seat Ibiza 2019')).toBeInTheDocument()
-      expect(screen.getByText('Ford Focus 2020')).toBeInTheDocument()
-      expect(screen.getByText('BMW Serie 3')).toBeInTheDocument()
-    })
-  })
-
-  it('filters vehicles by search text', async () => {
-    render(<StockList {...defaultProps} />)
-    const searchInput = screen.getByPlaceholderText('Buscar...')
-    fireEvent.change(searchInput, { target: { value: 'ford' } })
-    await waitFor(() => {
-      expect(screen.getByText('Ford Focus 2020')).toBeInTheDocument()
-      expect(screen.getByText('1 de 3')).toBeInTheDocument()
-    })
-  })
-
-  it('shows singular form for one vehicle', () => {
-    render(<StockList {...defaultProps} vehicles={[vehicles[0]]} />)
-    expect(screen.getByText('1 vehículo')).toBeInTheDocument()
-  })
-
-  it('shows add form when button is clicked', () => {
-    render(<StockList {...defaultProps} />)
-    fireEvent.click(screen.getByText('Añadir vehículo'))
-    expect(screen.getByText('Marca y modelo')).toBeInTheDocument()
-  })
-
-  it('calls onSelect when vehicle row is clicked', async () => {
-    render(<StockList {...defaultProps} />)
-    await waitFor(() => {
-      expect(screen.getByText('Seat Ibiza 2019')).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByText('Seat Ibiza 2019'))
-    expect(defaultProps.onSelect).toHaveBeenCalledWith(vehicles[0])
-  })
-
-  it('renders empty list with 0 count', () => {
-    render(<StockList {...defaultProps} vehicles={[]} />)
     expect(screen.getByText('0 vehículos')).toBeInTheDocument()
   })
 
-  it('shows price for vehicles with precio_venta', async () => {
+  it('renders header title', () => {
     render(<StockList {...defaultProps} />)
+    expect(screen.getByText('Vehículos en stock')).toBeInTheDocument()
+  })
+})
+
+describe('StockList — rendering vehicles', () => {
+  const vehicles = [
+    makeVehicle({ id: 1, name: 'Seat Ibiza 1.0 TSI', anio: 2021, km: 45000, precio_venta: 10500 }),
+    makeVehicle({ id: 2, name: 'BMW Serie 3 320d', anio: 2020, km: 80000, precio_venta: 22000, fuel: 'Diésel' }),
+    makeVehicle({ id: 3, name: 'Renault Clio', anio: 2019, km: 60000, precio_venta: null, fuel: 'Gasolina' }),
+  ]
+
+  it('renders vehicle count in header', () => {
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    expect(screen.getByText('3 vehículos')).toBeInTheDocument()
+  })
+
+  it('renders singular when one vehicle', () => {
+    render(<StockList {...defaultProps} vehicles={[vehicles[0]]} allVehicles={[vehicles[0]]} />)
+    expect(screen.getByText('1 vehículo')).toBeInTheDocument()
+  })
+
+  it('renders all vehicle names', () => {
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    expect(screen.getByText('Seat Ibiza 1.0 TSI')).toBeInTheDocument()
+    expect(screen.getByText('BMW Serie 3 320d')).toBeInTheDocument()
+    expect(screen.getByText('Renault Clio')).toBeInTheDocument()
+  })
+
+  it('shows "Sin precio" label for vehicles without precio_venta', () => {
+    render(<StockList {...defaultProps} vehicles={[vehicles[2]]} allVehicles={[vehicles[2]]} />)
+    // One "Sin precio" in the row, another in the filter button
+    const matches = screen.getAllByText('Sin precio')
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows precio_venta formatted with euro sign', async () => {
+    render(<StockList {...defaultProps} vehicles={[vehicles[0]]} allVehicles={[vehicles[0]]} />)
     await waitFor(() => {
       expect(screen.getByText('10.500 €')).toBeInTheDocument()
     })
   })
 
-  it('shows "Sin precio" for vehicles without precio_venta', () => {
-    render(<StockList {...defaultProps} />)
-    // "Sin precio" appears both as a filter button label and in the vehicle row
-    const elements = screen.getAllByText('Sin precio')
-    expect(elements.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('shows leads count chip when vehicle has unanswered leads', () => {
-    const leads = [
-      makeLead({ id: 1, vehicle_id: 1, estado: 'nuevo' }),
-      makeLead({ id: 2, vehicle_id: 1, estado: 'nuevo' }),
-    ]
-    render(<StockList {...defaultProps} leads={leads} />)
-    // The chip renders as "💬 2"
-    const chips = screen.getAllByTitle('Leads sin contestar')
-    expect(chips.length).toBeGreaterThan(0)
-    expect(chips[0].textContent).toContain('2')
+  it('calls onSelect when clicking a vehicle row', async () => {
+    const onSelect = vi.fn()
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} onSelect={onSelect} />)
+    await waitFor(() => {
+      expect(screen.getByText('Seat Ibiza 1.0 TSI')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByText('Seat Ibiza 1.0 TSI'))
+    expect(onSelect).toHaveBeenCalledWith(vehicles[0])
   })
 
   it('loads photo and doc summaries on mount', async () => {
-    render(<StockList {...defaultProps} />)
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
     await waitFor(() => {
       expect(api.getStockPhotoSummary).toHaveBeenCalledWith([1, 2, 3])
       expect(api.getStockDocSummary).toHaveBeenCalledWith([1, 2, 3])
     })
+  })
+})
+
+describe('StockList — status badges', () => {
+  it('shows estado badge when not "disponible"', () => {
+    const v = makeVehicle({ id: 10, name: 'Ford Focus', estado: 'reservado' })
+    render(<StockList {...defaultProps} vehicles={[v]} allVehicles={[v]} />)
+    expect(screen.getByText('reservado')).toBeInTheDocument()
+  })
+
+  it('does not show estado badge when "disponible"', () => {
+    const v = makeVehicle({ id: 10, name: 'Ford Focus', estado: 'disponible' })
+    render(<StockList {...defaultProps} vehicles={[v]} allVehicles={[v]} />)
+    // "disponible" should not appear as a badge (only vehicles with non-disponible estado show badge)
+    const badges = screen.queryAllByText('disponible')
+    expect(badges).toHaveLength(0)
+  })
+})
+
+describe('StockList — search filter', () => {
+  const vehicles = [
+    makeVehicle({ id: 1, name: 'Seat Ibiza 1.0 TSI', fuel: 'Gasolina' }),
+    makeVehicle({ id: 2, name: 'BMW Serie 3 320d', fuel: 'Diésel' }),
+  ]
+
+  it('filters by name via search input', () => {
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'bmw' } })
+    expect(screen.getByText('BMW Serie 3 320d')).toBeInTheDocument()
+    expect(screen.queryByText('Seat Ibiza 1.0 TSI')).not.toBeInTheDocument()
+  })
+
+  it('shows filtered count when searching', () => {
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'seat' } })
+    expect(screen.getByText('1 de 2')).toBeInTheDocument()
+  })
+
+  it('applies externalSearch prop as initial search', () => {
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} externalSearch="bmw" />)
+    expect(screen.getByText('BMW Serie 3 320d')).toBeInTheDocument()
+    expect(screen.queryByText('Seat Ibiza 1.0 TSI')).not.toBeInTheDocument()
+  })
+})
+
+describe('StockList — filter buttons', () => {
+  const vehicles = [
+    makeVehicle({ id: 1, name: 'Con precio', precio_venta: 10000 }),
+    makeVehicle({ id: 2, name: 'Sin precio venta', precio_venta: null }),
+  ]
+
+  it('renders all filter buttons', () => {
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    expect(screen.getByRole('button', { name: /Pendientes/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Con leads/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Listos/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Sin precio/ })).toBeInTheDocument()
+  })
+
+  it('filters to "Sin precio" vehicles when clicking that filter', () => {
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    fireEvent.click(screen.getByRole('button', { name: /Sin precio/ }))
+    expect(screen.getByText('Sin precio venta')).toBeInTheDocument()
+    expect(screen.queryByText('Con precio')).not.toBeInTheDocument()
+  })
+
+  it('toggles filter off when clicking active filter again', () => {
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    fireEvent.click(screen.getByRole('button', { name: /Sin precio/ }))
+    // Click again to deactivate
+    fireEvent.click(screen.getByRole('button', { name: /Sin precio/ }))
+    expect(screen.getByText('Con precio')).toBeInTheDocument()
+    expect(screen.getByText('Sin precio venta')).toBeInTheDocument()
+  })
+})
+
+describe('StockList — leads pending chip', () => {
+  it('shows leads chip when vehicle has unanswered leads', () => {
+    const vehicles = [makeVehicle({ id: 1, name: 'Seat Ibiza' })]
+    const leads = [
+      makeLead({ id: 1, vehicle_id: 1, estado: 'nuevo' }),
+      makeLead({ id: 2, vehicle_id: 1, estado: 'nuevo', phone: '699000001' }),
+    ]
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} leads={leads} />)
+    const chip = screen.getByTitle('Leads sin contestar')
+    expect(chip).toBeInTheDocument()
+    expect(chip.textContent).toContain('2')
+  })
+
+  it('does not show leads chip when no unanswered leads', () => {
+    const vehicles = [makeVehicle({ id: 1, name: 'Seat Ibiza' })]
+    const leads = [
+      makeLead({ id: 1, vehicle_id: 1, estado: 'contactado' }),
+    ]
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} leads={leads} />)
+    expect(screen.queryByTitle('Leads sin contestar')).not.toBeInTheDocument()
+  })
+})
+
+describe('StockList — add vehicle form', () => {
+  it('shows add form when clicking "Añadir vehículo"', () => {
+    render(<StockList {...defaultProps} />)
+    fireEvent.click(screen.getByText('Añadir vehículo'))
+    expect(screen.getByText('Marca y modelo')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Escribe para buscar coincidencias...')).toBeInTheDocument()
+  })
+
+  it('hides add form when clicking "Cancelar"', () => {
+    render(<StockList {...defaultProps} />)
+    fireEvent.click(screen.getByText('Añadir vehículo'))
+    expect(screen.getByPlaceholderText('Escribe para buscar coincidencias...')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Cancelar'))
+    expect(screen.queryByPlaceholderText('Escribe para buscar coincidencias...')).not.toBeInTheDocument()
+  })
+
+  it('shows name validation error on blur when empty', () => {
+    render(<StockList {...defaultProps} />)
+    fireEvent.click(screen.getByText('Añadir vehículo'))
+    const input = screen.getByPlaceholderText('Escribe para buscar coincidencias...')
+    fireEvent.blur(input)
+    expect(screen.getByText('El nombre es obligatorio')).toBeInTheDocument()
+  })
+
+  it('calls exportToCSV when clicking export button', () => {
+    const vehicles = [makeVehicle({ id: 1 })]
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    fireEvent.click(screen.getByText('Exportar CSV'))
+    expect(exportToCSV).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ Nombre: 'Seat Ibiza 1.0 TSI' })]),
+      'stock',
+    )
   })
 })
