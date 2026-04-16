@@ -397,35 +397,31 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
           <span>Molins de Rei</span>
           <span>+15 años</span>
         </div>
-        {/* Search en el hero */}
-        <div className="catalog-hero-search">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="catalog-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input
-            className="catalog-search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar marca, modelo..."
-            aria-label="Buscar vehículos"
-          />
-        </div>
-      </section>
-
-      <main className="catalog-main">
-        {/* Filtros en zona blanca — selects nativos funcionan correctamente aquí */}
-        <div className="catalog-filter-row">
-          <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)} aria-label="Combustible" className={`catalog-pill ${fuelFilter ? "active" : ""}`}>
+        {/* Search + filtros en el hero */}
+        <div className="catalog-hero-bar">
+          <div className="catalog-hero-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="catalog-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input
+              className="catalog-search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar marca, modelo..."
+              aria-label="Buscar vehículos"
+            />
+          </div>
+          <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)} aria-label="Combustible" className={`catalog-hero-chip ${fuelFilter ? "active" : ""}`}>
             <option value="">Combustible</option>
             {fuelOptions.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
-          <select value={priceMax} onChange={(e) => setPriceMax(e.target.value)} aria-label="Precio máximo" className={`catalog-pill ${priceMax ? "active" : ""}`}>
+          <select value={priceMax} onChange={(e) => setPriceMax(e.target.value)} aria-label="Precio" className={`catalog-hero-chip ${priceMax ? "active" : ""}`}>
             <option value="">Precio</option>
-            <option value="8000">Hasta 8.000 €</option>
-            <option value="12000">Hasta 12.000 €</option>
-            <option value="18000">Hasta 18.000 €</option>
-            <option value="25000">Hasta 25.000 €</option>
-            <option value="35000">Hasta 35.000 €</option>
+            <option value="8000">8.000 €</option>
+            <option value="12000">12.000 €</option>
+            <option value="18000">18.000 €</option>
+            <option value="25000">25.000 €</option>
+            <option value="35000">35.000 €</option>
           </select>
-          <select value={yearMin} onChange={(e) => setYearMin(e.target.value)} aria-label="Año mínimo" className={`catalog-pill ${yearMin ? "active" : ""}`}>
+          <select value={yearMin} onChange={(e) => setYearMin(e.target.value)} aria-label="Año" className={`catalog-hero-chip ${yearMin ? "active" : ""}`}>
             <option value="">Año</option>
             <option value="2024">2024+</option>
             <option value="2022">2022+</option>
@@ -433,7 +429,7 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
             <option value="2018">2018+</option>
             <option value="2015">2015+</option>
           </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} aria-label="Ordenar" className={`catalog-pill ${sortBy ? "active" : ""}`}>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} aria-label="Ordenar" className={`catalog-hero-chip ${sortBy ? "active" : ""}`}>
             <option value="">Ordenar</option>
             <option value="price-asc">Precio ↑</option>
             <option value="price-desc">Precio ↓</option>
@@ -441,8 +437,13 @@ function PublicCatalog({ onLogin }: { onLogin: () => void }) {
             <option value="km-asc">Menos km</option>
           </select>
           {(fuelFilter || priceMax || yearMin || sortBy) && (
-            <button type="button" className="catalog-pill-clear" onClick={() => { setFuelFilter(""); setPriceMax(""); setYearMin(""); setSortBy(""); }}>✕ Limpiar</button>
+            <button type="button" className="catalog-hero-chip-clear" onClick={() => { setFuelFilter(""); setPriceMax(""); setYearMin(""); setSortBy(""); }}>✕</button>
           )}
+        </div>
+      </section>
+
+      <main className="catalog-main">
+        <div className="catalog-result-bar">
           <span className="catalog-result-count">{filtered.length} vehículo{filtered.length !== 1 ? "s" : ""}</span>
         </div>
 

@@ -1178,8 +1178,8 @@ select:focus-visible {
 }
 .catalog-hero-search {
   position: relative;
-  max-width: 500px;
-  margin: 1.5rem auto 0;
+  flex: 1 1 50%;
+  min-width: 200px;
 }
 .catalog-search-icon {
   position: absolute;
@@ -1259,7 +1259,6 @@ select:focus-visible {
   transition: border-color 150ms ease, background 150ms ease;
   white-space: nowrap;
   flex: 0 0 auto;
-  max-width: 120px;
 }
 .catalog-hero-chip:hover {
   border-color: rgba(255,255,255,0.35);
