@@ -262,7 +262,7 @@ describe('SuppliersList', () => {
 
   it('shows empty state when no suppliers', () => {
     render(<SuppliersList suppliers={[]} companyId={1} onReload={vi.fn()} />)
-    expect(screen.getByText(/No hay proveedores/)).toBeInTheDocument()
+    expect(screen.getByText(/Sin proveedores/)).toBeInTheDocument()
   })
 
   it('shows add form when button is clicked', () => {

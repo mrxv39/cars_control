@@ -352,7 +352,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
           <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
             <div>
               <label className="field-label required">Marca y modelo</label>
-              <input value={h.form.name} onChange={(e) => h.setForm({ ...h.form, name: e.target.value })} placeholder="Ej: SEAT Ibiza 1.0 MPI Style" className={!h.form.name.trim() ? "input-error" : ""} />
+              <input value={h.form.name} onChange={(e) => { h.setForm({ ...h.form, name: e.target.value }); if (h.error) h.setError(null); }} placeholder="Ej: SEAT Ibiza 1.0 MPI Style" className={h.error && !h.form.name.trim() ? "input-error" : ""} />
             </div>
             <div className="form-grid-2">
               <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} placeholder="2020" min="1990" max="2030" /></div>
@@ -473,7 +473,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
                 </select>
               </div>
               <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-                <button type="submit" className="button primary" disabled={savingSale || !salePrice}>{savingSale ? "Guardando..." : "Registrar venta"}</button>
+                <button type="submit" className="button primary" disabled={savingSale || !salePrice || parseFloat(salePrice) <= 0}>{savingSale ? "Guardando..." : "Registrar venta"}</button>
                 <button type="button" className="button secondary" onClick={() => setShowQuickSale(false)}>Cancelar</button>
               </div>
             </div>

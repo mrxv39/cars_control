@@ -159,7 +159,7 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
         <div className="catalog-detail-gallery">
           {mainPhoto ? (
             <div className="catalog-detail-main-img" style={{ position: "relative" }}>
-              <img src={mainPhoto} alt={vehicle.name} loading="lazy" onClick={() => setLightboxOpen(true)} style={{ cursor: "zoom-in" }} />
+              <img src={mainPhoto} alt={vehicle.name} onClick={() => setLightboxOpen(true)} style={{ cursor: "zoom-in" }} />
               {photos.length > 1 && mainPhotoIdx > 0 && <button type="button" className="gallery-arrow gallery-arrow-left" onClick={prevPhoto} aria-label="Foto anterior">‹</button>}
               {photos.length > 1 && mainPhotoIdx < photos.length - 1 && <button type="button" className="gallery-arrow gallery-arrow-right" onClick={nextPhoto} aria-label="Foto siguiente">›</button>}
               {photos.length > 1 && <span className="gallery-counter">{mainPhotoIdx + 1} / {photos.length}</span>}
@@ -192,7 +192,7 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
               {vehicle.cv && <tr><td>Potencia</td><td>{vehicle.cv}</td></tr>}
               {vehicle.transmission && <tr><td>Cambio</td><td>{vehicle.transmission}</td></tr>}
               {vehicle.color && <tr><td>Color</td><td>{vehicle.color}</td></tr>}
-              <tr><td>Estado</td><td style={{ textTransform: "capitalize" }}>{vehicle.estado}</td></tr>
+              <tr><td>Estado</td><td>{{ disponible: "Disponible", reservado: "Reservado", vendido: "Vendido", listo_para_venta: "Listo para venta" }[vehicle.estado] || vehicle.estado}</td></tr>
             </tbody>
           </table>
           {vehicle.notes && vehicle.notes.startsWith("Desde") && (

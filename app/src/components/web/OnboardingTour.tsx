@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface TourStep {
   target: string;
@@ -24,18 +24,42 @@ interface OnboardingTourProps {
 export default function OnboardingTour({ show, onClose }: OnboardingTourProps) {
   const [step, setStep] = useState(0);
   const [visible, setVisible] = useState(false);
+  const previousFocus = useRef<HTMLElement | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!show) { setVisible(false); return; }
+    previousFocus.current = document.activeElement as HTMLElement | null;
     setVisible(true);
     setStep(0);
   }, [show]);
 
-  function dismiss() {
+  // Focus trap + Escape
+  useEffect(() => {
+    if (!visible) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { dismiss(); return; }
+      if (e.key === "Tab" && cardRef.current) {
+        const focusable = cardRef.current.querySelectorAll<HTMLElement>("button, [tabindex]");
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener("keydown", handler);
+    // Auto-focus first button
+    setTimeout(() => cardRef.current?.querySelector<HTMLElement>("button")?.focus(), 50);
+    return () => document.removeEventListener("keydown", handler);
+  }, [visible]);
+
+  const dismiss = useCallback(() => {
     setVisible(false);
     onClose?.();
+    previousFocus.current?.focus();
     try { localStorage.setItem(STORAGE_KEY, "1"); } catch { /* ignore */ }
-  }
+  }, [onClose]);
 
   function next() {
     if (step >= STEPS.length - 1) { dismiss(); return; }
@@ -52,7 +76,7 @@ export default function OnboardingTour({ show, onClose }: OnboardingTourProps) {
 
   return (
     <div className="onboarding-overlay" role="dialog" aria-modal="true" aria-label="Tutorial de inicio">
-      <div className="onboarding-card panel">
+      <div className="onboarding-card panel" ref={cardRef}>
         <div className="onboarding-step-indicator">
           {STEPS.map((_, i) => (
             <span key={i} className={`onboarding-dot ${i === step ? "active" : ""} ${i < step ? "done" : ""}`} />

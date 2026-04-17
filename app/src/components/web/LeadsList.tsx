@@ -147,7 +147,8 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
   }
   function cancelLeadEdit() {
     if (leadOriginal.current && JSON.stringify(editForm) !== JSON.stringify(leadOriginal.current)) {
-      if (!window.confirm("Tienes cambios sin guardar. ¿Salir sin guardar?")) return;
+      dialog.requestConfirm("Cambios sin guardar", "Tienes cambios sin guardar. ¿Salir sin guardar?", () => setEditingId(null));
+      return;
     }
     setEditingId(null);
   }

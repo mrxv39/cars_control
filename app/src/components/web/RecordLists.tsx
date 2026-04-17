@@ -38,7 +38,8 @@ export function ClientsList({ clients, companyId: _companyId, onReload }: { clie
   }
   function cancelClientEdit() {
     if (clientOriginal.current && JSON.stringify(editForm) !== JSON.stringify(clientOriginal.current)) {
-      if (!window.confirm("Tienes cambios sin guardar. ¿Salir sin guardar?")) return;
+      dialog.requestConfirm("Cambios sin guardar", "Tienes cambios sin guardar. ¿Salir sin guardar?", () => setEditingId(null));
+      return;
     }
     setEditingId(null);
   }
@@ -330,6 +331,13 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
 // ============================================================
 export function SuppliersList({ suppliers, companyId, onReload }: { suppliers: api.Supplier[]; companyId: number; onReload: () => void }) {
   const dialog = useConfirmDialog();
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const filteredSuppliers = useMemo(() => {
+    if (!supplierSearch.trim()) return suppliers;
+    const q = supplierSearch.toLowerCase();
+    return suppliers.filter((s) => [s.name, s.cif, s.contact_person, s.phone].some((v) => v?.toLowerCase().includes(q)));
+  }, [suppliers, supplierSearch]);
+  const { paged: pagedSuppliers, page: suppliersPage, totalPages: suppliersTotalPages, setPage: setSuppliersPage } = usePagination(filteredSuppliers);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newCif, setNewCif] = useState("");
@@ -394,6 +402,12 @@ export function SuppliersList({ suppliers, companyId, onReload }: { suppliers: a
         </div>
       </header>
 
+      {suppliers.length > 0 && (
+        <section className="panel filter-panel" style={{ marginBottom: "1rem" }}>
+          <input value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} placeholder="Buscar proveedor..." aria-label="Buscar proveedores" style={{ width: "100%", maxWidth: 360 }} />
+        </section>
+      )}
+
       {showAdd && (
         <section className="panel" style={{ padding: "1.5rem", maxWidth: "400px", marginBottom: "1rem" }}>
           <p className="eyebrow" style={{ marginBottom: "1rem" }}>Nuevo proveedor</p>
@@ -431,35 +445,44 @@ export function SuppliersList({ suppliers, companyId, onReload }: { suppliers: a
         </section>
       )}
 
-      <section className="panel sales-records-panel">
-        <div className="sales-table-scroll">
-          <table className="sales-table">
-            <thead><tr>
-              <th className="sales-th">Proveedor</th>
-              <th className="sales-th">CIF</th>
-              <th className="sales-th">Contacto</th>
-              <th className="sales-th">Teléfono</th>
-              <th className="sales-th"></th>
-            </tr></thead>
-            <tbody>
-              {suppliers.map((s) => (
-                <tr key={s.id} className="sales-row">
-                  <td className="sales-td"><span className="sales-vehicle-name">{s.name}</span></td>
-                  <td className="sales-td">{s.cif || "-"}</td>
-                  <td className="sales-td">{s.contact_person || "-"}</td>
-                  <td className="sales-td">{s.phone || "-"}</td>
-                  <td className="sales-td">
-                    <button type="button" className="button danger xs" onClick={() => void handleDelete(s.id, s.name)}>Eliminar</button>
-                  </td>
-                </tr>
-              ))}
-              {suppliers.length === 0 && (
-                <tr><td className="sales-td" colSpan={5} style={{ textAlign: "center", color: "#64748b" }}>No hay proveedores. Pulsa "Nuevo proveedor" para añadir uno.</td></tr>
-              )}
-            </tbody>
-          </table>
+      {suppliers.length === 0 ? (
+        <EmptyState icon="🏢" title="Sin proveedores" description="Pulsa «Nuevo proveedor» para añadir tu primer taller, gestoría o proveedor." />
+      ) : filteredSuppliers.length === 0 ? (
+        <div className="panel" style={{ padding: "2rem", textAlign: "center" }}>
+          <p className="muted">No hay proveedores que coincidan con la búsqueda.</p>
+          <button type="button" className="button secondary" style={{ marginTop: "0.5rem" }} onClick={() => setSupplierSearch("")}>Limpiar búsqueda</button>
         </div>
-      </section>
+      ) : (
+        <>
+          <PaginationControls page={suppliersPage} totalPages={suppliersTotalPages} setPage={setSuppliersPage} />
+          <section className="panel sales-records-panel">
+            <div className="sales-table-scroll">
+              <table className="sales-table">
+                <thead><tr>
+                  <th className="sales-th">Proveedor</th>
+                  <th className="sales-th">CIF</th>
+                  <th className="sales-th">Contacto</th>
+                  <th className="sales-th">Teléfono</th>
+                  <th className="sales-th" aria-label="Acciones"></th>
+                </tr></thead>
+                <tbody>
+                  {pagedSuppliers.map((s) => (
+                    <tr key={s.id} className="sales-row">
+                      <td className="sales-td"><span className="sales-vehicle-name">{s.name}</span></td>
+                      <td className="sales-td">{s.cif || "-"}</td>
+                      <td className="sales-td">{s.contact_person || "-"}</td>
+                      <td className="sales-td">{s.phone || "-"}</td>
+                      <td className="sales-td">
+                        <button type="button" className="button danger xs" onClick={() => void handleDelete(s.id, s.name)}>Eliminar</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
     </>
   );
 }

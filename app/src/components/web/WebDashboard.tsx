@@ -171,6 +171,11 @@ export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purch
                 </tbody>
               </table>
             </div>
+            {margins.length > 10 && (
+              <p className="muted" style={{ margin: "0.75rem 0 0", fontSize: "0.82rem", textAlign: "center" }}>
+                Mostrando 10 de {margins.length} vehículos vendidos
+              </p>
+            )}
           </section>
         );
       })()}
@@ -206,7 +211,7 @@ export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purch
                 <div key={m.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.15rem", height: "100%", justifyContent: "flex-end" }}>
                   <div style={{ display: "flex", gap: 1, alignItems: "flex-end", width: "100%", justifyContent: "center", flex: 1 }}>
                     <div style={{ width: "40%", background: "var(--color-success, #16a34a)", borderRadius: "3px 3px 0 0", height: `${Math.max((m.ventas / maxValue) * 100, m.ventas > 0 ? 4 : 0)}%`, minHeight: m.ventas > 0 ? 3 : 0 }} title={`Ventas: ${m.ventas.toLocaleString("es-ES")} €`} />
-                    <div style={{ width: "40%", background: "var(--color-danger, #dc2626)", borderRadius: "3px 3px 0 0", height: `${Math.max((m.gastos / maxValue) * 100, m.gastos > 0 ? 4 : 0)}%`, minHeight: m.gastos > 0 ? 3 : 0 }} title={`Gastos: ${m.gastos.toLocaleString("es-ES")} €`} />
+                    <div style={{ width: "40%", background: "repeating-linear-gradient(135deg, var(--color-danger, #dc2626), var(--color-danger, #dc2626) 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 5px)", borderRadius: "3px 3px 0 0", height: `${Math.max((m.gastos / maxValue) * 100, m.gastos > 0 ? 4 : 0)}%`, minHeight: m.gastos > 0 ? 3 : 0 }} title={`Gastos: ${m.gastos.toLocaleString("es-ES")} €`} />
                   </div>
                   <span style={{ fontSize: "0.6rem", color: "var(--color-text-muted, #64748b)", whiteSpace: "nowrap" }}>{m.label}</span>
                 </div>
@@ -214,7 +219,7 @@ export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purch
             </div>
             <div style={{ display: "flex", gap: "1.5rem", fontSize: "0.78rem" }}>
               <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "var(--color-success, #16a34a)", marginRight: 4 }}></span>Ventas</span>
-              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "var(--color-danger, #dc2626)", marginRight: 4 }}></span>Gastos</span>
+              <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "repeating-linear-gradient(135deg, var(--color-danger, #dc2626), var(--color-danger, #dc2626) 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 3px)", marginRight: 4 }}></span>Gastos</span>
             </div>
             <div className="sales-table-scroll" style={{ marginTop: "1rem" }}>
               <table className="sales-table">

@@ -357,6 +357,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar..."
+            aria-label="Buscar vehículo"
             className="sales-search"
             style={{ flex: "0 0 33%", minWidth: 0 }}
           />
@@ -380,11 +381,11 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
               </button>
             );
           })}
-          <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)} style={{ flex: "0 0 auto" }}>
+          <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)} aria-label="Filtrar por combustible" style={{ flex: "0 0 auto" }}>
             <option value="">Combustible</option>
             {fuelOptions.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
-          <select value={priceMaxFilter} onChange={(e) => setPriceMaxFilter(e.target.value)} style={{ flex: "0 0 auto" }}>
+          <select value={priceMaxFilter} onChange={(e) => setPriceMaxFilter(e.target.value)} aria-label="Precio máximo" style={{ flex: "0 0 auto" }}>
             <option value="">Precio max</option>
             <option value="8000">8.000 €</option>
             <option value="12000">12.000 €</option>
@@ -392,7 +393,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
             <option value="25000">25.000 €</option>
             <option value="35000">35.000 €</option>
           </select>
-          <select value={yearMinFilter} onChange={(e) => setYearMinFilter(e.target.value)} style={{ flex: "0 0 auto" }}>
+          <select value={yearMinFilter} onChange={(e) => setYearMinFilter(e.target.value)} aria-label="Año mínimo" style={{ flex: "0 0 auto" }}>
             <option value="">Año min</option>
             <option value="2024">2024+</option>
             <option value="2022">2022+</option>
@@ -400,7 +401,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
             <option value="2018">2018+</option>
             <option value="2015">2015+</option>
           </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as StockSortKey)} style={{ flex: "0 0 auto" }}>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as StockSortKey)} aria-label="Ordenar por" style={{ flex: "0 0 auto" }}>
             <option value="dias">↓ Días en stock</option>
             <option value="leads_pendientes">↓ Leads pendientes</option>
             <option value="margen">↓ Margen</option>
