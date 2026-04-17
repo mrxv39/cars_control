@@ -104,7 +104,7 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 | `app/src/components/web/VehicleDetailPanel.tsx` | ~553 | Ficha vehículo: detalle, fotos, docs, leads, compra |
 | `app/src/components/web/StockList.tsx` | ~594 | Listado stock admin con filtros e import coches.net |
 | `app/src/components/BankList.tsx` | ~532 | Listado banco con categorización |
-| `app/src/components/web/RecordLists.tsx` | ~428 | Clientes, ventas, compras, proveedores |
+| `app/src/components/web/RecordLists.tsx` | ~480 | Clientes, ventas, compras, proveedores (con búsqueda y paginación) |
 | `app/src/components/web/PublicCatalog.tsx` | ~340 | Catálogo público, galería, contacto |
 | `app/src/components/web/RevisionSheet.tsx` | ~318 | Hoja revisión vehículo + historial |
 | `app/src/components/web/ProfileCompanyViews.tsx` | ~228 | Perfil usuario y datos empresa |
@@ -128,3 +128,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - 2026-04-17b: mantenimiento — TS fix, WebApp→564L (extraer RevisionSheet), 495 tests (+49), deps all latest, MAZDA cleanup, main synced
 - 2026-04-17c: mantenimiento — fix 3 errores TS, eliminar 6 any, extraer translateError, +54 tests (549 total), 0 errores tsc
 - 2026-04-17d: UX audit — 59 hallazgos (Playwright + código), 35 resueltos, toast.ts, forgot password, tildes RevisionSheet, labels español
+- 2026-04-17e: UX audit ronda 3 — 45 hallazgos (5 agentes paralelo), 45/45 resueltos, error handling, tildes, SuppliersList búsqueda+paginación, OnboardingTour a11y, 549 tests
