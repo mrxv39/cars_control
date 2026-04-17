@@ -77,8 +77,9 @@ describe('BankList', () => {
     vi.mocked(api.listBankAccounts).mockRejectedValue(new Error('Network error'))
     render(<BankList companyId={1} />)
     await waitFor(() => {
-      expect(screen.getByText(/Error: Network error/)).toBeInTheDocument()
+      expect(screen.getByText(/error inesperado/i)).toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
   })
 
   it('renders account buttons and transactions', async () => {

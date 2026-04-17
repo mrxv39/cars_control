@@ -49,9 +49,9 @@ beforeEach(() => {
 })
 
 describe('RevisionSheet', () => {
-  it('renders title "Hoja de revision"', () => {
+  it('renders title "Hoja de revisión"', () => {
     render(<RevisionSheet {...defaultProps} />)
-    expect(screen.getByText('Hoja de revision')).toBeTruthy()
+    expect(screen.getByText('Hoja de revisión')).toBeTruthy()
   })
 
   it('shows vehicle selector with placeholder', () => {
@@ -70,11 +70,11 @@ describe('RevisionSheet', () => {
     const sections = [
       'Exterior',
       'Interior',
-      'Motor y mecanica',
-      'Transmision y direccion',
-      'Frenos y suspension',
-      'Electrica',
-      'Documentacion',
+      'Motor y mecánica',
+      'Transmisión y dirección',
+      'Frenos y suspensión',
+      'Eléctrica',
+      'Documentación',
     ]
     for (const title of sections) {
       expect(screen.getByText(title)).toBeTruthy()

@@ -449,13 +449,13 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
       {/* ── Quick sale modal ── */}
       {showQuickSale && (
         <div className="modal-overlay" onClick={() => setShowQuickSale(false)}>
-          <div className="modal-card panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+          <form className="modal-card panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); void handleQuickSale(); }}>
             <p className="eyebrow">Registrar venta</p>
             <h3 style={{ margin: "0.25rem 0 1rem" }}>{vehicle.name}</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <div>
                 <label className="field-label required">Precio de venta</label>
-                <input type="number" step="100" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="10500" autoFocus />
+                <input type="number" step="100" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="10500" autoFocus required />
               </div>
               <div>
                 <label className="field-label">Cliente</label>
@@ -465,11 +465,11 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
                 </select>
               </div>
               <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-                <button type="button" className="button primary" disabled={savingSale || !salePrice} onClick={() => void handleQuickSale()}>{savingSale ? "Guardando..." : "Registrar venta"}</button>
+                <button type="submit" className="button primary" disabled={savingSale || !salePrice}>{savingSale ? "Guardando..." : "Registrar venta"}</button>
                 <button type="button" className="button secondary" onClick={() => setShowQuickSale(false)}>Cancelar</button>
               </div>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </>

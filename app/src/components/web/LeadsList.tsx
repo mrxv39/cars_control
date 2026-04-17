@@ -251,7 +251,14 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
                 <select value={editForm.estado} onChange={(e) => setEditForm({ ...editForm, estado: e.target.value })}>
                   <option value="nuevo">Nuevo</option><option value="contactado">Contactado</option><option value="negociando">Negociando</option><option value="cerrado">Cerrado</option><option value="perdido">Perdido</option>
                 </select>
-                <input value={editForm.canal} onChange={(e) => setEditForm({ ...editForm, canal: e.target.value })} placeholder="Canal" />
+                <select value={editForm.canal} onChange={(e) => setEditForm({ ...editForm, canal: e.target.value })}>
+                  <option value="">-- Canal --</option>
+                  <option value="coches.net">coches.net</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="llamada">Llamada</option>
+                  <option value="walk-in">Visita presencial</option>
+                  <option value="otro">Otro</option>
+                </select>
                 <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notas" rows={2} />
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button type="button" className="button primary" style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem" }} onClick={() => void saveEdit()}>Guardar</button>

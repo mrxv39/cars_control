@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, FormEvent } from "react";
 import * as api from "./lib/api";
+import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
 import { BankList } from "./components/BankList";
 import { isSuperAdmin } from "./lib/platform-types";
@@ -80,6 +81,10 @@ function WebApp() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [loginFieldErrors, setLoginFieldErrors] = useState<{ user?: string; pass?: string }>({});
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotMsg, setForgotMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
 
   // Detectar callback de Google OAuth al cargar la página
@@ -217,27 +222,61 @@ function WebApp() {
               o con usuario y contraseña
             </div>
 
-            <form onSubmit={(e) => void handleLogin(e)}>
-              <div style={{ marginBottom: "1rem" }}>
-                <label className="field-label required" htmlFor="login-user">Email o usuario</label>
-                <input id="login-user" type="text" className={loginFieldErrors.user ? "input-error" : ""} value={loginUsername} onChange={(e) => { setLoginUsername(e.target.value); setLoginFieldErrors((f) => ({ ...f, user: undefined })); }} placeholder="tu@email.com o nombre de usuario" autoFocus />
-                {loginFieldErrors.user && <p className="input-error-message">{loginFieldErrors.user}</p>}
-              </div>
-              <div style={{ marginBottom: "1rem" }}>
-                <label className="field-label required" htmlFor="login-pass">Contraseña</label>
-                <input id="login-pass" type="password" className={loginFieldErrors.pass ? "input-error" : ""} value={loginPassword} onChange={(e) => { setLoginPassword(e.target.value); setLoginFieldErrors((f) => ({ ...f, pass: undefined })); }} placeholder="Contraseña" />
-                {loginFieldErrors.pass && <p className="input-error-message">{loginFieldErrors.pass}</p>}
-              </div>
-              {loginError && <p className="error-banner" role="alert" style={{ marginBottom: "1rem" }}>{loginError}</p>}
-              <button type="submit" className="button primary full-width" disabled={loginSubmitting}>
-                {loginSubmitting ? "Entrando..." : "Entrar"}
-              </button>
-            </form>
-            <div style={{ textAlign: "center", marginTop: "1rem" }}>
-              <button type="button" className="button secondary" onClick={() => setPage("register")} style={{ fontSize: "0.85rem" }}>
-                ¿No tienes cuenta? Registra tu empresa
-              </button>
-            </div>
+            {forgotPassword ? (
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!forgotEmail.trim()) { setForgotMsg({ text: "Introduce tu email.", ok: false }); return; }
+                setForgotSubmitting(true);
+                setForgotMsg(null);
+                const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}` });
+                setForgotSubmitting(false);
+                if (error) { setForgotMsg({ text: "No se pudo enviar el email. Verifica la dirección.", ok: false }); }
+                else { setForgotMsg({ text: "Email enviado. Revisa tu bandeja de entrada (y spam).", ok: true }); }
+              }}>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label className="field-label required" htmlFor="forgot-email">Email de tu cuenta</label>
+                  <input id="forgot-email" type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="tu@email.com" autoFocus required />
+                </div>
+                {forgotMsg && <p className={forgotMsg.ok ? "success-banner" : "error-banner"} role="alert" style={{ marginBottom: "1rem" }}>{forgotMsg.text}</p>}
+                <button type="submit" className="button primary full-width" disabled={forgotSubmitting}>
+                  {forgotSubmitting ? "Enviando..." : "Enviar enlace de recuperación"}
+                </button>
+                <div style={{ textAlign: "center", marginTop: "0.75rem" }}>
+                  <button type="button" className="button secondary" onClick={() => { setForgotPassword(false); setForgotMsg(null); }} style={{ fontSize: "0.85rem" }}>
+                    Volver al login
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <form onSubmit={(e) => void handleLogin(e)}>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label className="field-label required" htmlFor="login-user">Email o usuario</label>
+                    <input id="login-user" type="text" className={loginFieldErrors.user ? "input-error" : ""} value={loginUsername} onChange={(e) => { setLoginUsername(e.target.value); setLoginFieldErrors((f) => ({ ...f, user: undefined })); }} placeholder="tu@email.com o nombre de usuario" autoFocus />
+                    {loginFieldErrors.user && <p className="input-error-message">{loginFieldErrors.user}</p>}
+                  </div>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label className="field-label required" htmlFor="login-pass">Contraseña</label>
+                    <input id="login-pass" type="password" className={loginFieldErrors.pass ? "input-error" : ""} value={loginPassword} onChange={(e) => { setLoginPassword(e.target.value); setLoginFieldErrors((f) => ({ ...f, pass: undefined })); }} placeholder="Contraseña" />
+                    {loginFieldErrors.pass && <p className="input-error-message">{loginFieldErrors.pass}</p>}
+                  </div>
+                  {loginError && <p className="error-banner" role="alert" style={{ marginBottom: "1rem" }}>{loginError}</p>}
+                  <button type="submit" className="button primary full-width" disabled={loginSubmitting}>
+                    {loginSubmitting ? "Entrando..." : "Entrar"}
+                  </button>
+                </form>
+                <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
+                  <button type="button" style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", fontSize: "0.82rem" }} onClick={() => setForgotPassword(true)}>
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+                <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
+                  <button type="button" className="button secondary" onClick={() => setPage("register")} style={{ fontSize: "0.85rem" }}>
+                    ¿No tienes cuenta? Registra tu empresa
+                  </button>
+                </div>
+              </>
+            )}
           </section>
         </main>
       </div>

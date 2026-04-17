@@ -11,18 +11,18 @@ const INSPECTION_SECTIONS: Array<{ title: string; items: Array<{ key: string; la
     title: "Exterior",
     items: [
       { key: "ext_pintura", label: "Pintura (estado general)" },
-      { key: "ext_carroceria", label: "Carroceria (golpes, abolladuras)" },
+      { key: "ext_carroceria", label: "Carrocería (golpes, abolladuras)" },
       { key: "ext_cristales", label: "Cristales (parabrisas, ventanillas)" },
       { key: "ext_faros", label: "Faros y pilotos" },
       { key: "ext_espejos", label: "Espejos retrovisores" },
       { key: "ext_limpiaparabrisas", label: "Limpiaparabrisas" },
-      { key: "ext_matricula", label: "Matricula y adhesivos" },
+      { key: "ext_matricula", label: "Matrícula y adhesivos" },
     ],
   },
   {
     title: "Interior",
     items: [
-      { key: "int_tapiceria", label: "Tapiceria (asientos, techo)" },
+      { key: "int_tapiceria", label: "Tapicería (asientos, techo)" },
       { key: "int_salpicadero", label: "Salpicadero y consola" },
       { key: "int_volante", label: "Volante y mandos" },
       { key: "int_cinturones", label: "Cinturones de seguridad" },
@@ -32,53 +32,53 @@ const INSPECTION_SECTIONS: Array<{ title: string; items: Array<{ key: string; la
     ],
   },
   {
-    title: "Motor y mecanica",
+    title: "Motor y mecánica",
     items: [
       { key: "mot_arranque", label: "Arranque del motor" },
-      { key: "mot_ruidos", label: "Ruidos anomalos" },
+      { key: "mot_ruidos", label: "Ruidos anómalos" },
       { key: "mot_aceite", label: "Nivel de aceite" },
-      { key: "mot_refrigerante", label: "Liquido refrigerante" },
-      { key: "mot_frenos_liq", label: "Liquido de frenos" },
-      { key: "mot_distribucion", label: "Correa de distribucion (estado/km)" },
+      { key: "mot_refrigerante", label: "Líquido refrigerante" },
+      { key: "mot_frenos_liq", label: "Líquido de frenos" },
+      { key: "mot_distribucion", label: "Correa de distribución (estado/km)" },
       { key: "mot_escape", label: "Escape (humos, ruidos)" },
     ],
   },
   {
-    title: "Transmision y direccion",
+    title: "Transmisión y dirección",
     items: [
       { key: "trans_embrague", label: "Embrague (si manual)" },
       { key: "trans_marchas", label: "Cambio de marchas" },
       { key: "trans_dir_asistida", label: "Dirección asistida" },
-      { key: "trans_holguras", label: "Holguras en la direccion" },
+      { key: "trans_holguras", label: "Holguras en la dirección" },
     ],
   },
   {
-    title: "Frenos y suspension",
+    title: "Frenos y suspensión",
     items: [
       { key: "fren_eficacia", label: "Frenado (eficacia)" },
       { key: "fren_discos", label: "Discos y pastillas" },
       { key: "fren_amortiguadores", label: "Amortiguadores" },
-      { key: "fren_neumaticos", label: "Estado de los neumaticos (4)" },
+      { key: "fren_neumaticos", label: "Estado de los neumáticos (4)" },
       { key: "fren_dibujo", label: "Profundidad del dibujo" },
     ],
   },
   {
-    title: "Electrica",
+    title: "Eléctrica",
     items: [
-      { key: "elec_bateria", label: "Bateria" },
+      { key: "elec_bateria", label: "Batería" },
       { key: "elec_luces", label: "Luces (cortas, largas, antiniebla)" },
       { key: "elec_intermitentes", label: "Intermitentes y warning" },
-      { key: "elec_elevalunas", label: "Elevalunas electricos" },
+      { key: "elec_elevalunas", label: "Elevalunas eléctricos" },
       { key: "elec_cierre", label: "Cierre centralizado" },
       { key: "elec_testigos", label: "Testigos en cuadro de instrumentos" },
     ],
   },
   {
-    title: "Documentacion",
+    title: "Documentación",
     items: [
       { key: "doc_itv", label: "ITV en vigor" },
-      { key: "doc_permiso", label: "Permiso de circulacion" },
-      { key: "doc_ficha", label: "Ficha tecnica" },
+      { key: "doc_permiso", label: "Permiso de circulación" },
+      { key: "doc_ficha", label: "Ficha técnica" },
       { key: "doc_historial", label: "Historial de mantenimiento" },
     ],
   },
@@ -179,7 +179,7 @@ export function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]
   return (
     <div style={{ maxWidth: 900 }}>
       <p className="eyebrow">Inspección de vehículo</p>
-      <h2 style={{ margin: "0.3rem 0 1rem" }}>Hoja de revision</h2>
+      <h2 style={{ margin: "0.3rem 0 1rem" }}>Hoja de revisión</h2>
 
       {/* Vehicle selector */}
       <section className="panel" style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}>

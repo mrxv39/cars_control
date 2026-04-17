@@ -14,7 +14,13 @@ export function ClientsList({ clients, companyId: _companyId, onReload }: { clie
   const dialog = useConfirmDialog();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", dni: "", notes: "" });
-  const { paged: pagedClients, page: clientsPage, totalPages: clientsTotalPages, setPage: setClientsPage } = usePagination(clients);
+  const [clientSearch, setClientSearch] = useState("");
+  const filteredClients = useMemo(() => {
+    if (!clientSearch.trim()) return clients;
+    const q = clientSearch.toLowerCase();
+    return clients.filter((c) => [c.name, c.phone, c.email, c.dni].some((v) => v?.toLowerCase().includes(q)));
+  }, [clients, clientSearch]);
+  const { paged: pagedClients, page: clientsPage, totalPages: clientsTotalPages, setPage: setClientsPage } = usePagination(filteredClients);
 
   const clientPhoneDup = useMemo(() => {
     if (!editForm.phone || !editForm.phone.trim()) return null;
@@ -74,8 +80,19 @@ export function ClientsList({ clients, companyId: _companyId, onReload }: { clie
           </div>
         )}
       </header>
+      {clients.length > 0 && (
+        <section className="panel" style={{ padding: "0.75rem 1rem", marginBottom: "0.75rem" }}>
+          <input value={clientSearch} onChange={(e) => { setClientSearch(e.target.value); setClientsPage(0); }} placeholder="Buscar cliente por nombre, teléfono, email o DNI..." style={{ width: "100%", border: "none", background: "transparent", outline: "none", fontSize: "0.9rem" }} aria-label="Buscar clientes" />
+        </section>
+      )}
       {clients.length === 0 && (
-        <EmptyState icon="👤" title="Sin clientes registrados" description="Los clientes se crean al convertir un lead en cliente desde la vista de Leads." />
+        <EmptyState icon="👤" title="Sin clientes registrados" description="Los clientes se crean al convertir un lead en cliente desde la vista de Interesados." />
+      )}
+      {filteredClients.length === 0 && clients.length > 0 && (
+        <div className="panel" style={{ padding: "2rem", textAlign: "center" }}>
+          <p className="muted">No hay clientes que coincidan con la búsqueda.</p>
+          <button type="button" className="button secondary" style={{ marginTop: "0.5rem" }} onClick={() => setClientSearch("")}>Limpiar búsqueda</button>
+        </div>
       )}
       <PaginationControls page={clientsPage} totalPages={clientsTotalPages} setPage={setClientsPage} />
       <section className="record-grid" aria-live="polite">
@@ -283,9 +300,9 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
               <tbody>
                 {pagedPurchases.map((r) => (
                   <tr key={r.id} className="sales-row">
-                    <td className="sales-td"><span className="badge">{r.expense_type}</span></td>
+                    <td className="sales-td"><span className="badge">{({ vehiculo_compra: "Compra vehículo", reparacion: "Reparación", transporte: "Transporte", documentacion: "Documentación", otros: "Otros" } as Record<string, string>)[r.expense_type] || r.expense_type}</span></td>
                     <td className="sales-td">{r.supplier_name}</td>
-                    <td className="sales-td">{r.purchase_date}</td>
+                    <td className="sales-td">{r.purchase_date ? new Date(r.purchase_date).toLocaleDateString("es-ES") : "—"}</td>
                     <td className="sales-td sales-td-right"><span className="sales-price">{r.purchase_price.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
                     <td className="sales-td"><span className="badge badge-info">{r.invoice_number || "—"}</span></td>
                     <td className="sales-td">

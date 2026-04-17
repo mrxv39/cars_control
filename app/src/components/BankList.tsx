@@ -155,8 +155,11 @@ export function BankList({ companyId }: Props) {
 
   if (error) {
     return (
-      <section className="panel" style={{ borderLeft: "4px solid #b91c1c" }}>
-        <p style={{ color: "#b91c1c" }}>Error: {error}</p>
+      <section className="panel" style={{ borderLeft: "4px solid #b91c1c", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <p style={{ color: "#b91c1c", margin: 0 }}>{translateError(error)}</p>
+        <button type="button" className="button primary" onClick={() => { setError(null); setLoading(true); void (async () => { try { const accs = await api.listBankAccounts(companyId); setAccounts(accs); setSelectedAccountId(accs.find((a) => !a.is_personal && a.account_type === "checking")?.id ?? accs[0]?.id ?? null); } catch (e) { setError((e as Error).message); } finally { setLoading(false); } })(); }}>
+          Reintentar
+        </button>
       </section>
     );
   }
