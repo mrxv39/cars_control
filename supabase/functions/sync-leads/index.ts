@@ -387,15 +387,27 @@ function parseCochesNetLead(subject: string, body: string): ParsedLead {
 
 // ── Main handler ───────────────────────────────────────────────────
 
+function redactPhone(phone: string): string {
+  if (!phone || phone.length < 4) return "***";
+  return "***" + phone.slice(-3);
+}
+
+function redactName(name: string): string {
+  if (!name) return "***";
+  return name.charAt(0) + "***";
+}
+
 serve(async (req) => {
+  // Auth: ALWAYS require CRON_SECRET or SERVICE_ROLE_KEY
   const authHeader = req.headers.get("Authorization");
   const expectedKey = Deno.env.get("CRON_SECRET");
-  if (expectedKey && req.method === "POST") {
-    if (authHeader !== `Bearer ${expectedKey}`) {
-      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (!supabaseServiceKey || authHeader !== `Bearer ${supabaseServiceKey}`) {
-        return new Response("Unauthorized", { status: 401 });
-      }
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (req.method === "POST") {
+    const isValidCron = expectedKey && authHeader === `Bearer ${expectedKey}`;
+    const isValidService = supabaseServiceKey && authHeader === `Bearer ${supabaseServiceKey}`;
+    if (!isValidCron && !isValidService) {
+      return new Response("Unauthorized", { status: 401 });
     }
   }
 
@@ -425,7 +437,7 @@ serve(async (req) => {
       const from = getHeader(msg, "From");
       const body = extractBody(msg.payload);
 
-      logs.push(`Email: ${subject} | From: ${from}`);
+      logs.push(`Email: ${subject.slice(0, 40)}... | From: [redacted]`);
 
       // Verify sender is from coches.net
       if (!COCHES_NET_SENDERS.some((s) => from.toLowerCase().includes(s))) {
@@ -456,7 +468,7 @@ serve(async (req) => {
       // Type 1: New lead
       logs.push("  TYPE: new lead");
       const lead = parseCochesNetLead(subject, body);
-      logs.push(`  Lead: ${lead.name} | ${lead.phone} | ${lead.vehicle_interest}`);
+      logs.push(`  Lead: ${redactName(lead.name)} | ${redactPhone(lead.phone)} | ${lead.vehicle_interest}`);
 
       // Check if lead already exists by phone
       if (lead.phone) {
@@ -466,7 +478,7 @@ serve(async (req) => {
           .eq("company_id", COMPANY_ID)
           .eq("phone", lead.phone);
         if (existing && existing.length > 0) {
-          logs.push(`  SKIP: lead with phone ${lead.phone} already exists`);
+          logs.push(`  SKIP: lead with phone ${redactPhone(lead.phone)} already exists`);
           await markAsRead(token, msgId);
           continue;
         }

@@ -34,11 +34,21 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { parseListing, parseDetail } from "./parser.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const ALLOWED_ORIGINS = [
+  "https://carscontrol.vercel.app",
+  "https://codinacars.vercel.app",
+  "http://localhost:3000",
+];
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") ?? "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -72,11 +82,21 @@ async function fetchPage(url: string): Promise<string> {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
+
+  // Auth: require valid Supabase JWT or service role key
+  const authHeader = req.headers.get("authorization") ?? req.headers.get("apikey") ?? "";
+  if (!authHeader) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -135,7 +155,7 @@ serve(async (req) => {
   } catch (err) {
     console.error("Function error:", err);
     return new Response(
-      JSON.stringify({ ok: false, error: String(err), stack: (err as Error)?.stack }),
+      JSON.stringify({ ok: false, error: "Error interno del servidor" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

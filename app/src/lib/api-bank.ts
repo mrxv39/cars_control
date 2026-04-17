@@ -61,11 +61,17 @@ export async function suggestPurchasesForTransaction(companyId: number, amount: 
 }
 
 export async function listPurchaseIdsWithBankLink(companyId: number): Promise<Set<number>> {
-  const { data, error } = await supabase.from("bank_transactions").select("linked_purchase_id, bank_account_id").not("linked_purchase_id", "is", null);
+  // Filter by company: join through bank_account_id → bank_accounts.company_id
+  const { data: accounts, error: accErr } = await supabase.from("bank_accounts").select("id").eq("company_id", companyId);
+  throwIfError(accErr);
+  const accountIds = (accounts || []).map((a) => a.id);
+  if (accountIds.length === 0) return new Set<number>();
+
+  const { data, error } = await supabase.from("bank_transactions").select("linked_purchase_id")
+    .not("linked_purchase_id", "is", null).in("bank_account_id", accountIds);
   throwIfError(error);
   const ids = new Set<number>();
   for (const row of data || []) { if (row.linked_purchase_id != null) ids.add(row.linked_purchase_id); }
-  void companyId;
   return ids;
 }
 
