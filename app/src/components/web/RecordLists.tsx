@@ -4,6 +4,8 @@ import { usePagination } from "../../hooks/usePagination";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import { exportToCSV } from "../../lib/csv-export";
 import { generateInvoicePDF } from "../../utils/invoiceGenerator";
+import { showToast } from "../../lib/toast";
+import { translateError } from "../../lib/translateError";
 import ConfirmDialog from "./ConfirmDialog";
 import EmptyState from "./EmptyState";
 import { PaginationControls } from "./PaginationControls";
@@ -37,15 +39,21 @@ export function ClientsList({ clients, companyId: _companyId, onReload }: { clie
 
   async function saveEdit() {
     if (editingId == null) return;
-    await api.updateClient(editingId, editForm as Partial<api.Client>);
-    setEditingId(null);
-    onReload();
+    try {
+      await api.updateClient(editingId, editForm as Partial<api.Client>);
+      setEditingId(null);
+      onReload();
+      showToast("Cliente guardado");
+    } catch (err) { showToast(translateError(err), "error"); }
   }
 
   function handleDeleteClient(id: number, name: string) {
     dialog.requestConfirm("Eliminar cliente", `¿Eliminar cliente "${name}"? Esta acción no se puede deshacer.`, async () => {
-      await api.deleteClient(id);
-      onReload();
+      try {
+        await api.deleteClient(id);
+        onReload();
+        showToast("Cliente eliminado");
+      } catch (err) { showToast(translateError(err), "error"); }
     });
   }
 
@@ -124,8 +132,11 @@ export function SalesList({ records, vehicles, clients, companyId: _companyId, c
 
   function handleDeleteSale(id: number, vehicleName: string) {
     dialog.requestConfirm("Eliminar venta", `¿Eliminar registro de venta de "${vehicleName}"? Esta acción no se puede deshacer.`, async () => {
-      await api.deleteSalesRecord(id);
-      onReload();
+      try {
+        await api.deleteSalesRecord(id);
+        onReload();
+        showToast("Venta eliminada");
+      } catch (err) { showToast(translateError(err), "error"); }
     });
   }
 
@@ -228,8 +239,11 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
 
   function handleDeletePurchase(id: number, supplierName: string) {
     dialog.requestConfirm("Eliminar compra", `¿Eliminar registro de compra de "${supplierName}"? Esta acción no se puede deshacer.`, async () => {
-      await api.deletePurchaseRecord(id);
-      onReload();
+      try {
+        await api.deletePurchaseRecord(id);
+        onReload();
+        showToast("Compra eliminada");
+      } catch (err) { showToast(translateError(err), "error"); }
     });
   }
 
@@ -324,15 +338,21 @@ export function SuppliersList({ suppliers, companyId, onReload }: { suppliers: a
       setNewName(""); setNewCif(""); setNewPhone(""); setNewEmail(""); setNewContactPerson(""); setNewNotes("");
       setShowAdd(false);
       onReload();
+      showToast("Proveedor creado");
+    } catch (err) {
+      showToast(translateError(err), "error");
     } finally {
       setAdding(false);
     }
   }
 
   function handleDelete(id: number, name: string) {
-    dialog.requestConfirm("Eliminar proveedor", `Eliminar proveedor "${name}"?`, async () => {
-      await api.deleteSupplier(id);
-      onReload();
+    dialog.requestConfirm("Eliminar proveedor", `¿Eliminar proveedor "${name}"? Esta acción no se puede deshacer.`, async () => {
+      try {
+        await api.deleteSupplier(id);
+        onReload();
+        showToast("Proveedor eliminado");
+      } catch (err) { showToast(translateError(err), "error"); }
     });
   }
 

@@ -187,10 +187,10 @@ describe('WebApp', () => {
     }
     localStorage.setItem('cc_session', JSON.stringify(session))
     await importAndRender()
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Resumen')).toBeInTheDocument())
     expect(screen.getByText('Stock')).toBeInTheDocument()
     expect(screen.getByText('Ventas')).toBeInTheDocument()
-    expect(screen.getByText('Leads')).toBeInTheDocument()
+    expect(screen.getByText('Interesados')).toBeInTheDocument()
     expect(screen.getByText('Clientes')).toBeInTheDocument()
     expect(screen.getByText('Banco')).toBeInTheDocument()
   })

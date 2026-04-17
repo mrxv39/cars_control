@@ -1,6 +1,7 @@
 import React, { useState, useMemo, FormEvent } from "react";
 import * as api from "../../lib/api";
 import { exportToCSV } from "../../lib/csv-export";
+import { showToast } from "../../lib/toast";
 import { usePagination } from "../../hooks/usePagination";
 import { PaginationControls } from "./PaginationControls";
 
@@ -123,7 +124,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
       setImportPreview(null);
       setSelectedToImport(new Set());
       await onReload();
-      setImportError(`Importación completada: ${created} coches nuevos.`);
+      showToast(`Importación completada: ${created} coches nuevos.`);
     } catch (e: unknown) {
       setImportError(e instanceof Error ? e.message : "Error importando");
     } finally {
@@ -487,6 +488,12 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
 
       <PaginationControls page={stockPage} totalPages={stockTotalPages} setPage={setStockPage} />
       <section className="stock-list" aria-live="polite">
+        {filtered.length === 0 && vehicles.length > 0 && (
+          <div className="panel" style={{ padding: "2rem", textAlign: "center" }}>
+            <p className="muted">No hay vehículos que coincidan con los filtros.</p>
+            <button type="button" className="button secondary" style={{ marginTop: "0.5rem" }} onClick={() => { setSearch(""); setFilterKey("todos"); }}>Limpiar filtros</button>
+          </div>
+        )}
         {pagedStock.map((v) => (
           <StockRow
             key={v.id}

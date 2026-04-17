@@ -2,6 +2,7 @@ import React, { useState, FormEvent } from "react";
 import * as api from "../../lib/api";
 import { supabase } from "../../lib/supabase";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
+import { showToast } from "../../lib/toast";
 import ConfirmDialog from "./ConfirmDialog";
 import EmptyState from "./EmptyState";
 import { translateError } from "../../lib/translateError";
@@ -294,6 +295,9 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
       h.setForm({ ...h.form, estado: "vendido" });
       setShowQuickSale(false);
       onReload?.();
+      showToast("Venta registrada");
+    } catch (err) {
+      showToast(translateError(err), "error");
     } finally { setSavingSale(false); }
   }
 

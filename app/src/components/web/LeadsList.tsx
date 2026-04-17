@@ -3,6 +3,8 @@ import * as api from "../../lib/api";
 import { usePagination } from "../../hooks/usePagination";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import { exportToCSV } from "../../lib/csv-export";
+import { showToast } from "../../lib/toast";
+import { translateError } from "../../lib/translateError";
 import ConfirmDialog from "./ConfirmDialog";
 import EmptyState from "./EmptyState";
 import Spinner from "./Spinner";
@@ -88,14 +90,18 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
 
   async function addNote() {
     if (!notesLeadId || !newNote.trim()) return;
-    await api.createLeadNote(notesLeadId, newNote.trim());
-    setNewNote("");
-    setLeadNotes(await api.listLeadNotes(notesLeadId));
+    try {
+      await api.createLeadNote(notesLeadId, newNote.trim());
+      setNewNote("");
+      setLeadNotes(await api.listLeadNotes(notesLeadId));
+    } catch (err) { showToast(translateError(err), "error"); }
   }
 
   async function removeNote(noteId: number) {
-    await api.deleteLeadNote(noteId);
-    if (notesLeadId) setLeadNotes(await api.listLeadNotes(notesLeadId));
+    try {
+      await api.deleteLeadNote(noteId);
+      if (notesLeadId) setLeadNotes(await api.listLeadNotes(notesLeadId));
+    } catch (err) { showToast(translateError(err), "error"); }
   }
   // Filtros validados con Ricard 2026-04-04 (§6.ter del plan):
   // - sin_contestar: leads en estado nuevo / sin contactar (los más urgentes)
@@ -148,15 +154,21 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
 
   async function saveEdit() {
     if (editingId == null) return;
-    await api.updateLead(editingId, editForm as Partial<api.Lead>);
-    setEditingId(null);
-    onReload();
+    try {
+      await api.updateLead(editingId, editForm as Partial<api.Lead>);
+      setEditingId(null);
+      onReload();
+      showToast("Lead guardado");
+    } catch (err) { showToast(translateError(err), "error"); }
   }
 
   function handleDeleteLead(id: number, name: string) {
     dialog.requestConfirm("Eliminar lead", `¿Eliminar lead "${name}"? Esta acción no se puede deshacer.`, async () => {
-      await api.deleteLead(id);
-      onReload();
+      try {
+        await api.deleteLead(id);
+        onReload();
+        showToast("Lead eliminado");
+      } catch (err) { showToast(translateError(err), "error"); }
     });
   }
 
@@ -218,6 +230,12 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
       )}
       {leads.length === 0 && (
         <EmptyState icon="📞" title="Sin leads todavía" description="Los leads aparecerán aquí cuando lleguen consultas desde coches.net, WhatsApp o llamadas. También puedes importarlos manualmente." />
+      )}
+      {filtered.length === 0 && leads.length > 0 && (
+        <div className="panel" style={{ padding: "2rem", textAlign: "center" }}>
+          <p className="muted">No hay interesados que coincidan con el filtro.</p>
+          <button type="button" className="button secondary" style={{ marginTop: "0.5rem" }} onClick={() => { setSearch(""); setFilter("todos"); }}>Limpiar filtros</button>
+        </div>
       )}
       <PaginationControls page={leadsPage} totalPages={leadsTotalPages} setPage={setLeadsPage} />
       <section className="record-grid" aria-live="polite">

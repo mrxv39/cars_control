@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import * as api from "../lib/api";
+import { showToast } from "../lib/toast";
+import { translateError } from "../lib/translateError";
 import { LinkPurchaseModal } from "./LinkPurchaseModal";
 import { CATEGORY_LABELS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel } from "./bank-utils";
 
@@ -139,6 +141,7 @@ export function BankList({ companyId }: Props) {
       );
     } catch (e) {
       console.error("Error al cambiar categoría:", e);
+      showToast(translateError(e), "error");
     }
   }
 

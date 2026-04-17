@@ -38,6 +38,8 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   if (sent) {
     return (
@@ -47,17 +49,34 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
     );
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setSendError(null);
+    try {
+      const body = new FormData();
+      body.append("_subject", `Consulta: ${vehicleName}`);
+      body.append("_template", "table");
+      body.append("_captcha", "false");
+      body.append("Vehiculo", vehicleName);
+      body.append("Nombre", name);
+      body.append("Telefono", phone);
+      body.append("Mensaje", message);
+      const resp = await fetch("https://formsubmit.co/codinacars@gmail.com", { method: "POST", body });
+      if (!resp.ok) throw new Error("Error del servidor");
+      setSent(true);
+    } catch {
+      setSendError("No se pudo enviar el mensaje. Comprueba tu conexión e inténtalo de nuevo.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <form
       className="catalog-contact-form"
-      action="https://formsubmit.co/codinacars@gmail.com"
-      method="POST"
-      onSubmit={() => setSent(true)}
+      onSubmit={(e) => void handleSubmit(e)}
     >
-      <input type="hidden" name="_subject" value={`Consulta: ${vehicleName}`} />
-      <input type="hidden" name="_template" value="table" />
-      <input type="hidden" name="_captcha" value="false" />
-      <input type="hidden" name="Vehiculo" value={vehicleName} />
       <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Contactar por este vehículo</p>
       <div className="form-grid-2">
         <div>
@@ -73,8 +92,9 @@ function ContactForm({ vehicleName }: { vehicleName: string }) {
         <label className="field-label" htmlFor="contact-message">Mensaje (opcional)</label>
         <textarea id="contact-message" name="Mensaje" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Ej: ¿Está disponible? ¿Se puede financiar?" rows={3} maxLength={500} />
       </div>
-      <button type="submit" className="button primary" style={{ width: "100%", marginTop: "0.75rem" }}>
-        Enviar consulta
+      {sendError && <p className="error-banner" role="alert" style={{ marginTop: "0.5rem" }}>{sendError}</p>}
+      <button type="submit" className="button primary" style={{ width: "100%", marginTop: "0.75rem" }} disabled={sending}>
+        {sending ? "Enviando..." : "Enviar consulta"}
       </button>
     </form>
   );

@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import * as api from "../../lib/api";
 import { supabase } from "../../lib/supabase";
+import { showToast } from "../../lib/toast";
+import { translateError } from "../../lib/translateError";
+import ConfirmDialog from "./ConfirmDialog";
+import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 
 const INSPECTION_SECTIONS: Array<{ title: string; items: Array<{ key: string; label: string }> }> = [
   {
@@ -103,10 +107,13 @@ export function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [history, setHistory] = useState<api.VehicleInspection[]>([]);
+  const { confirmProps, requestConfirm } = useConfirmDialog();
 
   useEffect(() => {
     if (selectedVehicleId) {
-      void api.listVehicleInspections(Number(selectedVehicleId)).then(setHistory);
+      void api.listVehicleInspections(Number(selectedVehicleId))
+        .then(setHistory)
+        .catch((err) => { showToast(translateError(err), "error"); });
     } else {
       setHistory([]);
     }
@@ -302,7 +309,13 @@ export function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]
                       </p>
                     </div>
                     <button type="button" className="button danger" style={{ padding: "0.25rem 0.6rem", fontSize: "0.72rem" }}
-                      onClick={async () => { await api.deleteVehicleInspection(insp.id); setHistory((h) => h.filter((x) => x.id !== insp.id)); }}>
+                      onClick={() => requestConfirm("Eliminar revisión", "¿Eliminar esta revisión? Esta acción no se puede deshacer.", async () => {
+                        try {
+                          await api.deleteVehicleInspection(insp.id);
+                          setHistory((h) => h.filter((x) => x.id !== insp.id));
+                          showToast("Revisión eliminada");
+                        } catch (err) { showToast(translateError(err), "error"); }
+                      })}>
                       Eliminar
                     </button>
                   </div>
@@ -313,6 +326,8 @@ export function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]
           </div>
         </section>
       )}
+
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProfileView, CompanyView } from "./components/web/ProfileCompanyViews";
 import { VehicleDetail } from "./components/web/VehicleDetailPanel";
 import { translateError } from "./lib/translateError";
+import { onToast, type ToastType } from "./lib/toast";
 import { SkeletonGrid } from "./components/web/Skeleton";
 import { PublicCatalog, CatalogHeader } from "./components/web/PublicCatalog";
 import OnboardingTour from "./components/web/OnboardingTour";
@@ -326,17 +327,17 @@ function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
 }
 
 const NAV_ITEMS: Array<{ key: ViewKey; label: string; icon: React.ComponentType<{ size?: number }> }> = [
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "dashboard", label: "Resumen", icon: LayoutDashboard },
   { key: "stock", label: "Stock", icon: Car },
   { key: "sales", label: "Ventas", icon: Receipt },
   { key: "purchases", label: "Compras", icon: ShoppingCart },
   { key: "bank", label: "Banco", icon: Landmark },
   { key: "suppliers", label: "Proveedores", icon: Truck },
-  { key: "leads", label: "Leads", icon: Users },
+  { key: "leads", label: "Interesados", icon: Users },
   { key: "clients", label: "Clientes", icon: UserCheck },
   // Recordatorios eliminado (sesión Ricard 2026-04-04): los recordatorios
   // ahora son inline en stock/leads (chips de checklist).
-  { key: "revision", label: "Revision", icon: ClipboardCheck },
+  { key: "revision", label: "Revisión", icon: ClipboardCheck },
 ];
 
 function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: api.LoginResult; onLogout: () => void; onOpenPlatform?: () => void }) {
@@ -351,12 +352,14 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
   const [suppliers, setSuppliers] = useState<api.Supplier[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<api.Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [globalSearch, setGlobalSearch] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [toast, setToast] = useState<{ message: string; key: number } | null>(null);
-  const showToast = useCallback((message: string) => setToast({ message, key: Date.now() }), []);
+  const [toast, setToast] = useState<{ message: string; type: ToastType; key: number } | null>(null);
+  const showToastLocal = useCallback((message: string, type: ToastType = "success") => setToast({ message, type, key: Date.now() }), []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 4000); return () => clearTimeout(t); }, [toast]);
+  useEffect(() => onToast((msg, type) => showToastLocal(msg, type)), [showToastLocal]);
 
   React.useEffect(() => {
     void loadAll();
@@ -364,15 +367,16 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
 
   async function loadAll() {
     setLoading(true);
+    setLoadError(null);
     try {
       const [v, allV, l, c, s, p, sup] = await Promise.all([
-        api.listVehicles(companyId).catch(() => [] as api.Vehicle[]),
-        api.listAllVehicles(companyId).catch(() => [] as api.Vehicle[]),
-        api.listLeads(companyId).catch(() => [] as api.Lead[]),
-        api.listClients(companyId).catch(() => [] as api.Client[]),
-        api.listSalesRecords(companyId).catch(() => [] as api.SalesRecord[]),
-        api.listPurchaseRecords(companyId).catch(() => [] as api.PurchaseRecord[]),
-        api.listSuppliers(companyId).catch(() => [] as api.Supplier[]),
+        api.listVehicles(companyId),
+        api.listAllVehicles(companyId),
+        api.listLeads(companyId),
+        api.listClients(companyId),
+        api.listSalesRecords(companyId),
+        api.listPurchaseRecords(companyId),
+        api.listSuppliers(companyId),
       ]);
       setVehicles(v);
       setAllVehicles(allV);
@@ -383,7 +387,9 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       setSuppliers(sup);
     } catch (err) {
       console.error("Error loading data:", err);
-      showToast(translateError(err));
+      const msg = translateError(err);
+      setLoadError(msg);
+      showToastLocal(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -441,7 +447,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
             onClick={() => { setCurrentView("profile"); setMobileMenuOpen(false); }}
             title="Editar mi perfil"
           >
-            <p className="muted" style={{ margin: 0 }}><User size={13} style={{ verticalAlign: "-2px", marginRight: "0.3rem", opacity: 0.7 }} />{session.user.full_name} ({session.user.role})</p>
+            <p className="muted" style={{ margin: 0 }}><User size={13} style={{ verticalAlign: "-2px", marginRight: "0.3rem", opacity: 0.7 }} />{session.user.full_name} ({({ owner: "Propietario", admin: "Administrador", viewer: "Visor", super_admin: "Super Admin" } as Record<string, string>)[session.user.role] || session.user.role})</p>
           </button>
         </div>
         <div style={{ position: "relative" }}>
@@ -502,6 +508,12 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       </aside>
       <section className="content">
         {loading && <div className="content-loading-bar" />}
+        {loadError && (
+          <div className="error-banner" role="alert" style={{ margin: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>{loadError}</span>
+            <button type="button" className="button primary" style={{ marginLeft: "1rem", whiteSpace: "nowrap" }} onClick={() => void loadAll()}>Reintentar</button>
+          </div>
+        )}
         {currentView === "dashboard" && (
           <WebDashboard
             vehicles={vehicles}
@@ -541,7 +553,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       />
 
       {toast && (
-        <div className="toast success" role="status" key={toast.key}>
+        <div className={`toast ${toast.type}`} role={toast.type === "error" ? "alert" : "status"} key={toast.key}>
           {toast.message}
           <button type="button" style={{ background: "none", border: "none", color: "inherit", marginLeft: "0.75rem", cursor: "pointer", fontSize: "0.85rem" }} onClick={() => setToast(null)} aria-label="Cerrar">✕</button>
         </div>
