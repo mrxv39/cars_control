@@ -42,8 +42,8 @@ function ProfileView({ session }: { session: api.LoginResult }) {
         localStorage.setItem("cc_session", JSON.stringify(parsed));
       }
       setMsg({ kind: "ok", text: "Perfil actualizado. Recarga para ver los cambios en la barra lateral." });
-    } catch (err: any) {
-      setMsg({ kind: "err", text: err.message || "Error guardando perfil" });
+    } catch (err: unknown) {
+      setMsg({ kind: "err", text: err instanceof Error ? err.message : "Error guardando perfil" });
     } finally { setSaving(false); }
   }
 
@@ -56,8 +56,8 @@ function ProfileView({ session }: { session: api.LoginResult }) {
       await api.updateUserPassword(session.user.id, pw1);
       setPw1(""); setPw2("");
       setMsg({ kind: "ok", text: "Contraseña actualizada correctamente" });
-    } catch (err: any) {
-      setMsg({ kind: "err", text: err.message || "Error cambiando contraseña" });
+    } catch (err: unknown) {
+      setMsg({ kind: "err", text: err instanceof Error ? err.message : "Error cambiando contraseña" });
     } finally { setSaving(false); }
   }
 
@@ -163,8 +163,8 @@ function CompanyView({ session }: { session: api.LoginResult }) {
         localStorage.setItem("cc_session", JSON.stringify(parsed));
       }
       setMsg({ kind: "ok", text: "Datos de empresa actualizados. Recarga para ver los cambios en la barra lateral." });
-    } catch (err: any) {
-      setMsg({ kind: "err", text: err.message || "Error guardando empresa" });
+    } catch (err: unknown) {
+      setMsg({ kind: "err", text: err instanceof Error ? err.message : "Error guardando empresa" });
     } finally { setSaving(false); }
   }
 

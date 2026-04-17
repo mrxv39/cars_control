@@ -103,8 +103,8 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
       setImportPreview(preview);
       // Por defecto, seleccionar todos los nuevos
       setSelectedToImport(new Set(preview.newDetails.map((d) => d.externalId || "").filter(Boolean)));
-    } catch (e: any) {
-      setImportError(e.message || "Error consultando coches.net");
+    } catch (e: unknown) {
+      setImportError(e instanceof Error ? e.message : "Error consultando coches.net");
     } finally {
       setImporting(false);
     }
@@ -124,8 +124,8 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
       setSelectedToImport(new Set());
       await onReload();
       setImportError(`Importación completada: ${created} coches nuevos.`);
-    } catch (e: any) {
-      setImportError(e.message || "Error importando");
+    } catch (e: unknown) {
+      setImportError(e instanceof Error ? e.message : "Error importando");
     } finally {
       setImporting(false);
     }

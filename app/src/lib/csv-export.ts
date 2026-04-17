@@ -2,14 +2,14 @@
  * Genera y descarga un archivo CSV a partir de un array de objetos.
  * Usa BOM para compatibilidad con Excel y separador ; para formato europeo.
  */
-export function exportToCSV(data: Record<string, any>[], filename: string): void {
+export function exportToCSV(data: Record<string, unknown>[], filename: string): void {
   if (data.length === 0) return;
 
   const headers = Object.keys(data[0]);
   const BOM = "\uFEFF";
   const separator = ";";
 
-  const escapeCell = (value: any): string => {
+  const escapeCell = (value: unknown): string => {
     if (value == null) return "";
     const str = String(value);
     if (str.includes(separator) || str.includes('"') || str.includes("\n")) {
