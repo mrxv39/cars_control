@@ -104,7 +104,7 @@ export function ClientsList({ clients, companyId: _companyId, onReload }: { clie
                 <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" className={!editForm.name.trim() && editingId ? "input-error" : ""} />
                 {!editForm.name.trim() && editingId && <p className="input-error-message" role="alert">El nombre es obligatorio</p>}
                 <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Teléfono" />
-                {clientPhoneDup && <p style={{ color: "#b45309", fontSize: "0.78rem", margin: "-0.25rem 0 0" }}>⚠ {clientPhoneDup}</p>}
+                {clientPhoneDup && <p style={{ color: "var(--color-warning)", fontSize: "var(--text-xs)", margin: "calc(-1 * var(--space-xs)) 0 0" }}><span aria-hidden="true">⚠ </span>{clientPhoneDup}</p>}
                 <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
                 <input value={editForm.dni} onChange={(e) => setEditForm({ ...editForm, dni: e.target.value })} placeholder="DNI" />
                 <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notas" rows={2} />
@@ -200,8 +200,8 @@ export function SalesList({ records, vehicles, clients, companyId: _companyId, c
                       <td className="sales-td">{client?.name || "—"}</td>
                       <td className="sales-td">{new Date(r.date).toLocaleDateString("es-ES")}</td>
                       <td className="sales-td sales-td-right"><span className="sales-price">{r.price_final.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
-                      <td className="sales-td" style={{ display: "flex", gap: "0.4rem" }}>
-                        <button type="button" className="button secondary xs" onClick={() => {
+                      <td className="sales-td" style={{ display: "flex", gap: "var(--space-xs)" }}>
+                        <button type="button" className="button secondary xs" aria-label={`Generar factura de venta para ${vName}`} onClick={() => {
                           const year = new Date(r.date).getFullYear();
                           const idx = records.filter(s => new Date(s.date).getFullYear() === year && s.id <= r.id).length;
                           generateInvoicePDF({
@@ -222,7 +222,7 @@ export function SalesList({ records, vehicles, clients, companyId: _companyId, c
                             salePrice: r.price_final,
                           });
                         }}>Factura</button>
-                        <button type="button" className="button danger xs" onClick={() => void handleDeleteSale(r.id, vName)}>Eliminar</button>
+                        <button type="button" className="button danger xs" aria-label={`Eliminar venta de ${vName}`} onClick={() => void handleDeleteSale(r.id, vName)}>Eliminar</button>
                       </td>
                     </tr>
                   );
@@ -308,12 +308,12 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
                     <td className="sales-td"><span className="badge badge-info">{r.invoice_number || "—"}</span></td>
                     <td className="sales-td">
                       {bankLinked.has(r.id) ? (
-                        <span className="badge badge-success" title="Vinculado a movimiento bancario" style={{ fontSize: "0.7rem" }}>✓ Banco</span>
+                        <span className="badge badge-success" title="Vinculado a movimiento bancario" style={{ fontSize: "var(--text-xs)" }}>✓ Banco</span>
                       ) : (
-                        <span className="muted" style={{ fontSize: "0.72rem" }}>—</span>
+                        <span className="muted" style={{ fontSize: "var(--text-xs)" }}>—</span>
                       )}
                     </td>
-                    <td className="sales-td"><button type="button" className="button danger xs" onClick={() => void handleDeletePurchase(r.id, r.supplier_name)}>Eliminar</button></td>
+                    <td className="sales-td"><button type="button" className="button danger xs" aria-label={`Eliminar compra de ${r.supplier_name}`} onClick={() => void handleDeletePurchase(r.id, r.supplier_name)}>Eliminar</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -473,7 +473,7 @@ export function SuppliersList({ suppliers, companyId, onReload }: { suppliers: a
                       <td className="sales-td">{s.contact_person || "-"}</td>
                       <td className="sales-td">{s.phone || "-"}</td>
                       <td className="sales-td">
-                        <button type="button" className="button danger xs" onClick={() => void handleDelete(s.id, s.name)}>Eliminar</button>
+                        <button type="button" className="button danger xs" aria-label={`Eliminar proveedor ${s.name}`} onClick={() => void handleDelete(s.id, s.name)}>Eliminar</button>
                       </td>
                     </tr>
                   ))}

@@ -155,8 +155,8 @@ export function BankList({ companyId }: Props) {
 
   if (error) {
     return (
-      <section className="panel" style={{ borderLeft: "4px solid #b91c1c", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <p style={{ color: "#b91c1c", margin: 0 }}>{translateError(error)}</p>
+      <section className="panel" style={{ borderLeft: "4px solid var(--color-danger-dark)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <p style={{ color: "var(--color-danger-dark)", margin: 0 }}>{translateError(error)}</p>
         <button type="button" className="button primary" onClick={() => { setError(null); setLoading(true); void (async () => { try { const accs = await api.listBankAccounts(companyId); setAccounts(accs); setSelectedAccountId(accs.find((a) => !a.is_personal && a.account_type === "checking")?.id ?? accs[0]?.id ?? null); } catch (e) { setError((e as Error).message); } finally { setLoading(false); } })(); }}>
           Reintentar
         </button>
@@ -213,22 +213,25 @@ export function BankList({ companyId }: Props) {
                 key={acc.id}
                 type="button"
                 onClick={() => setSelectedAccountId(acc.id)}
+                aria-pressed={isActive}
+                aria-label={`Cuenta ${acc.alias}, ${acc.account_type === "credit_line" ? "póliza de crédito" : "cuenta corriente"}${acc.is_personal ? ", personal" : ""}`}
                 style={{
                   padding: "0.6rem 1rem",
-                  borderRadius: 8,
-                  border: isActive ? "2px solid #1d4ed8" : "2px solid #cbd5e1",
-                  background: isActive ? "#1d4ed8" : "#fff",
-                  color: isActive ? "#fff" : "#475569",
+                  borderRadius: "var(--radius-sm)",
+                  border: isActive ? "2px solid var(--color-primary)" : "2px solid var(--color-border-medium)",
+                  background: isActive ? "var(--color-primary)" : "var(--color-bg)",
+                  color: isActive ? "var(--color-bg)" : "var(--color-text-secondary)",
                   fontWeight: 600,
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "flex-start",
-                  gap: "0.15rem",
+                  gap: "var(--space-xs)",
+                  transition: "background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast)",
                 }}
               >
                 <span>{acc.alias}</span>
-                <span style={{ fontSize: "0.7rem", opacity: 0.8 }}>
+                <span style={{ fontSize: "var(--text-xs)", opacity: 0.8 }}>
                   {acc.account_type === "credit_line" ? "Póliza crédito" : "Cuenta corriente"}
                   {acc.is_personal && " · personal"}
                 </span>
@@ -239,9 +242,9 @@ export function BankList({ companyId }: Props) {
         {selectedAccount?.is_personal && (
           <p
             className="muted"
-            style={{ marginTop: "0.75rem", color: "#b45309", fontSize: "0.85rem" }}
+            style={{ marginTop: "var(--space-md)", color: "var(--color-warning)", fontSize: "var(--text-sm)" }}
           >
-            ⚠️ Esta cuenta está marcada como <b>personal</b>. Sus movimientos no se
+            <span aria-hidden="true">⚠️ </span>Esta cuenta está marcada como <b>personal</b>. Sus movimientos no se
             cuentan en los modelos fiscales (303/130) ni en el dashboard de
             beneficio. Hacienda no permite mezclar gastos personales con la
             actividad de autónomo.
@@ -256,13 +259,13 @@ export function BankList({ companyId }: Props) {
       >
         <div>
           <p className="eyebrow" style={{ margin: 0 }}>Ingresos</p>
-          <p style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "#16a34a" }}>
+          <p style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "var(--color-success)" }}>
             {formatEur(totals.ingresos)}
           </p>
         </div>
         <div>
           <p className="eyebrow" style={{ margin: 0 }}>Gastos</p>
-          <p style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "#dc2626" }}>
+          <p style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "var(--color-danger)" }}>
             {formatEur(totals.gastos)}
           </p>
         </div>
@@ -273,7 +276,7 @@ export function BankList({ companyId }: Props) {
               margin: 0,
               fontSize: "1.4rem",
               fontWeight: 700,
-              color: totals.neto >= 0 ? "#16a34a" : "#dc2626",
+              color: totals.neto >= 0 ? "var(--color-success)" : "var(--color-danger)",
             }}
           >
             {formatEur(totals.neto)}
@@ -290,14 +293,17 @@ export function BankList({ companyId }: Props) {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {byCategory.map((c) => {
               const pct = (c.total / maxCatTotal) * 100;
+              const isActive = filterCategory === c.category;
               return (
                 <button
                   key={c.category}
                   type="button"
-                  aria-pressed={filterCategory === c.category}
+                  aria-pressed={isActive}
+                  aria-label={`Filtrar por ${categoryLabel(c.category)}: ${c.count} movimientos, total ${formatEur(c.total)}`}
                   onClick={() =>
-                    setFilterCategory(filterCategory === c.category ? "" : c.category)
+                    setFilterCategory(isActive ? "" : c.category)
                   }
+                  className="bank-cat-button"
                   style={{
                     background: "none",
                     border: "none",
@@ -309,31 +315,31 @@ export function BankList({ companyId }: Props) {
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                     <span
                       style={{
-                        fontSize: "0.8rem",
-                        fontWeight: filterCategory === c.category ? 700 : 500,
-                        color: filterCategory === c.category ? "#1d4ed8" : "#475569",
+                        fontSize: "var(--text-sm)",
+                        fontWeight: isActive ? 700 : 500,
+                        color: isActive ? "var(--color-primary)" : "var(--color-text-secondary)",
                       }}
                     >
                       {categoryLabel(c.category)} · {c.count}
                     </span>
-                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1e293b" }}>
+                    <span style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-text)" }}>
                       {formatEur(c.total)}
                     </span>
                   </div>
                   <div
                     style={{
                       height: 8,
-                      background: "#f1f5f9",
-                      borderRadius: 4,
+                      background: "var(--color-bg-secondary)",
+                      borderRadius: "var(--radius-sm)",
                       overflow: "hidden",
                     }}
                   >
                     <div
+                      className="bank-cat-bar"
                       style={{
                         width: `${pct}%`,
                         height: "100%",
                         background: categoryColor(c.category),
-                        transition: "width 0.3s",
                       }}
                     />
                   </div>
@@ -342,7 +348,7 @@ export function BankList({ companyId }: Props) {
             })}
           </div>
           {filterCategory && (
-            <p style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#64748b" }}>
+            <p style={{ marginTop: "var(--space-sm)", fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
               Filtro activo · click otra vez en la categoría para quitar
             </p>
           )}
@@ -355,21 +361,23 @@ export function BankList({ companyId }: Props) {
           <input
             type="text"
             placeholder="Buscar en descripción…"
+            aria-label="Buscar movimientos"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: "1 1 240px", padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1" }}
+            style={{ flex: "1 1 240px", padding: "var(--space-sm)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-medium)" }}
           />
           <select
+            aria-label="Filtrar por categoría"
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            style={{ padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1" }}
+            style={{ padding: "var(--space-sm)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-medium)" }}
           >
             <option value="">Todas las categorías</option>
             {Object.keys(CATEGORY_LABELS).map((c) => (
               <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
             ))}
           </select>
-          <label style={{ display: "flex", gap: "0.4rem", alignItems: "center", fontSize: "0.85rem" }}>
+          <label style={{ display: "flex", gap: "var(--space-xs)", alignItems: "center", fontSize: "var(--text-sm)" }}>
             <input
               type="checkbox"
               checked={onlyUnlinked}
@@ -403,24 +411,24 @@ export function BankList({ companyId }: Props) {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: "0.75rem",
-                  paddingBottom: "0.5rem",
-                  borderBottom: "1px solid #e2e8f0",
+                  marginBottom: "var(--space-md)",
+                  paddingBottom: "var(--space-sm)",
+                  borderBottom: "1px solid var(--color-border-light)",
                 }}
               >
-                <h3 style={{ margin: 0, fontSize: "1.05rem", textTransform: "capitalize", color: "#1e293b" }}>
+                <h3 style={{ margin: 0, fontSize: "1.05rem", textTransform: "capitalize", color: "var(--color-text)" }}>
                   {monthLabel(yyyymm)}
                 </h3>
-                <div style={{ display: "flex", gap: "1.25rem", fontSize: "0.85rem" }}>
-                  <span style={{ color: "#16a34a", fontWeight: 600 }}>
+                <div style={{ display: "flex", gap: "1.25rem", fontSize: "var(--text-sm)" }}>
+                  <span style={{ color: "var(--color-success)", fontWeight: 600 }}>
                     + {formatEur(monthIngresos)}
                   </span>
-                  <span style={{ color: "#dc2626", fontWeight: 600 }}>
+                  <span style={{ color: "var(--color-danger)", fontWeight: 600 }}>
                     {formatEur(monthGastos)}
                   </span>
                   <span
                     style={{
-                      color: monthIngresos + monthGastos >= 0 ? "#16a34a" : "#dc2626",
+                      color: monthIngresos + monthGastos >= 0 ? "var(--color-success)" : "var(--color-danger)",
                       fontWeight: 700,
                     }}
                   >
@@ -447,7 +455,7 @@ export function BankList({ companyId }: Props) {
                       const isExpense = v < 0;
                       return (
                         <tr key={t.id} className="sales-row">
-                          <td className="sales-td" style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                          <td className="sales-td" style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
                             {formatDate(t.booking_date).slice(0, 5)}
                           </td>
                           <td
@@ -466,13 +474,14 @@ export function BankList({ companyId }: Props) {
                             <select
                               value={t.category}
                               onChange={(e) => void changeCategory(t.id, e.target.value)}
+                              aria-label={`Categoría para ${t.description || "movimiento"}`}
                               style={{
                                 padding: "0.2rem 0.4rem",
-                                borderRadius: 6,
-                                border: "1px solid #e2e8f0",
-                                background: t.category === "SIN_CATEGORIZAR" ? "#fef3c7" : "#fff",
-                                color: t.category === "SIN_CATEGORIZAR" ? "#92400e" : "#1e293b",
-                                fontSize: "0.78rem",
+                                borderRadius: "var(--radius-sm)",
+                                border: "1px solid var(--color-border-light)",
+                                background: t.category === "SIN_CATEGORIZAR" ? "var(--color-bg-warning)" : "var(--color-bg)",
+                                color: t.category === "SIN_CATEGORIZAR" ? "var(--color-warning)" : "var(--color-text)",
+                                fontSize: "var(--text-xs)",
                                 cursor: "pointer",
                                 maxWidth: "10rem",
                               }}
@@ -487,7 +496,7 @@ export function BankList({ companyId }: Props) {
                           <td className="sales-td sales-td-right">
                             <span
                               className="sales-price"
-                              style={{ color: v >= 0 ? "#16a34a" : "#dc2626" }}
+                              style={{ color: v >= 0 ? "var(--color-success)" : "var(--color-danger)" }}
                             >
                               {formatEur(v)}
                             </span>
@@ -497,29 +506,32 @@ export function BankList({ companyId }: Props) {
                               <span
                                 className="badge badge-success"
                                 title="Vinculado a registro"
-                                style={{ fontSize: "0.75rem" }}
+                                style={{ fontSize: "var(--text-xs)" }}
                               >
-                                ✓ vinculado
+                                <span aria-hidden="true">✓ </span>vinculado
                               </span>
                             ) : isExpense ? (
                               <button
                                 type="button"
                                 onClick={() => setLinkingTx(t)}
+                                aria-label={`Vincular movimiento ${formatEur(v)} a compra`}
+                                className="bank-link-button"
                                 style={{
                                   padding: "0.2rem 0.5rem",
-                                  fontSize: "0.72rem",
-                                  borderRadius: 4,
-                                  border: "1px solid #1d4ed8",
-                                  background: "#fff",
-                                  color: "#1d4ed8",
+                                  fontSize: "var(--text-xs)",
+                                  borderRadius: "var(--radius-sm)",
+                                  border: "1px solid var(--color-primary)",
+                                  background: "var(--color-bg)",
+                                  color: "var(--color-primary)",
                                   cursor: "pointer",
                                   fontWeight: 600,
+                                  transition: "background var(--transition-fast), color var(--transition-fast)",
                                 }}
                               >
                                 Vincular →
                               </button>
                             ) : (
-                              <span className="muted" style={{ fontSize: "0.72rem" }}>—</span>
+                              <span className="muted" style={{ fontSize: "var(--text-xs)" }}>—</span>
                             )}
                           </td>
                         </tr>

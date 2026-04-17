@@ -2639,7 +2639,10 @@ select:focus-visible {
 
   .vd-thumb,
   .suggestion-item,
-  .error-banner-close {
+  .error-banner-close,
+  .bank-cat-button,
+  .bank-cat-bar,
+  .bank-link-button {
     transition: none;
   }
 
@@ -2807,6 +2810,28 @@ select:focus-visible {
 .error-banner-close:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+}
+
+/* Bank — botones de barra de categoría y "vincular" */
+.bank-cat-button {
+  transition: opacity var(--transition-fast);
+  border-radius: var(--radius-sm);
+}
+.bank-cat-button:hover { opacity: 0.85; }
+.bank-cat-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.bank-cat-bar {
+  transition: width var(--transition-slow);
+}
+.bank-link-button:hover {
+  background: var(--color-primary) !important;
+  color: var(--color-bg) !important;
+}
+.bank-link-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 /* Section nav (sticky jump links in vehicle detail) */
