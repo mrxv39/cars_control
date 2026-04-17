@@ -1648,7 +1648,13 @@ select:focus-visible {
 }
 
 .suggestion-item:hover {
-  background: #f0f4ff;
+  background: var(--color-bg-primary-tint);
+}
+
+.suggestion-item:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  background: var(--color-bg-primary-tint);
 }
 
 .suggestion-name {
@@ -2630,6 +2636,16 @@ select:focus-visible {
   .sidebar {
     transition: none;
   }
+
+  .vd-thumb,
+  .suggestion-item,
+  .error-banner-close {
+    transition: none;
+  }
+
+  .vd-thumbs-strip {
+    scroll-behavior: auto;
+  }
 }
 
 /* ── Vehicle Detail Redesign ── */
@@ -2747,27 +2763,51 @@ select:focus-visible {
 /* Thumbnail strip */
 .vd-thumbs-strip {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--space-xs);
   overflow-x: auto;
-  padding: 0.25rem 0 0.75rem;
+  padding: var(--space-xs) 0 var(--space-md);
   scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
 .vd-thumb {
   width: 72px;
   height: 54px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   flex-shrink: 0;
   border: 2px solid transparent;
   opacity: 0.7;
-  transition: opacity 150ms ease, border-color 150ms ease;
+  transition: opacity var(--transition-normal), border-color var(--transition-normal);
   scroll-snap-align: start;
 }
 .vd-thumb:hover { opacity: 1; }
+.vd-thumb:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  opacity: 1;
+}
 .vd-thumb.active { border-color: var(--color-primary); opacity: 1; }
-.vd-thumb.primary { border-color: #f59e0b; opacity: 1; }
+.vd-thumb.primary { border-color: var(--color-amber); opacity: 1; }
+
+/* Botón de cerrar dentro de banner de error */
+.error-banner-close {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 700;
+  margin-left: var(--space-sm);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.error-banner-close:hover { background: rgba(0, 0, 0, 0.06); }
+.error-banner-close:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
 
 /* Section nav (sticky jump links in vehicle detail) */
 .vd-section-nav {

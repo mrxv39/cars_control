@@ -122,15 +122,15 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
 function VDFactura({ facturas, docFileRef, uploadingDoc, handleUploadDoc, handleDeleteDoc }: { facturas: api.VehicleDocument[]; docFileRef: React.RefObject<HTMLInputElement | null>; uploadingDoc: boolean; handleUploadDoc: (e: React.ChangeEvent<HTMLInputElement>) => void; handleDeleteDoc: (d: api.VehicleDocument) => void }) {
   return (
     <>
-      <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Factura de compra</p>
+      <p className="eyebrow" style={{ marginBottom: "var(--space-sm)" }}>Factura de compra</p>
       {facturas.map((d) => (
-        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem", background: "var(--color-bg-secondary, #f8fafc)", borderRadius: 8, marginBottom: "0.35rem" }}>
-          <span style={{ flex: 1, fontSize: "0.85rem" }}>{d.file_name}</span>
+        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "var(--space-md)", padding: "var(--space-sm)", background: "var(--color-bg-secondary)", borderRadius: "var(--radius-sm)", marginBottom: "var(--space-xs)" }}>
+          <span style={{ flex: 1, fontSize: "var(--text-sm)" }}>{d.file_name}</span>
           <a href={d.url} target="_blank" rel="noopener noreferrer" className="button secondary xs">Ver</a>
           <button type="button" className="button danger xs" onClick={() => void handleDeleteDoc(d)}>Eliminar</button>
         </div>
       ))}
-      {facturas.length === 0 && <p className="muted" style={{ margin: "0 0 0.35rem", fontSize: "0.85rem" }}>No hay factura adjunta.</p>}
+      {facturas.length === 0 && <p className="muted" style={{ margin: "0 0 var(--space-xs)", fontSize: "var(--text-sm)" }}>No hay factura adjunta.</p>}
       <input ref={docFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: "none" }} onChange={(e) => void handleUploadDoc(e)} />
       <button type="button" className="button secondary sm" onClick={() => docFileRef.current?.click()} disabled={uploadingDoc}>{uploadingDoc ? "Subiendo..." : "Adjuntar factura"}</button>
     </>
@@ -141,16 +141,16 @@ function VDFactura({ facturas, docFileRef, uploadingDoc, handleUploadDoc, handle
 function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
   if (vehicleLeads.length === 0) return <EmptyState title="Sin leads" description="Este vehículo no tiene leads asociados" />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
       {vehicleLeads.map((l) => (
-        <div key={l.id} style={{ padding: "0.65rem 0.75rem", background: "var(--color-bg-secondary, #f8fafc)", borderRadius: 10, border: "1px solid rgba(0,0,0,0.06)" }}>
+        <div key={l.id} style={{ padding: "var(--space-md)", background: "var(--color-bg-secondary)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-light)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}><span className={`lead-status-dot ${l.estado || "nuevo"}`} />{l.name}</span>
-            <span className="muted" style={{ fontSize: "0.7rem" }}>{l.canal} · {l.estado}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", fontWeight: 600, fontSize: "var(--text-sm)" }}><span className={`lead-status-dot ${l.estado || "nuevo"}`} />{l.name}</span>
+            <span className="muted" style={{ fontSize: "var(--text-xs)" }}>{l.canal} · {l.estado}</span>
           </div>
-          {l.phone && <p style={{ margin: "0.15rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>Tel: {l.phone}</p>}
-          {l.email && <p style={{ margin: "0.1rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>{l.email}</p>}
-          {l.notes && <p style={{ margin: "0.2rem 0 0", fontSize: "0.82rem", color: "#475569" }}>{l.notes}</p>}
+          {l.phone && <p style={{ margin: "var(--space-xs) 0 0", fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>Tel: {l.phone}</p>}
+          {l.email && <p style={{ margin: "var(--space-xs) 0 0", fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>{l.email}</p>}
+          {l.notes && <p style={{ margin: "var(--space-xs) 0 0", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>{l.notes}</p>}
         </div>
       ))}
     </div>
@@ -196,9 +196,13 @@ function VDVehicleDocs({ docs, vehicleId, onReload }: { docs: api.VehicleDocumen
         {DOC_TYPES.map(({ key, label }) => {
           const doc = docs.find((d) => d.doc_type === key);
           return (
-            <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 0.6rem", background: "var(--color-bg-secondary, #f8fafc)", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem" }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: doc ? "#16a34a" : "#cbd5e1", flexShrink: 0 }} />
+            <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-sm) var(--space-md)", background: "var(--color-bg-secondary)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", fontSize: "var(--text-sm)" }}>
+                <span
+                  role="img"
+                  aria-label={doc ? "Documento adjuntado" : "Pendiente"}
+                  style={{ width: 8, height: 8, borderRadius: "50%", background: doc ? "var(--color-success)" : "var(--color-text-faint)", flexShrink: 0 }}
+                />
                 <span style={{ fontWeight: 600 }}>{label}</span>
               </div>
               {doc ? (
@@ -263,15 +267,15 @@ function VDPurchaseInfo({ suppliers, supplierId, onSupplierChange, facturas, doc
         <div>
           <label className="field-label">Movimiento del banco</label>
           {bankTx ? (
-            <div style={{ padding: "0.5rem 0.6rem", background: "var(--color-bg-secondary, #f8fafc)", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)", fontSize: "0.85rem" }}>
+            <div style={{ padding: "var(--space-sm) var(--space-md)", background: "var(--color-bg-secondary)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: "var(--text-sm)" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ fontWeight: 600 }}>{bankTx.counterparty_name || "Movimiento"}</span>
-                <span style={{ fontWeight: 700, color: bankTx.amount < 0 ? "#dc2626" : "#16a34a" }}>{bankTx.amount.toLocaleString("es-ES")} €</span>
+                <span style={{ fontWeight: 700, color: bankTx.amount < 0 ? "var(--color-danger)" : "var(--color-success)" }}>{bankTx.amount.toLocaleString("es-ES")} €</span>
               </div>
-              <p className="muted" style={{ margin: "0.15rem 0 0", fontSize: "0.78rem" }}>{bankTx.booking_date} · {bankTx.category}</p>
+              <p className="muted" style={{ margin: "var(--space-xs) 0 0", fontSize: "var(--text-xs)" }}>{bankTx.booking_date} · {bankTx.category}</p>
             </div>
           ) : (
-            <p className="muted" style={{ fontSize: "0.85rem" }}>No hay movimiento vinculado</p>
+            <p className="muted" style={{ fontSize: "var(--text-sm)" }}>No hay movimiento vinculado</p>
           )}
         </div>
       </div>
@@ -309,7 +313,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
     } finally { setSavingSale(false); }
   }
 
-  const estadoColor = h.form.estado === "vendido" ? "#16a34a" : h.form.estado === "reservado" ? "#f59e0b" : "#3b82f6";
+  const estadoColor = h.form.estado === "vendido" ? "var(--color-success)" : h.form.estado === "reservado" ? "var(--color-amber)" : "var(--color-sidebar-accent)";
   const estadoLabel = h.form.estado === "vendido" ? "Vendido" : h.form.estado === "reservado" ? "Reservado" : "Disponible";
 
   return (
@@ -328,7 +332,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
           )}
         </div>
         <div className="vd-hero-right">
-          <p className="breadcrumb"><span className="breadcrumb-link" onClick={onBack}>Stock</span> &rsaquo; Ficha</p>
+          <p className="breadcrumb"><button type="button" className="breadcrumb-link" onClick={onBack}>Stock</button> &rsaquo; Ficha</p>
           <h2 className="vd-vehicle-name">{vehicle.name}</h2>
           <div className="vd-meta-row">
             <span className="vd-estado-badge" style={{ background: estadoColor }}>{estadoLabel}</span>
@@ -372,7 +376,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
               <div><label className="field-label">Precio venta</label><input type="number" step="100" min="0" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} placeholder="10500" /></div>
             </div>
             {h.marginWarning && <p className="vd-margin-warning">⚠ {h.marginWarning}</p>}
-            {h.error && <p className="error-banner" role="alert">{h.error} <button type="button" onClick={() => h.setError(null)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontWeight: 700, marginLeft: "0.5rem" }}>✕</button></p>}
+            {h.error && <p className="error-banner" role="alert">{h.error} <button type="button" onClick={() => h.setError(null)} className="error-banner-close" aria-label="Cerrar error">✕</button></p>}
             {h.success && <p className="success-banner" role="status">✓ Guardado correctamente</p>}
             <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar cambios"}</button>
           </form>
@@ -415,12 +419,25 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
               <button type="button" className="button primary sm" onClick={() => h.fileRef.current?.click()} disabled={h.uploading}>{h.uploading ? `Subiendo ${h.uploadProgress}...` : "Subir fotos"}</button>
             </div>
           </div>
-          <div className="vd-thumbs-strip">
-            {h.photos.map((p) => (
-              <img key={p.id} src={p.url} loading="lazy" onClick={() => h.setSelectedPhoto(p.id)}
-                className={`vd-thumb ${(h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0])) ? "active" : ""} ${p.is_primary ? "primary" : ""}`}
-                alt="" />
-            ))}
+          <div className="vd-thumbs-strip" role="listbox" aria-label="Miniaturas de fotos">
+            {h.photos.map((p, idx) => {
+              const isActive = h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0]);
+              return (
+                <img
+                  key={p.id}
+                  src={p.url}
+                  loading="lazy"
+                  onClick={() => h.setSelectedPhoto(p.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); h.setSelectedPhoto(p.id); } }}
+                  className={`vd-thumb ${isActive ? "active" : ""} ${p.is_primary ? "primary" : ""}`}
+                  role="option"
+                  tabIndex={0}
+                  aria-selected={isActive}
+                  aria-label={`Foto ${idx + 1}${p.is_primary ? " (principal)" : ""}`}
+                  alt=""
+                />
+              );
+            })}
           </div>
         </section>
       )}
@@ -431,17 +448,17 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
           <div className="vd-section-header"><p className="eyebrow">Gastos asociados ({vehiclePurchases.length})</p></div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
             {vehiclePurchases.map((p) => (
-              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid rgba(0,0,0,0.04)", fontSize: "0.85rem" }}>
+              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "var(--space-xs) 0", borderBottom: "1px solid var(--color-border-light)", fontSize: "var(--text-sm)" }}>
                 <span style={{ color: "var(--color-text-secondary)" }}>{p.expense_type} — {p.supplier_name || "Sin proveedor"}</span>
                 <span style={{ fontWeight: 600 }}>{p.purchase_price.toLocaleString("es-ES")} €</span>
               </div>
             ))}
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0 0", fontWeight: 700 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "var(--space-sm) 0 0", fontWeight: 700 }}>
               <span>Total gastos</span>
               <span>{totalExpenses.toLocaleString("es-ES")} €</span>
             </div>
             {h.margin !== null && (
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "0.25rem 0 0", fontWeight: 700, color: (h.form.precio_venta || 0) - totalExpenses >= 0 ? "#16a34a" : "#dc2626" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "var(--space-xs) 0 0", fontWeight: 700, color: (h.form.precio_venta || 0) - totalExpenses >= 0 ? "var(--color-success)" : "var(--color-danger)" }}>
                 <span>Beneficio real (venta - gastos)</span>
                 <span>{((h.form.precio_venta || 0) - totalExpenses).toLocaleString("es-ES")} €</span>
               </div>
@@ -493,15 +510,15 @@ function VehicleListingsLink({ vehicle }: { vehicle: api.Vehicle }) {
   }, [vehicle.id]);
   if (listings.length === 0) return null;
   return (
-    <section className="panel" style={{ padding: "1rem 1.25rem", marginTop: "1rem" }}>
-      <p className="eyebrow" style={{ marginBottom: "0.5rem" }}>Anuncios externos</p>
-      <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.88rem" }}>
+    <section className="panel" style={{ padding: "var(--space-lg) 1.25rem", marginTop: "var(--space-lg)" }}>
+      <p className="eyebrow" style={{ marginBottom: "var(--space-sm)" }}>Anuncios externos</p>
+      <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "var(--text-sm)" }}>
         {listings.map((l) => (
-          <li key={l.id} style={{ marginBottom: "0.3rem" }}>
-            <a href={l.external_url || "#"} target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8" }}>
+          <li key={l.id} style={{ marginBottom: "var(--space-xs)" }}>
+            <a href={l.external_url || "#"} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }}>
               {l.external_source} · ID {l.external_id}
             </a>
-            {l.removed_at && <span className="muted" style={{ marginLeft: "0.5rem", color: "#b45309" }}>(removido)</span>}
+            {l.removed_at && <span className="muted" style={{ marginLeft: "var(--space-sm)", color: "var(--color-warning)" }}>(removido)</span>}
           </li>
         ))}
       </ul>
@@ -541,18 +558,18 @@ function VehicleDocsList({ vehicle }: { vehicle: api.Vehicle }) {
     grouped[k].push(d);
   }
   return (
-    <section className="panel" style={{ padding: "1.25rem", marginTop: "1rem" }}>
-      <p className="eyebrow" style={{ marginBottom: "0.75rem" }}>Documentos ({docs.length})</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+    <section className="panel" style={{ padding: "1.25rem", marginTop: "var(--space-lg)" }}>
+      <p className="eyebrow" style={{ marginBottom: "var(--space-md)" }}>Documentos ({docs.length})</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
         {Object.entries(grouped).map(([type, items]) => (
           <div key={type}>
-            <p className="muted" style={{ margin: "0 0 0.25rem", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <p className="muted" style={{ margin: "0 0 var(--space-xs)", fontSize: "var(--text-xs)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               {docTypeLabel[type] || type} ({items.length})
             </p>
-            <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.85rem" }}>
+            <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "var(--text-sm)" }}>
               {items.map((d) => (
-                <li key={d.id} style={{ marginBottom: "0.2rem" }}>
-                  <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8" }}>
+                <li key={d.id} style={{ marginBottom: "var(--space-xs)" }}>
+                  <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)" }}>
                     {d.file_name}
                   </a>
                 </li>

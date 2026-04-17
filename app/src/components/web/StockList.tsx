@@ -38,7 +38,14 @@ function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTyp
     !photosOk || !docsOk ? "warn" : "ok";
 
   return (
-    <article className={`stock-row stock-row-${heat}`} onClick={onSelect}>
+    <article
+      className={`stock-row stock-row-${heat}`}
+      onClick={onSelect}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
+      aria-label={`Abrir ficha de ${vehicle.name}`}
+    >
       <div className="stock-row-title">
         <h3>{vehicle.name}</h3>
         {vehicle.estado && vehicle.estado !== "disponible" && (
@@ -49,28 +56,30 @@ function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTyp
         {thumbUrl ? (
           <img src={thumbUrl} alt={vehicle.name} loading="lazy" />
         ) : (
-          <div className="stock-row-thumb-empty">📷</div>
+          <div className="stock-row-thumb-empty" role="img" aria-label="Sin foto">
+            <span aria-hidden="true">📷</span>
+          </div>
         )}
       </div>
       <div className="stock-row-main">
         {(vehicle.anio || vehicle.km) && (
-          <p className="muted" style={{ margin: "0", fontSize: "0.78rem" }}>
+          <p className="muted" style={{ margin: 0, fontSize: "var(--text-xs)" }}>
             {[vehicle.anio, vehicle.km ? `${vehicle.km.toLocaleString()} km` : null].filter(Boolean).join(" · ")}
           </p>
         )}
         <div className="stock-chips">
-          <span className={photosClass} title={`${photoCount ?? "?"} fotos (mínimo ${MIN_PHOTOS})`}>
-            📷 {photoCount ?? "…"}/{MIN_PHOTOS}
+          <span className={photosClass} title={`${photoCount ?? "?"} fotos (mínimo ${MIN_PHOTOS})`} aria-label={`${photoCount ?? 0} de ${MIN_PHOTOS} fotos`}>
+            <span aria-hidden="true">📷</span> {photoCount ?? "…"}/{MIN_PHOTOS}
           </span>
-          <span className={docsClass} title="Ficha técnica, permiso de circulación, ITV, factura de compra">
-            📄 {docsHave}/{REQUIRED_DOC_TYPES.length}
+          <span className={docsClass} title="Ficha técnica, permiso de circulación, ITV, factura de compra" aria-label={`${docsHave} de ${REQUIRED_DOC_TYPES.length} documentos obligatorios`}>
+            <span aria-hidden="true">📄</span> {docsHave}/{REQUIRED_DOC_TYPES.length}
           </span>
-          <span className="stock-chip neutral" title="Días desde la fecha de compra">
-            ⏱ {days === null ? "—" : `${days}d`}
+          <span className="stock-chip neutral" title="Días desde la fecha de compra" aria-label={days === null ? "Sin fecha de compra" : `${days} días en stock`}>
+            <span aria-hidden="true">⏱</span> {days === null ? "—" : `${days}d`}
           </span>
           {leadsPendientes > 0 && (
-            <span className="stock-chip info" title="Leads sin contestar">
-              💬 {leadsPendientes}
+            <span className="stock-chip info" title="Leads sin contestar" aria-label={`${leadsPendientes} leads sin contestar`}>
+              <span aria-hidden="true">💬</span> {leadsPendientes}
             </span>
           )}
         </div>
@@ -79,7 +88,7 @@ function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTyp
         {vehicle.precio_venta ? (
           <span className="vehicle-price">{vehicle.precio_venta.toLocaleString("es-ES")} €</span>
         ) : (
-          <span className="muted" style={{ fontSize: "0.78rem" }}>Sin precio</span>
+          <span className="muted" style={{ fontSize: "var(--text-xs)" }}>Sin precio</span>
         )}
       </div>
     </article>
@@ -377,7 +386,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
                 // Click sobre filtro activo lo desactiva (vuelve a "todos")
                 onClick={() => setFilterKey(active ? "todos" : key)}
               >
-                {label} <span style={{ opacity: 0.7, marginLeft: "0.25rem" }}>({filterCounts[key]})</span>
+                {label} <span style={{ opacity: 0.7, marginLeft: "var(--space-xs)" }}>({filterCounts[key]})</span>
               </button>
             );
           })}
@@ -409,7 +418,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
           </select>
         </div>
         {(search || filterKey !== "todos") && (
-          <p className="muted" style={{ margin: "0.4rem 0 0", fontSize: "0.78rem" }}>
+          <p className="muted" style={{ margin: "var(--space-xs) 0 0", fontSize: "var(--text-xs)" }}>
             {filtered.length} de {vehicles.length}
           </p>
         )}
@@ -471,12 +480,16 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
             </div>
             {suggestions.length > 0 && (
               <div className="suggestions-list">
-                <p className="field-label" style={{ margin: "0.75rem 0 0.4rem", fontSize: "0.72rem" }}>Coincidencias en la base de datos:</p>
+                <p className="field-label" style={{ margin: "var(--space-md) 0 var(--space-xs)", fontSize: "var(--text-xs)" }}>Coincidencias en la base de datos:</p>
                 {suggestions.map((s) => (
                   <div
                     key={s.id}
                     className="suggestion-item"
                     onClick={() => setNewName(s.name)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setNewName(s.name); } }}
+                    aria-label={`Usar ${s.name}`}
                   >
                     <span className="suggestion-name">{s.name}</span>
                     <span className="suggestion-meta">
@@ -517,7 +530,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
       {importError && (
         <div className="modal-overlay" onClick={() => setImportError(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "440px" }}>
-            <h3 style={{ margin: 0, color: "#b91c1c" }}>Error</h3>
+            <h3 style={{ margin: 0, color: "var(--color-danger-dark)" }}>Error</h3>
             <p>{importError}</p>
             <div className="form-actions">
               <button type="button" className="button primary" onClick={() => setImportError(null)}>Cerrar</button>
@@ -530,7 +543,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
         <div className="modal-overlay" onClick={() => !importing && setImportPreview(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "780px", maxHeight: "85vh", overflowY: "auto" }}>
             <h3 style={{ margin: "0 0 0.5rem" }}>Importar desde coches.net</h3>
-            <p className="muted" style={{ margin: "0 0 1rem", fontSize: "0.85rem" }}>
+            <p className="muted" style={{ margin: "0 0 var(--space-lg)", fontSize: "var(--text-sm)" }}>
               {importPreview.listing.length} coches en el perfil ·
               {" "}{importPreview.newDetails.length} nuevos detectados ·
               {" "}{importPreview.removedExternalIds.length} ya no aparecen
@@ -539,7 +552,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
             {importPreview.newDetails.length > 0 ? (
               <>
                 <h4 style={{ margin: "0.75rem 0 0.5rem" }}>Nuevos coches</h4>
-                <p className="muted" style={{ fontSize: "0.78rem", margin: "0 0 0.5rem" }}>
+                <p className="muted" style={{ fontSize: "var(--text-xs)", margin: "0 0 var(--space-sm)" }}>
                   Marca los que quieras importar (todos por defecto)
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -563,10 +576,10 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
                         )}
                         <div style={{ flex: 1 }}>
                           <strong>{d.name}</strong>
-                          <div className="muted" style={{ fontSize: "0.78rem" }}>
+                          <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
                             {[d.year, d.km ? `${d.km.toLocaleString()} km` : null, d.fuelType, d.transmission, d.color].filter(Boolean).join(" · ")}
                           </div>
-                          <div className="muted" style={{ fontSize: "0.78rem" }}>
+                          <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
                             {d.photoUrls.length} fotos · {d.equipment.length} equipamientos
                             {d.videoUrls.length > 0 && ` · ${d.videoUrls.length} vídeos`}
                           </div>
@@ -583,8 +596,8 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
 
             {importPreview.removedExternalIds.length > 0 && (
               <>
-                <h4 style={{ margin: "1rem 0 0.5rem", color: "#b45309" }}>Ya no aparecen en coches.net</h4>
-                <p className="muted" style={{ fontSize: "0.78rem", margin: 0 }}>
+                <h4 style={{ margin: "var(--space-lg) 0 var(--space-sm)", color: "var(--color-warning)" }}>Ya no aparecen en coches.net</h4>
+                <p className="muted" style={{ fontSize: "var(--text-xs)", margin: 0 }}>
                   Estos {importPreview.removedExternalIds.length} coches se marcarán para revisión.
                 </p>
               </>
