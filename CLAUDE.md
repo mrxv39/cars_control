@@ -130,3 +130,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - 2026-04-17d: UX audit — 59 hallazgos (Playwright + código), 35 resueltos, toast.ts, forgot password, tildes RevisionSheet, labels español
 - 2026-04-17e: UX audit ronda 3 — 45 hallazgos (5 agentes paralelo), 45/45 resueltos, error handling, tildes, SuppliersList búsqueda+paginación, OnboardingTour a11y, 549 tests
 - 2026-04-17f: security review — 7 fixes (auth edge functions, CORS restrictivo, CSP Tauri, PII redactada, companyId filter), 549 tests
+- 2026-04-18a: ui-polish ronda 1 — StockList/VehicleDetail/BankList/RecordLists, 2 commits (bd35c05 + 5382335), a11y (role=link, aria-labels contextuales), tokens CSS (~40 colores + ~30 fontSizes), 549 tests
