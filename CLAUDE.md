@@ -96,10 +96,11 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 
 | Archivo | Líneas | Notas |
 |---------|--------|-------|
-| `app/src/WebApp.tsx` | ~564 | Shell web — login, sidebar, routing |
+| `app/src/WebApp.tsx` | ~565 | Shell web — login, sidebar, routing |
 | `app/src/lib/api.ts` | ~115 | Fachada — re-exports de api-types, api-vehicles, api-bank, api-records |
 | `app/src/lib/api-vehicles.ts` | ~286 | Vehículos, fotos, docs, inspecciones, import coches.net |
-| `app/src/components/web/VehicleDetailPanel.tsx` | ~564 | Ficha vehículo: detalle, fotos, docs, leads, compra |
+| `app/src/lib/translateError.ts` | ~11 | Traducción errores Supabase/red a mensajes usuario |
+| `app/src/components/web/VehicleDetailPanel.tsx` | ~553 | Ficha vehículo: detalle, fotos, docs, leads, compra |
 | `app/src/components/web/StockList.tsx` | ~594 | Listado stock admin con filtros e import coches.net |
 | `app/src/components/BankList.tsx` | ~532 | Listado banco con categorización |
 | `app/src/components/web/RecordLists.tsx` | ~428 | Clientes, ventas, compras, proveedores |
@@ -124,3 +125,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - 2026-04-16: mantenimiento — dep-update, WebApp 3873→1292L, 366+160 tests
 - 2026-04-17: mantenimiento — api.ts split, WebApp→886L, migration 015, 446+160 tests
 - 2026-04-17b: mantenimiento — TS fix, WebApp→564L (extraer RevisionSheet), 495 tests (+49), deps all latest, MAZDA cleanup, main synced
+- 2026-04-17c: mantenimiento — fix 3 errores TS, eliminar 6 any, extraer translateError, +54 tests (549 total), 0 errores tsc
