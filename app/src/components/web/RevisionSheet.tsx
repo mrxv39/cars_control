@@ -155,12 +155,12 @@ export function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]
       };
       const { error } = await supabase.from("vehicle_inspections").insert(payload);
       if (error) throw error;
-      setSaveMsg("Revision guardada correctamente.");
+      setSaveMsg("Revisión guardada correctamente.");
       const savedVehicleId = selectedVehicleId;
       resetForm();
       if (savedVehicleId) void api.listVehicleInspections(Number(savedVehicleId)).then(setHistory);
     } catch (err) {
-      setSaveMsg("Error al guardar. Intentalo de nuevo.");
+      setSaveMsg("Error al guardar. Inténtalo de nuevo.");
     } finally {
       setSaving(false);
     }
@@ -270,7 +270,7 @@ export function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]
         <textarea
           value={resultadoGeneral}
           onChange={(e) => setResultadoGeneral(e.target.value)}
-          placeholder="Observaciones generales de la revision..."
+          placeholder="Observaciones generales de la revisión..."
           rows={4}
           style={{ width: "100%", marginTop: "0.5rem", fontSize: "0.85rem" }}
         />
@@ -281,7 +281,7 @@ export function RevisionSheet({ vehicles, companyId }: { vehicles: api.Vehicle[]
             disabled={saving || !selectedVehicleId}
             onClick={() => void handleSave()}
           >
-            {saving ? "Guardando..." : "Guardar revision"}
+            {saving ? "Guardando..." : "Guardar revisión"}
           </button>
           {saveMsg && <span style={{ fontSize: "0.85rem", color: saveMsg.startsWith("Error") ? "#dc2626" : "#16a34a" }}>{saveMsg}</span>}
         </div>

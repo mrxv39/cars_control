@@ -74,7 +74,7 @@ export function ClientsList({ clients, companyId: _companyId, onReload }: { clie
         </div>
         {clients.length > 0 && (
           <div className="hero-actions">
-            <button type="button" className="button secondary" onClick={() => exportToCSV(clients.map(c => ({ Nombre: c.name, Telefono: c.phone, Email: c.email, DNI: c.dni, Notas: c.notes })), "clientes")}>
+            <button type="button" className="button secondary" onClick={() => exportToCSV(clients.map(c => ({ Nombre: c.name, Teléfono: c.phone, Email: c.email, DNI: c.dni, Notas: c.notes })), "clientes")}>
               Exportar CSV
             </button>
           </div>
@@ -102,7 +102,7 @@ export function ClientsList({ clients, companyId: _companyId, onReload }: { clie
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" className={!editForm.name.trim() && editingId ? "input-error" : ""} />
                 {!editForm.name.trim() && editingId && <p className="input-error-message" role="alert">El nombre es obligatorio</p>}
-                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Telefono" />
+                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Teléfono" />
                 {clientPhoneDup && <p style={{ color: "#b45309", fontSize: "0.78rem", margin: "-0.25rem 0 0" }}>⚠ {clientPhoneDup}</p>}
                 <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
                 <input value={editForm.dni} onChange={(e) => setEditForm({ ...editForm, dni: e.target.value })} placeholder="DNI" />
@@ -117,7 +117,7 @@ export function ClientsList({ clients, companyId: _companyId, onReload }: { clie
                 <div className="record-header">
                   <div>
                     <p className="record-title">{c.name}</p>
-                    <p className="muted">{c.phone || "Sin telefono"}</p>
+                    <p className="muted">{c.phone || "Sin teléfono"}</p>
                   </div>
                   <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
                     <span className="badge badge-success">Cliente</span>
@@ -168,7 +168,7 @@ export function SalesList({ records, vehicles, clients, companyId: _companyId, c
         </div>
         {records.length > 0 && (
           <div className="hero-actions">
-            <button type="button" className="button secondary" onClick={() => exportToCSV(records.map(r => ({ Vehiculo: r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "" : "", Cliente: r.client_id ? clientMap.get(r.client_id)?.name || "" : "", Fecha: r.date, Precio: r.price_final, Notas: r.notes })), "ventas")}>
+            <button type="button" className="button secondary" onClick={() => exportToCSV(records.map(r => ({ Vehículo: r.vehicle_id ? vehicleMap.get(r.vehicle_id)?.name || "" : "", Cliente: r.client_id ? clientMap.get(r.client_id)?.name || "" : "", Fecha: r.date, Precio: r.price_final, Notas: r.notes })), "ventas")}>
               Exportar CSV
             </button>
           </div>
@@ -275,7 +275,7 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
         </div>
         {records.length > 0 && (
           <div className="hero-actions">
-            <button type="button" className="button secondary" onClick={() => exportToCSV(records.map(r => ({ Tipo: r.expense_type, Vehiculo: r.vehicle_name, Matricula: r.plate, Proveedor: r.supplier_name, Fecha: r.purchase_date, Importe: r.purchase_price, Factura: r.invoice_number, Pago: r.payment_method, Notas: r.notes })), "compras")}>
+            <button type="button" className="button secondary" onClick={() => exportToCSV(records.map(r => ({ Tipo: r.expense_type, Vehículo: r.vehicle_name, Matrícula: r.plate, Proveedor: r.supplier_name, Fecha: r.purchase_date, Importe: r.purchase_price, Factura: r.invoice_number, Pago: r.payment_method, Notas: r.notes })), "compras")}>
               Exportar CSV
             </button>
           </div>
@@ -384,7 +384,7 @@ export function SuppliersList({ suppliers, companyId, onReload }: { suppliers: a
         </div>
         <div className="hero-actions">
           {suppliers.length > 0 && (
-            <button type="button" className="button secondary" onClick={() => exportToCSV(suppliers.map(s => ({ Nombre: s.name, CIF: s.cif, Telefono: s.phone, Email: s.email, Contacto: s.contact_person, Notas: s.notes })), "proveedores")}>
+            <button type="button" className="button secondary" onClick={() => exportToCSV(suppliers.map(s => ({ Nombre: s.name, CIF: s.cif, Teléfono: s.phone, Email: s.email, Contacto: s.contact_person, Notas: s.notes })), "proveedores")}>
               Exportar CSV
             </button>
           )}

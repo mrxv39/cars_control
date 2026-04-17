@@ -123,7 +123,7 @@ describe('WebDashboard', () => {
 
   it('shows empty state when no data', () => {
     render(<WebDashboard {...defaultProps} vehicles={[]} allVehicles={[]} leads={[]} />)
-    expect(screen.getByText('Dashboard vacio')).toBeInTheDocument()
+    expect(screen.getByText('Dashboard vacío')).toBeInTheDocument()
   })
 
   it('calculates margen potencial from vehicles with both prices', () => {

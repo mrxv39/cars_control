@@ -1,5 +1,7 @@
 import React, { useState, FormEvent } from "react";
 import * as api from "../../lib/api";
+import { showToast } from "../../lib/toast";
+import { translateError } from "../../lib/translateError";
 
 function ProfileView({ session }: { session: api.LoginResult }) {
   const [fullName, setFullName] = useState(session.user.full_name);
@@ -41,9 +43,10 @@ function ProfileView({ session }: { session: api.LoginResult }) {
         parsed.user.email = email;
         localStorage.setItem("cc_session", JSON.stringify(parsed));
       }
-      setMsg({ kind: "ok", text: "Perfil actualizado. Recarga para ver los cambios en la barra lateral." });
+      setMsg({ kind: "ok", text: "Perfil actualizado correctamente." });
+      showToast("Perfil actualizado", "success");
     } catch (err: unknown) {
-      setMsg({ kind: "err", text: err instanceof Error ? err.message : "Error guardando perfil" });
+      setMsg({ kind: "err", text: translateError(err) });
     } finally { setSaving(false); }
   }
 
@@ -57,7 +60,7 @@ function ProfileView({ session }: { session: api.LoginResult }) {
       setPw1(""); setPw2("");
       setMsg({ kind: "ok", text: "Contraseña actualizada correctamente" });
     } catch (err: unknown) {
-      setMsg({ kind: "err", text: err instanceof Error ? err.message : "Error cambiando contraseña" });
+      setMsg({ kind: "err", text: translateError(err) });
     } finally { setSaving(false); }
   }
 
@@ -67,7 +70,7 @@ function ProfileView({ session }: { session: api.LoginResult }) {
         <div>
           <p className="eyebrow">Mi cuenta</p>
           <h2>Perfil de usuario</h2>
-          <p className="muted">Rol: {session.user.role}</p>
+          <p className="muted">Rol: {({ owner: "Propietario", admin: "Administrador", viewer: "Solo lectura", super_admin: "Super Admin" } as Record<string, string>)[session.user.role] || session.user.role}</p>
         </div>
       </header>
       {msg && (
@@ -79,11 +82,11 @@ function ProfileView({ session }: { session: api.LoginResult }) {
         <h3 style={{ margin: "0 0 1rem" }}>Datos personales</h3>
         <form onSubmit={(e) => void saveProfile(e)} className="form-stack">
           <div>
-            <label className="field-label">Nombre completo</label>
+            <label className="field-label required">Nombre completo</label>
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           </div>
           <div>
-            <label className="field-label">Nombre de usuario</label>
+            <label className="field-label required">Nombre de usuario</label>
             <input value={username} onChange={(e) => setUsername(e.target.value)} required />
           </div>
           <div>
@@ -99,8 +102,9 @@ function ProfileView({ session }: { session: api.LoginResult }) {
         <h3 style={{ margin: "0 0 1rem" }}>Cambiar contraseña</h3>
         <form onSubmit={(e) => void changePassword(e)} className="form-stack">
           <div>
-            <label className="field-label">Nueva contraseña</label>
+            <label className="field-label required">Nueva contraseña</label>
             <input type="password" value={pw1} onChange={(e) => setPw1(e.target.value)} autoComplete="new-password" required />
+            <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.78rem" }}>Mínimo 6 caracteres.</p>
           </div>
           <div>
             <label className="field-label">Repetir contraseña</label>
@@ -162,9 +166,10 @@ function CompanyView({ session }: { session: api.LoginResult }) {
         parsed.company = { ...parsed.company, trade_name: tradeName, legal_name: legalName, cif, address, phone, email, website };
         localStorage.setItem("cc_session", JSON.stringify(parsed));
       }
-      setMsg({ kind: "ok", text: "Datos de empresa actualizados. Recarga para ver los cambios en la barra lateral." });
+      setMsg({ kind: "ok", text: "Datos de empresa actualizados correctamente." });
+      showToast("Empresa actualizada", "success");
     } catch (err: unknown) {
-      setMsg({ kind: "err", text: err instanceof Error ? err.message : "Error guardando empresa" });
+      setMsg({ kind: "err", text: translateError(err) });
     } finally { setSaving(false); }
   }
 

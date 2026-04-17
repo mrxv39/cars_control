@@ -107,7 +107,7 @@ function WebApp() {
           setPage("login");
         }
       } catch (err) {
-        setLoginError("Error al vincular cuenta Google. Comprueba tu conexion e intentalo de nuevo.");
+        setLoginError("Error al vincular cuenta Google. Comprueba tu conexión e inténtalo de nuevo.");
         setPage("login");
       } finally {
         setOauthLoading(false);
@@ -123,7 +123,7 @@ function WebApp() {
       await platformApi.signInWithGoogle();
       // El navegador redirige a Google, no llegamos aquí hasta el callback
     } catch (err) {
-      setLoginError("Error al conectar con Google. Comprueba tu conexion e intentalo de nuevo.");
+      setLoginError("Error al conectar con Google. Comprueba tu conexión e inténtalo de nuevo.");
     }
   }
 
@@ -192,7 +192,7 @@ function WebApp() {
           <section className="panel" style={{ padding: "2rem" }}>
             <p className="eyebrow">Acceso usuarios</p>
             <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesión</h2>
-            <p className="muted" style={{ marginBottom: "1.5rem" }}>Panel de gestion para usuarios autorizados.</p>
+            <p className="muted" style={{ marginBottom: "1.5rem" }}>Panel de gestión para usuarios autorizados.</p>
 
             {/* Google OAuth */}
             <button
@@ -463,7 +463,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       <button
         type="button"
         className="mobile-menu-btn"
-        aria-label={mobileMenuOpen ? "Cerrar menu" : "Abrir menu"}
+        aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
       >
         {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}

@@ -7,11 +7,11 @@ interface TourStep {
 }
 
 const STEPS: TourStep[] = [
-  { target: "nav", title: "Navegación", description: "Aquí están todas las secciones: stock, leads, ventas, compras..." },
-  { target: "dashboard", title: "Dashboard", description: "Vista general con las métricas de tu negocio: stock, leads activos y ventas." },
+  { target: "nav", title: "Navegación", description: "Aquí están todas las secciones: stock, interesados, ventas, compras..." },
+  { target: "dashboard", title: "Resumen", description: "Vista general con las métricas de tu negocio: stock, interesados activos y ventas." },
   { target: "stock", title: "Stock", description: "Gestiona tus vehículos: fotos, precios, estado y documentación." },
-  { target: "leads", title: "Leads", description: "Controla los contactos interesados. Convierte leads en clientes cuando compren." },
-  { target: "feedback-fab", title: "Sugerencias", description: "Pulsa aquí para ver consejos según la pantalla en la que estés." },
+  { target: "leads", title: "Interesados", description: "Controla los contactos interesados. Conviértelos en clientes cuando compren." },
+  { target: "feedback-fab", title: "Sugerencias", description: "Pulsa aquí para enviar sugerencias o reportar un problema." },
 ];
 
 const STORAGE_KEY = "cc_onboarding_done";
@@ -71,7 +71,7 @@ export default function OnboardingTour({ show, onClose }: OnboardingTourProps) {
               </button>
             )}
             <button type="button" className="button primary" onClick={next} style={{ fontSize: "0.82rem" }}>
-              {step === STEPS.length - 1 ? "Empezar" : "Siguiente"}
+              {step === STEPS.length - 1 ? "Entendido" : "Siguiente"}
             </button>
           </div>
         </div>

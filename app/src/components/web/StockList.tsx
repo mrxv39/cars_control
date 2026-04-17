@@ -2,6 +2,7 @@ import React, { useState, useMemo, FormEvent } from "react";
 import * as api from "../../lib/api";
 import { exportToCSV } from "../../lib/csv-export";
 import { showToast } from "../../lib/toast";
+import { translateError } from "../../lib/translateError";
 import { usePagination } from "../../hooks/usePagination";
 import { PaginationControls } from "./PaginationControls";
 
@@ -321,6 +322,9 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
       setNewName(""); setNewAnio(""); setNewKm(""); setNewPrecioCompra(""); setNewPrecioVenta(""); setNewFuel(""); setNewColor(""); setNewNotes("");
       setShowAdd(false); setNameBlurred(false);
       await onReload();
+      showToast("Vehículo añadido correctamente", "success");
+    } catch (err) {
+      showToast(translateError(err), "error");
     } finally {
       setAdding(false);
     }
@@ -491,7 +495,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
         {filtered.length === 0 && vehicles.length > 0 && (
           <div className="panel" style={{ padding: "2rem", textAlign: "center" }}>
             <p className="muted">No hay vehículos que coincidan con los filtros.</p>
-            <button type="button" className="button secondary" style={{ marginTop: "0.5rem" }} onClick={() => { setSearch(""); setFilterKey("todos"); }}>Limpiar filtros</button>
+            <button type="button" className="button secondary" style={{ marginTop: "0.5rem" }} onClick={() => { setSearch(""); setFilterKey("todos"); setFuelFilter(""); setPriceMaxFilter(""); setYearMinFilter(""); }}>Limpiar filtros</button>
           </div>
         )}
         {pagedStock.map((v) => (

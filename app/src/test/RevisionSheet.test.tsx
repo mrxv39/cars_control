@@ -83,7 +83,7 @@ describe('RevisionSheet', () => {
 
   it('Guardar button is disabled when no vehicle is selected', () => {
     render(<RevisionSheet {...defaultProps} />)
-    const btn = screen.getByRole('button', { name: 'Guardar revision' })
+    const btn = screen.getByRole('button', { name: 'Guardar revisión' })
     expect((btn as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -110,7 +110,7 @@ describe('RevisionSheet', () => {
 
   it('Resultado general textarea is present', () => {
     render(<RevisionSheet {...defaultProps} />)
-    const textarea = screen.getByPlaceholderText('Observaciones generales de la revision...')
+    const textarea = screen.getByPlaceholderText('Observaciones generales de la revisión...')
     expect(textarea).toBeTruthy()
     expect((textarea as HTMLTextAreaElement).tagName).toBe('TEXTAREA')
   })

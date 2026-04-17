@@ -45,7 +45,7 @@ export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purch
     <>
       <header className="hero">
         <div>
-          <p className="eyebrow">Dashboard</p>
+          <p className="eyebrow">Resumen</p>
           <h2>Estado del negocio</h2>
         </div>
         <div className="hero-actions">
@@ -100,7 +100,7 @@ export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purch
           </p>
         </section>
         <section className="panel sales-stat-card" style={leadsSinSeguimiento.length > 0 ? { borderLeft: "3px solid var(--color-danger, #dc2626)" } : undefined}>
-          <p className="sales-stat-label">Leads sin contactar &gt;7 dias</p>
+          <p className="sales-stat-label">Leads sin contactar +7 días</p>
           <p className="sales-stat-value" style={leadsSinSeguimiento.length > 0 ? { color: "var(--color-danger, #dc2626)" } : undefined}>
             {leadsSinSeguimiento.length}
           </p>
@@ -199,7 +199,7 @@ export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purch
 
         return (
           <section className="panel" style={{ padding: "1.25rem" }}>
-            <p className="eyebrow">Evolucion mensual</p>
+            <p className="eyebrow">Evolución mensual</p>
             <h3 style={{ margin: "0.3rem 0 0.75rem" }}>Ventas vs Gastos (12 meses)</h3>
             <div style={{ display: "flex", gap: "0.25rem", alignItems: "flex-end", height: 180, marginBottom: "0.5rem" }}>
               {months.map((m) => (
@@ -247,7 +247,7 @@ export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purch
       {allVehicles.length === 0 && leads.length === 0 && (
         <section className="panel setup-panel">
           <p className="eyebrow">Sin datos</p>
-          <h2>Dashboard vacio</h2>
+          <h2>Dashboard vacío</h2>
           <p className="muted">Comienza por añadir vehículos al stock y registrar los primeros leads.</p>
         </section>
       )}

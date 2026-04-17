@@ -27,7 +27,7 @@ describe('OnboardingTour', () => {
     render(<OnboardingTour show={true} />)
     // Go to second step
     fireEvent.click(screen.getByText('Siguiente'))
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Resumen')).toBeInTheDocument()
     expect(screen.getByText('Anterior')).toBeInTheDocument()
 
     // Go back
@@ -49,8 +49,8 @@ describe('OnboardingTour', () => {
     for (let i = 0; i < 4; i++) {
       fireEvent.click(screen.getByText(i < 3 ? 'Siguiente' : 'Siguiente'))
     }
-    expect(screen.getByText('Empezar')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('Empezar'))
+    expect(screen.getByText('Entendido')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Entendido'))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

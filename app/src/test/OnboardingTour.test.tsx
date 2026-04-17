@@ -21,16 +21,16 @@ describe('OnboardingTour', () => {
     expect(screen.getByText('Navegación')).toBeInTheDocument()
   })
 
-  it('advances to "Dashboard" when Siguiente is clicked', () => {
+  it('advances to "Resumen" when Siguiente is clicked', () => {
     render(<OnboardingTour show={true} />)
     fireEvent.click(screen.getByText('Siguiente'))
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Resumen')).toBeInTheDocument()
   })
 
   it('goes back to previous step when Anterior is clicked', () => {
     render(<OnboardingTour show={true} />)
     fireEvent.click(screen.getByText('Siguiente'))
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Resumen')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Anterior'))
     expect(screen.getByText('Navegación')).toBeInTheDocument()
   })
@@ -42,15 +42,15 @@ describe('OnboardingTour', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('shows "Empezar" button on last step instead of "Siguiente"', () => {
+  it('shows "Entendido" button on last step instead of "Siguiente"', () => {
     render(<OnboardingTour show={true} />)
     // Navigate to last step (index 4 = "Sugerencias")
-    fireEvent.click(screen.getByText('Siguiente')) // → Dashboard
+    fireEvent.click(screen.getByText('Siguiente')) // → Resumen
     fireEvent.click(screen.getByText('Siguiente')) // → Stock
-    fireEvent.click(screen.getByText('Siguiente')) // → Leads
+    fireEvent.click(screen.getByText('Siguiente')) // → Interesados
     fireEvent.click(screen.getByText('Siguiente')) // → Sugerencias
     expect(screen.getByText('Sugerencias')).toBeInTheDocument()
-    expect(screen.getByText('Empezar')).toBeInTheDocument()
+    expect(screen.getByText('Entendido')).toBeInTheDocument()
     expect(screen.queryByText('Siguiente')).toBeNull()
   })
 
@@ -60,14 +60,14 @@ describe('OnboardingTour', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBe('1')
   })
 
-  it('sets localStorage key when Empezar is clicked on last step', () => {
+  it('sets localStorage key when Entendido is clicked on last step', () => {
     const onClose = vi.fn()
     render(<OnboardingTour show={true} onClose={onClose} />)
-    fireEvent.click(screen.getByText('Siguiente')) // → Dashboard
+    fireEvent.click(screen.getByText('Siguiente')) // → Resumen
     fireEvent.click(screen.getByText('Siguiente')) // → Stock
-    fireEvent.click(screen.getByText('Siguiente')) // → Leads
+    fireEvent.click(screen.getByText('Siguiente')) // → Interesados
     fireEvent.click(screen.getByText('Siguiente')) // → Sugerencias
-    fireEvent.click(screen.getByText('Empezar'))
+    fireEvent.click(screen.getByText('Entendido'))
     expect(localStorage.getItem(STORAGE_KEY)).toBe('1')
     expect(onClose).toHaveBeenCalledTimes(1)
   })

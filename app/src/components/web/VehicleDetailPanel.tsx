@@ -38,7 +38,7 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
   React.useEffect(() => { void loadPhotos(); void loadDocs(); }, [vehicle.id]);
 
   async function loadPhotos() { try { setPhotos(await api.listVehiclePhotos(vehicle.id)); } finally { setLoadingPhotos(false); } }
-  async function loadDocs() { setDocs(await api.listVehicleDocuments(vehicle.id)); }
+  async function loadDocs() { try { setDocs(await api.listVehicleDocuments(vehicle.id)); } catch (err) { showToast(translateError(err), "error"); } }
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -72,31 +72,39 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
 
   function handleDeletePhoto(photo: api.VehiclePhoto) {
     dialog.requestConfirm("Eliminar foto", `Eliminar ${photo.file_name}?`, async () => {
-      await api.deleteVehiclePhoto(photo);
-      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-      onReload?.();
+      try {
+        await api.deleteVehiclePhoto(photo);
+        setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+        onReload?.();
+      } catch (err) { showToast(translateError(err), "error"); }
     });
   }
 
   async function handleSetPrimary(photo: api.VehiclePhoto) {
-    await api.setPrimaryPhoto(vehicle.id, photo.id);
-    await loadPhotos();
-    // Notifica al padre para que recargue `vehicles` → StockList re-fetchea
-    // su `photoFirstUrlMap` y al volver al listado se ve la nueva primary.
-    onReload?.();
+    try {
+      await api.setPrimaryPhoto(vehicle.id, photo.id);
+      await loadPhotos();
+      // Notifica al padre para que recargue `vehicles` → StockList re-fetchea
+      // su `photoFirstUrlMap` y al volver al listado se ve la nueva primary.
+      onReload?.();
+      showToast("Foto principal actualizada", "success");
+    } catch (err) { showToast(translateError(err), "error"); }
   }
 
   async function handleUploadDoc(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
     setUploadingDoc(true);
-    try { await api.uploadVehicleDocument(vehicle.id, file, "factura"); await loadDocs(); }
+    try { await api.uploadVehicleDocument(vehicle.id, file, "factura"); await loadDocs(); showToast("Documento adjuntado", "success"); }
+    catch (err) { showToast(translateError(err), "error"); }
     finally { setUploadingDoc(false); if (docFileRef.current) docFileRef.current.value = ""; }
   }
 
   function handleDeleteDoc(doc: api.VehicleDocument) {
     dialog.requestConfirm("Eliminar documento", `Eliminar ${doc.file_name}?`, async () => {
-      await api.deleteVehicleDocument(doc);
-      setDocs((prev) => prev.filter((x) => x.id !== doc.id));
+      try {
+        await api.deleteVehicleDocument(doc);
+        setDocs((prev) => prev.filter((x) => x.id !== doc.id));
+      } catch (err) { showToast(translateError(err), "error"); }
     });
   }
 
@@ -275,7 +283,7 @@ function VDPurchaseInfo({ suppliers, supplierId, onSupplierChange, facturas, doc
 function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId, clients, onBack, onReload }: VDProps) {
   const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
-  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { await api.deleteVehicle(vehicle.id); onBack(); });
+  const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { try { await api.deleteVehicle(vehicle.id); onBack(); } catch (err) { showToast(translateError(err), "error"); } });
 
   // ── Expenses ──
   const vehiclePurchases = purchaseRecords.filter((p) => p.vehicle_id === vehicle.id);
@@ -376,7 +384,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
           <VDPurchaseInfo
             suppliers={suppliers}
             supplierId={h.form.supplier_id}
-            onSupplierChange={(id) => { h.setForm({ ...h.form, supplier_id: id }); void api.updateVehicle(vehicle.id, { supplier_id: id }); }}
+            onSupplierChange={(id) => { h.setForm({ ...h.form, supplier_id: id }); void api.updateVehicle(vehicle.id, { supplier_id: id }).catch((err) => showToast(translateError(err), "error")); }}
             facturas={h.facturas}
             docFileRef={h.docFileRef}
             uploadingDoc={h.uploadingDoc}

@@ -171,7 +171,7 @@ export function BankList({ companyId }: Props) {
           <p className="eyebrow">Banco</p>
           <h2>No hay cuentas bancarias configuradas</h2>
           <p className="muted">
-            Las cuentas se crean a mano en la BD durante la Fase 1.
+            Contacta con el administrador para configurar las cuentas bancarias.
           </p>
         </div>
       </header>
@@ -191,7 +191,7 @@ export function BankList({ companyId }: Props) {
 
       <header className="hero">
         <div>
-          <p className="eyebrow">Banco · CaixaBank</p>
+          <p className="eyebrow">Banco</p>
           <h2>Movimientos bancarios</h2>
           <p className="muted">
             {transactions.length} movimiento{transactions.length !== 1 ? "s" : ""}
@@ -384,8 +384,7 @@ export function BankList({ companyId }: Props) {
       {transactions.length === 0 ? (
         <section className="panel">
           <p className="muted">
-            Sin movimientos para los filtros actuales. Importa un fichero N43
-            con <code>scripts/import_n43.py</code>.
+            Sin movimientos para los filtros actuales. Si acabas de importar un fichero bancario y no aparece nada, prueba a quitar los filtros.
           </p>
         </section>
       ) : (

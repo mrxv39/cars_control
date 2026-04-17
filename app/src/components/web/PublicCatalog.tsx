@@ -106,7 +106,7 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   React.useEffect(() => {
-    void api.listVehiclePhotos(vehicle.id).then(setPhotos);
+    void api.listVehiclePhotos(vehicle.id).then(setPhotos).catch(() => setPhotos([]));
   }, [vehicle.id]);
 
   React.useEffect(() => {
@@ -197,7 +197,7 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
           </table>
           {vehicle.notes && vehicle.notes.startsWith("Desde") && (
             <div className="catalog-detail-financing">
-              <p className="eyebrow" style={{ marginBottom: "0.4rem" }}>Financiacion</p>
+              <p className="eyebrow" style={{ marginBottom: "0.4rem" }}>Financiación</p>
               <p className="catalog-detail-financing-text">{vehicle.notes}</p>
             </div>
           )}
@@ -229,7 +229,7 @@ export function PublicCatalog({ onLogin }: { onLogin: () => void }) {
       const photos = await api.listPrimaryPhotos(v.map((x) => x.id));
       setThumbs(photos);
       setLoading(false);
-    });
+    }).catch(() => { setLoading(false); });
   }, []);
 
   const fuelOptions = useMemo(() => [...new Set(vehicles.map((v) => v.fuel).filter(Boolean))].sort(), [vehicles]);

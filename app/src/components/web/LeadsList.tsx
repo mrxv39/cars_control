@@ -174,14 +174,17 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
 
   function convertToClient(lead: api.Lead) {
     dialog.requestConfirm("Convertir a cliente", `¿Convertir "${lead.name}" en cliente?`, async () => {
-      const client = await api.createClient(companyId, {
-        name: lead.name,
-        phone: lead.phone,
-        email: lead.email,
-        notes: lead.notes,
-      } as Partial<api.Client>);
-      await api.updateLead(lead.id, { converted_client_id: client.id, estado: "cerrado" } as Partial<api.Lead>);
-      onReload();
+      try {
+        const client = await api.createClient(companyId, {
+          name: lead.name,
+          phone: lead.phone,
+          email: lead.email,
+          notes: lead.notes,
+        } as Partial<api.Client>);
+        await api.updateLead(lead.id, { converted_client_id: client.id, estado: "cerrado" } as Partial<api.Lead>);
+        onReload();
+        showToast("Lead convertido a cliente", "success");
+      } catch (err) { showToast(translateError(err), "error"); }
     });
   }
 
@@ -190,13 +193,13 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
       <ConfirmDialog {...dialog.confirmProps} />
       <header className="hero">
         <div>
-          <p className="eyebrow">Leads</p>
-          <h2>Leads</h2>
+          <p className="eyebrow">Interesados</p>
+          <h2>Interesados</h2>
           <p className="muted">{leads.length} lead{leads.length !== 1 ? "s" : ""}</p>
         </div>
         {leads.length > 0 && (
           <div className="hero-actions">
-            <button type="button" className="button secondary" onClick={() => exportToCSV(leads.map(l => ({ Nombre: l.name, Telefono: l.phone, Email: l.email, Estado: l.estado, Canal: l.canal, Interes: l.vehicle_interest, Fecha_contacto: l.fecha_contacto, Notas: l.notes })), "leads")}>
+            <button type="button" className="button secondary" onClick={() => exportToCSV(leads.map(l => ({ Nombre: l.name, Teléfono: l.phone, Email: l.email, Estado: l.estado, Canal: l.canal, Interés: l.vehicle_interest, Fecha_contacto: l.fecha_contacto, Notas: l.notes })), "leads")}>
               Exportar CSV
             </button>
           </div>
@@ -245,7 +248,7 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" className={!editForm.name.trim() && editingId ? "input-error" : ""} />
                 {!editForm.name.trim() && editingId && <p className="input-error-message" role="alert">El nombre es obligatorio</p>}
-                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Telefono" />
+                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Teléfono" />
                 {phoneDuplicate && <p style={{ color: "#b45309", fontSize: "0.78rem", margin: "-0.25rem 0 0" }}>⚠ {phoneDuplicate}</p>}
                 <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
                 <select value={editForm.estado} onChange={(e) => setEditForm({ ...editForm, estado: e.target.value })}>
@@ -270,7 +273,7 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
                 <div className="record-header">
                   <div>
                     <p className="record-title" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><span className={`lead-status-dot ${lead.estado || "nuevo"}`} />{lead.name}</p>
-                    <p className="muted">{lead.phone || "Sin telefono"}</p>
+                    <p className="muted">{lead.phone || "Sin teléfono"}</p>
                   </div>
                   <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
                     {lead.canal === "coches.net" && <span className="badge badge-coches">coches.net</span>}
@@ -279,7 +282,7 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
                     <button type="button" className="button danger xs" onClick={() => void handleDeleteLead(lead.id, lead.name)}>Eliminar</button>
                   </div>
                 </div>
-                {lead.vehicle_interest && <p className="record-line">Interes: {lead.vehicle_interest}</p>}
+                {lead.vehicle_interest && <p className="record-line">Interés: {lead.vehicle_interest}</p>}
                 {lead.notes && <p className="record-notes">{lead.notes}</p>}
                 <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.25rem" }}>
                   {!lead.converted_client_id && lead.estado !== "perdido" && (

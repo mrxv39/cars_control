@@ -766,6 +766,7 @@ select:focus-visible {
   padding: 1.5rem;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(6px);
+  z-index: 500;
 }
 
 .modal-card {
@@ -824,7 +825,6 @@ select:focus-visible {
 .sales-stat-card.clickable:hover {
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   transform: translateY(-1px);
-  padding: 1.25rem 1.4rem;
 }
 
 .sales-stat-label {
@@ -2071,7 +2071,7 @@ select:focus-visible {
 
 /* ── Form feedback ── */
 .field-label.required::after { content: " *"; color: var(--color-danger); }
-.toast { position: fixed; bottom: var(--space-xl); right: var(--space-xl); padding: var(--space-md) var(--space-xl); border-radius: var(--radius-lg); font-size: var(--text-sm); font-weight: var(--font-semibold); box-shadow: var(--shadow-lg); animation: toast-in 0.3s ease; z-index: 200; }
+.toast { position: fixed; bottom: 5rem; right: var(--space-xl); padding: var(--space-md) var(--space-xl); border-radius: var(--radius-lg); font-size: var(--text-sm); font-weight: var(--font-semibold); box-shadow: var(--shadow-lg); animation: toast-in 0.3s ease; z-index: 600; }
 .toast.success { background: var(--color-success); color: white; }
 .toast.error { background: var(--color-danger); color: white; }
 @keyframes toast-in { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

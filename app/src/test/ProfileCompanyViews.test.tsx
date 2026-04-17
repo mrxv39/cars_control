@@ -30,7 +30,7 @@ describe('ProfileView', () => {
   it('renders profile header and user role', () => {
     render(<ProfileView session={mockSession} />);
     expect(screen.getByText('Perfil de usuario')).toBeInTheDocument();
-    expect(screen.getByText(/Rol: admin/)).toBeInTheDocument();
+    expect(screen.getByText(/Rol: Administrador/)).toBeInTheDocument();
   });
 
   it('renders form fields with session data', () => {
