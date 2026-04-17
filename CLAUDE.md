@@ -129,3 +129,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - 2026-04-17c: mantenimiento — fix 3 errores TS, eliminar 6 any, extraer translateError, +54 tests (549 total), 0 errores tsc
 - 2026-04-17d: UX audit — 59 hallazgos (Playwright + código), 35 resueltos, toast.ts, forgot password, tildes RevisionSheet, labels español
 - 2026-04-17e: UX audit ronda 3 — 45 hallazgos (5 agentes paralelo), 45/45 resueltos, error handling, tildes, SuppliersList búsqueda+paginación, OnboardingTour a11y, 549 tests
+- 2026-04-17f: security review — 7 fixes (auth edge functions, CORS restrictivo, CSP Tauri, PII redactada, companyId filter), 549 tests
