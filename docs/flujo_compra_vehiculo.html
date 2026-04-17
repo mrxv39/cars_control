@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodinaCars — Flujo de compra de vehículo (validado)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1117;
+    color: #e1e4e8;
+    padding: 20px;
+    max-width: 960px;
+    margin: 0 auto;
+    line-height: 1.55;
+  }
+  h1 { text-align: center; font-size: 1.9em; margin-bottom: 8px; color: #fff; }
+  .subtitle { text-align: center; color: #8b949e; margin-bottom: 28px; font-size: 0.95em; }
+  .validado {
+    display: inline-block;
+    background: #238636;
+    color: #fff;
+    font-size: 0.75em;
+    padding: 3px 10px;
+    border-radius: 10px;
+    margin-left: 8px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+  .intro {
+    background: #1c2333;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+  }
+  .intro strong { color: #58a6ff; }
+  .intro ul { margin: 8px 0 0 20px; color: #8b949e; }
+  .intro li { margin-bottom: 4px; }
+
+  .flujo {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .flujo-header {
+    background: #21262d;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .flujo-header:hover { background: #282e36; }
+  .flujo-number {
+    background: #3fb950;
+    color: #0d1117;
+    font-weight: 700;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .flujo-title { font-size: 1.15em; font-weight: 600; }
+  .flujo-body { padding: 4px 20px 20px; display: none; }
+  .flujo.open .flujo-body { display: block; }
+  .chevron { margin-left: auto; color: #8b949e; transition: transform .15s; }
+  .flujo.open .chevron { transform: rotate(90deg); }
+
+  .paso {
+    border-left: 2px solid #30363d;
+    margin-left: 15px;
+    padding: 14px 0 14px 20px;
+    position: relative;
+  }
+  .paso::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 20px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #3fb950;
+  }
+  .paso p { color: #b1bac4; margin-bottom: 8px; }
+  .paso ul { margin: 6px 0 6px 20px; color: #b1bac4; }
+  .paso li { margin-bottom: 4px; }
+  .paso ol { margin: 6px 0 6px 24px; color: #b1bac4; }
+  .paso ol li { margin-bottom: 4px; }
+
+  .pendiente {
+    background: #2d2416;
+    border-left: 3px solid #d29922;
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 4px;
+    color: #e3b341;
+    font-size: 0.92em;
+  }
+  .pendiente strong { color: #ffdf5d; }
+
+  .rgpd {
+    background: #1d2d1f;
+    border-left: 3px solid #3fb950;
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 4px;
+    color: #7ee787;
+    font-size: 0.92em;
+  }
+  .rgpd strong { color: #7ee787; }
+
+  .validado-inline {
+    background: #0d2818;
+    border-left: 3px solid #3fb950;
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 4px;
+    color: #a6e3a1;
+    font-size: 0.92em;
+  }
+  .validado-inline strong { color: #7ee787; }
+
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #30363d; vertical-align: top; }
+  th { background: #1c2333; color: #c9d1d9; font-weight: 600; font-size: 0.9em; }
+  td { color: #b1bac4; font-size: 0.92em; }
+
+  code {
+    background: #1c2333;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.88em;
+    color: #79c0ff;
+  }
+  pre {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 10px 0;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.88em;
+    color: #c9d1d9;
+  }
+
+  .estado-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #0d1117;
+    border-radius: 6px;
+    margin: 10px 0;
+  }
+  .estado-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.82em;
+    font-weight: 600;
+  }
+  .estado-badge.disponible { background: #1f6feb; color: #fff; }
+  .estado-badge.listo { background: #238636; color: #fff; }
+  .estado-badge.reservado { background: #d29922; color: #0d1117; }
+  .estado-badge.vendido { background: #8957e5; color: #fff; }
+  .arrow { color: #8b949e; }
+
+  .checklist li { list-style: none; margin-bottom: 6px; }
+  .checklist li::before { content: '☐ '; color: #58a6ff; margin-right: 4px; }
+
+  .fase-card {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 12px 0;
+  }
+  .fase-card h4 {
+    color: #79c0ff;
+    font-size: 1em;
+    margin-bottom: 8px;
+  }
+  .fase-card.faseb h4 { color: #d29922; }
+
+  .controls { text-align: right; margin-bottom: 14px; }
+  .btn {
+    background: #238636;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+  }
+  .btn:hover { background: #2ea043; }
+
+  ol.pendientes {
+    margin: 8px 0 8px 24px;
+    color: #b1bac4;
+  }
+  ol.pendientes li { margin-bottom: 6px; }
+  ol.pendientes strong { color: #e1e4e8; }
+</style>
+</head>
+<body>
+
+<h1>Flujo de compra de vehículo <span class="validado">VALIDADO 2026-04-18</span></h1>
+<div class="subtitle">CodinaCars — consolidado tras respuestas de Ricard</div>
+
+<div class="intro">
+  Flujo completo desde que Ricard decide comprar un coche hasta que queda <strong>LISTO PARA VENTA</strong> y, más adelante, se vende. Consolidado con:
+  <ul>
+    <li><code>respuestas_flujo_compra_2026-04-17.md</code></li>
+    <li><code>respuestas_ricard_compra_2026-04-17.md</code></li>
+    <li><code>docs/flujos_trabajo_validacion.html</code> §1</li>
+    <li><code>docs/import_coches_net.md</code></li>
+    <li><code>CLAUDE.md</code></li>
+  </ul>
+</div>
+
+<div class="controls">
+  <button class="btn" onclick="toggleAll()">Expandir / Contraer todo</button>
+</div>
+
+<!-- 0 -->
+<div class="flujo open" id="f0">
+  <div class="flujo-header" onclick="toggleFlujo('f0')">
+    <div class="flujo-number">0</div>
+    <div class="flujo-title">Origen del vehículo — 5 canales</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <table>
+        <thead>
+          <tr><th>Canal</th><th>Notas</th><th>Documento</th><th>IVA</th><th>349</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Auto1</strong></td><td>Frecuente</td><td>Factura CIF DE</td><td>Intracomunitario</td><td><strong style="color:#3fb950;">Sí</strong></td></tr>
+          <tr><td><strong>Particular</strong></td><td>Frecuente</td><td>Contrato + <strong>autofactura Ricard</strong></td><td>Sin IVA (REBU al vender)</td><td>No</td></tr>
+          <tr><td><strong>Concesionario</strong></td><td>Contactos, le pasan coches</td><td>Factura CIF ES</td><td>REBU / IVA 21%</td><td>No</td></tr>
+          <tr><td><strong>Subasta online ES</strong></td><td>Frecuente</td><td>Factura CIF ES</td><td>REBU / IVA 21%</td><td>No</td></tr>
+          <tr><td><strong>Empresa española</strong></td><td>Puntual</td><td>Factura CIF ES</td><td>REBU / IVA 21%</td><td>No</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 1 -->
+<div class="flujo open" id="f1">
+  <div class="flujo-header" onclick="toggleFlujo('f1')">
+    <div class="flujo-number">1</div>
+    <div class="flujo-title">Decisión de compra (fuera de la app)</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <p><strong>Criterio principal:</strong> margen esperado.</p>
+      <p><strong>Reglas heurísticas de Ricard:</strong></p>
+      <ul>
+        <li>Compra modelos que <strong>conoce</strong> y sabe que funcionan.</li>
+        <li>Prioriza modelos que se <strong>venden bien</strong> en el mercado.</li>
+        <li>Evita coches con <strong>problemas mecánicos conocidos</strong> (motor).</li>
+      </ul>
+      <div class="pendiente"><strong>Pendiente:</strong> calculadora de margen previo en la app. Utilidad confirmada, implementación TBD.</div>
+    </div>
+  </div>
+</div>
+
+<!-- 2 -->
+<div class="flujo open" id="f2">
+  <div class="flujo-header" onclick="toggleFlujo('f2')">
+    <div class="flujo-number">2</div>
+    <div class="flujo-title">Pago y factura de compra</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <ul>
+        <li>Pago desde cuenta de <strong>empresa</strong> (<code>is_personal = false</code>).</li>
+        <li><strong>Auto1</strong> → factura con CIF alemán → modelo 349 al cerrar trimestre.</li>
+        <li><strong>Particular</strong> → contrato compraventa + <strong>autofactura de Ricard</strong> (siempre).</li>
+        <li><strong>Concesionario / subasta ES / empresa</strong> → factura estándar con CIF español.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 3 -->
+<div class="flujo open" id="f3">
+  <div class="flujo-header" onclick="toggleFlujo('f3')">
+    <div class="flujo-number">3</div>
+    <div class="flujo-title">Transporte, provisional y seguro</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <p><strong>Cómo llega el coche</strong> — cuatro vías, según el caso:</p>
+      <table>
+        <thead><tr><th>Vía</th><th>Cuándo</th></tr></thead>
+        <tbody>
+          <tr><td>Ricard va a buscarlo</td><td>Si el coche está razonablemente cerca</td></tr>
+          <tr><td>Contratar transporte</td><td>Distancia larga o varios coches</td></tr>
+          <tr><td>Persona de confianza</td><td>Ricard no puede ir, pero conoce a alguien en la zona</td></tr>
+          <tr><td>Auto1 entrega</td><td>Cuando aplica la opción del proveedor</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:12px;"><strong>Provisional de circulación</strong> (Gestoría Ruppmann):</p>
+      <ul>
+        <li>Ricard la pide según necesidad. <strong>No siempre</strong> es imprescindible.</li>
+        <li>Automatización desde la app: <strong>"depende"</strong> — evaluar caso a caso, no pedirla por defecto.</li>
+      </ul>
+
+      <p style="margin-top:12px;"><strong>Seguro por días</strong> — <code>terranea-digital.es</code></p>
+      <ul>
+        <li>Lo contrata Ricard según necesidad.</li>
+        <li>Momentos típicos de activación: <strong>mover al taller</strong> y <strong>traer el coche</strong>.</li>
+        <li>Otros usos (visita, prueba, entrega) posibles pero no sistemáticos.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 4 -->
+<div class="flujo open" id="f4">
+  <div class="flujo-header" onclick="toggleFlujo('f4')">
+    <div class="flujo-number">4</div>
+    <div class="flujo-title">Alta en la app — wizard en 2 fases</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <p>Ricard registra la compra <strong>al pagar</strong>, aunque la factura aún no esté disponible.</p>
+
+      <div class="fase-card">
+        <h4>Fase A — al pagar (datos mínimos)</h4>
+        <ul>
+          <li><strong>Proveedor</strong> (selector)</li>
+          <li><strong>Importe</strong></li>
+          <li><strong>Vincular movimiento bancario</strong> — la app sugiere el pago que cuadra</li>
+        </ul>
+      </div>
+
+      <div class="fase-card faseb">
+        <h4>Fase B — cuando llega la factura (días después)</h4>
+        <ul>
+          <li><strong>Fecha factura</strong>, <strong>nº factura</strong>, <strong>archivo</strong> (PDF/foto)</li>
+          <li>Mayoría llegan por <strong>email</strong> → extraer datos automáticamente del adjunto</li>
+          <li>Otras vías: papel, descarga web, WhatsApp</li>
+        </ul>
+      </div>
+
+      <p style="margin-top:10px;">Por cada proveedor, guardar el <strong>canal habitual</strong> de envío (email / papel / web / WhatsApp) para saber dónde buscar la factura.</p>
+
+      <p style="margin-top:10px;">Modelo actual: <code>PurchaseRecord</code> tipo <code>COMPRA_VEHICULO</code> (<code>PurchasesView.tsx</code>, <code>LinkPurchaseModal.tsx</code>).</p>
+
+      <div class="pendiente">
+        <strong>Mejoras pendientes:</strong>
+        <ul style="margin-top:6px;">
+          <li>Wizard en 2 fases (A al pagar, B con factura)</li>
+          <li>Campo <code>invoice_channel</code> por proveedor</li>
+          <li>Parser de adjuntos de email para rellenar Fase B</li>
+          <li>Sugerencia automática de movimiento bancario</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5 -->
+<div class="flujo open" id="f5">
+  <div class="flujo-header" onclick="toggleFlujo('f5')">
+    <div class="flujo-number">5</div>
+    <div class="flujo-title">Publicación en coches.net</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <ol>
+        <li>Ricard sube el coche a <strong>coches.net</strong> (fuera de la app).</li>
+        <li>En la app pulsa <strong>"Sincronizar stock"</strong>.</li>
+        <li>Importa con 1 click: fotos, precio, datos del anuncio.</li>
+        <li>Estado inicial: <span class="estado-badge disponible">DISPONIBLE</span>.</li>
+      </ol>
+      <div class="validado-inline"><strong>Confirmado:</strong> una vez publicado, los leads llegan solos desde coches.net — es el canal principal de entrada.</div>
+      <p style="margin-top:10px;">Detalle técnico: <code>docs/import_coches_net.md</code>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- 6 -->
+<div class="flujo open" id="f6">
+  <div class="flujo-header" onclick="toggleFlujo('f6')">
+    <div class="flujo-number">6</div>
+    <div class="flujo-title">Checklist de preparación (5/5 → LISTO PARA VENTA)</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <p>De <span class="estado-badge disponible">DISPONIBLE</span> a <span class="estado-badge listo">LISTO PARA VENTA</span> cuando se cumplen los 5 items:</p>
+      <ul class="checklist">
+        <li><strong>40 fotos mínimo</strong> — <strong>siempre 40 o más</strong> (no varía según gama).</li>
+        <li>Ficha técnica (foto o PDF).</li>
+        <li>Permiso de circulación (foto o PDF).</li>
+        <li>Factura de compra — <strong>puede llegar días después</strong>. El checklist avanza pero la línea queda como "pendiente de adjuntar" hasta que llegue.</li>
+        <li>Reparaciones finalizadas.</li>
+      </ul>
+      <p style="margin-top:10px;">Orden de trabajo: <strong>Mecánica → Plancha → Limpieza</strong> (limpieza siempre la última).</p>
+      <div class="rgpd"><strong>🔒 RGPD:</strong> documentos sensibles al bucket <strong>privado</strong> <code>vehicle-docs</code>. Nunca al público <code>vehicle-photos</code>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- 7 -->
+<div class="flujo open" id="f7">
+  <div class="flujo-header" onclick="toggleFlujo('f7')">
+    <div class="flujo-number">7</div>
+    <div class="flujo-title">Gastos — por coche vs globales</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <p><strong>Por coche</strong> (se vinculan al vehículo):</p>
+      <ul>
+        <li><code>TALLER</code>, <code>LIMPIEZA</code>, <code>TRANSPORTE</code></li>
+        <li><code>GESTION_AUTO1</code></li>
+        <li><code>RECAMBIOS</code>, <code>NEUMATICOS</code>, <code>COMBUSTIBLE</code></li>
+        <li><strong>Seguros por días puntuales</strong> (activaciones de terranea-digital)</li>
+        <li><code>OTRO</code></li>
+      </ul>
+
+      <p style="margin-top:12px;"><strong>Globales</strong> (no imputables a un coche):</p>
+      <ul>
+        <li><strong>Publicidad</strong> — cuota <strong>mensual</strong> global (coches.net pack / otros)</li>
+      </ul>
+
+      <pre>Coste total vehículo = purchase_price + Σ(gastos + seguros puntuales)
+Margen esperado     = precio_venta – coste total  (actualizado en vivo)</pre>
+
+      <div class="pendiente"><strong>Pendiente decidir:</strong> cómo imputar la publicidad mensual al margen → prorrateo por coche vendido o dejarla como gasto general.</div>
+    </div>
+  </div>
+</div>
+
+<!-- 8 -->
+<div class="flujo open" id="f8">
+  <div class="flujo-header" onclick="toggleFlujo('f8')">
+    <div class="flujo-number">8</div>
+    <div class="flujo-title">Al vender — email automático a la gestoría</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <p>Al cerrar venta, la app envía email a la gestoría (Ruppmann) con todo lo necesario para el cambio de nombre:</p>
+      <ul>
+        <li>Factura de venta</li>
+        <li>DNI del cliente</li>
+        <li>Permiso de circulación</li>
+        <li>Ficha técnica</li>
+        <li>Contrato de compraventa</li>
+        <li>Mandato de gestoría firmado</li>
+      </ul>
+      <div class="pendiente"><strong>Pendiente implementar:</strong> edge function que componga y envíe el email con los adjuntos del vehículo al cerrar venta.</div>
+    </div>
+  </div>
+</div>
+
+<!-- 9 -->
+<div class="flujo open" id="f9">
+  <div class="flujo-header" onclick="toggleFlujo('f9')">
+    <div class="flujo-number">9</div>
+    <div class="flujo-title">Implicaciones fiscales</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <ul>
+        <li><strong>REBU</strong> (~90% de ventas): IVA solo sobre margen. La compra no genera IVA deducible.</li>
+        <li><strong>IVA normal 21%</strong>: si la factura de compra lleva IVA deducible.</li>
+        <li><strong>Modelo 349</strong>: compras a Auto1 (CIF DE). Trimestre de la compra.</li>
+        <li><strong>Modelo 303</strong> (IVA trimestral) + <strong>Modelo 130</strong> (IRPF 20% trimestral).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 10 -->
+<div class="flujo open" id="f10">
+  <div class="flujo-header" onclick="toggleFlujo('f10')">
+    <div class="flujo-number">10</div>
+    <div class="flujo-title">Resumen visual del ciclo</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <pre>[Decisión manual] → [Pago + alta Fase A] → [Transporte + (provisional)]
+                        ↓
+           [Llega factura → Fase B: adjuntar + completar]
+                        ↓
+[Publicar coches.net] → [Sync → DISPONIBLE] → [Checklist 5/5] → [LISTO PARA VENTA]
+                        ↓
+           (gastos + seguros puntuales vinculándose en paralelo)
+                        ↓
+                 [Venta → email a gestoría]</pre>
+
+      <p style="margin-top:14px;"><strong>Estado del vehículo:</strong></p>
+      <div class="estado-flow">
+        <span class="estado-badge disponible">DISPONIBLE</span>
+        <span class="arrow">→</span>
+        <span class="estado-badge listo">LISTO PARA VENTA</span>
+        <span class="arrow">→</span>
+        <span class="estado-badge reservado">RESERVADO</span>
+        <span class="arrow">→</span>
+        <span class="estado-badge vendido">VENDIDO</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 11 -->
+<div class="flujo open" id="f11">
+  <div class="flujo-header" onclick="toggleFlujo('f11')">
+    <div class="flujo-number" style="background:#d29922;">!</div>
+    <div class="flujo-title">Pendientes derivados de esta validación</div>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="flujo-body">
+    <div class="paso">
+      <ol class="pendientes">
+        <li><strong>Wizard de alta de compra en 2 fases</strong> (A al pagar, B con factura).</li>
+        <li><strong>Campo <code>invoice_channel</code></strong> por proveedor (email / papel / web / WhatsApp).</li>
+        <li><strong>Sugerencia de movimiento bancario</strong> al registrar compra.</li>
+        <li><strong>OCR / parser de emails</strong> para extraer datos de facturas recibidas.</li>
+        <li><strong>Email automático a gestoría</strong> al cerrar venta (con adjuntos).</li>
+        <li><strong>Integración terranea-digital.es</strong> para seguros por días desde la app (si hay API).</li>
+        <li><strong>Calculadora de margen previo</strong> antes de comprar.</li>
+        <li><strong>Prorrateo de publicidad mensual</strong> en margen unitario (decisión pendiente).</li>
+        <li><strong>Provisional Ruppmann</strong>: evaluar caso a caso, no automatizar por defecto.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleFlujo(id) {
+    document.getElementById(id).classList.toggle('open');
+  }
+  function toggleAll() {
+    const flujos = document.querySelectorAll('.flujo');
+    const anyClosed = Array.from(flujos).some(f => !f.classList.contains('open'));
+    flujos.forEach(f => f.classList.toggle('open', anyClosed));
+  }
+</script>
+
+</body>
+</html>

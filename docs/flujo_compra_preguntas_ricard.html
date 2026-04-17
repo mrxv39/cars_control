@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodinaCars — Preguntas Ricard (compra de coches)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f1ea;
+    color: #2b2b2b;
+    padding: 20px;
+    max-width: 780px;
+    margin: 0 auto;
+    line-height: 1.6;
+    font-size: 17px;
+  }
+
+  .hero {
+    text-align: center;
+    padding: 30px 20px;
+    margin-bottom: 28px;
+    background: #fff;
+    border-radius: 16px;
+    border: 2px solid #e1dbce;
+  }
+  .hero h1 { font-size: 2em; color: #1a1a1a; margin-bottom: 8px; }
+  .hero p { color: #555; font-size: 1.05em; }
+  .hero strong { color: #c9461a; }
+
+  .intro {
+    background: #fff6e6;
+    border: 2px solid #f0d8a0;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 30px;
+    font-size: 1.02em;
+  }
+  .intro strong { color: #a05000; }
+
+  .pregunta {
+    background: #fff;
+    border: 2px solid #e1dbce;
+    border-radius: 14px;
+    padding: 24px 26px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  }
+  .pregunta-num {
+    display: inline-block;
+    background: #c9461a;
+    color: #fff;
+    font-weight: 700;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 32px;
+    margin-right: 10px;
+    font-size: 0.95em;
+  }
+  .pregunta h2 {
+    font-size: 1.25em;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pregunta .ayuda {
+    color: #666;
+    font-size: 0.95em;
+    margin-bottom: 16px;
+    padding-left: 44px;
+  }
+
+  /* Opciones (checkbox / radio) */
+  .opciones {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .opciones.horizontal {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .opcion {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 2px solid #e1dbce;
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+    background: #fafaf6;
+    min-height: 50px;
+  }
+  .opcion:hover { background: #f5efe0; border-color: #c9a876; }
+  .opcion input { width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; }
+  .opcion input:checked + span { font-weight: 600; color: #1a1a1a; }
+  .opcion span { font-size: 1.02em; color: #333; }
+  .opcion:has(input:checked) {
+    background: #fff0df;
+    border-color: #c9461a;
+  }
+
+  /* Botones grandes sí/no/depende */
+  .botones-yes-no {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .btn-opcion {
+    flex: 1;
+    min-width: 110px;
+    padding: 14px 18px;
+    border: 2px solid #e1dbce;
+    background: #fafaf6;
+    border-radius: 10px;
+    font-size: 1.05em;
+    font-weight: 600;
+    cursor: pointer;
+    color: #333;
+    transition: all 0.15s;
+  }
+  .btn-opcion:hover { background: #f5efe0; }
+  .btn-opcion.selected {
+    background: #c9461a;
+    color: #fff;
+    border-color: #c9461a;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 12px 14px;
+    border: 2px solid #e1dbce;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 1em;
+    line-height: 1.5;
+    resize: vertical;
+    background: #fafaf6;
+    color: #2b2b2b;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: #c9461a;
+    background: #fff;
+  }
+  textarea::placeholder { color: #999; }
+
+  .etiqueta-opcional {
+    display: inline-block;
+    background: #f0e8d8;
+    color: #8b7355;
+    font-size: 0.78em;
+    padding: 2px 10px;
+    border-radius: 10px;
+    margin-left: 8px;
+    font-weight: 600;
+  }
+
+  .extra-texto {
+    margin-top: 12px;
+  }
+  .extra-texto label {
+    display: block;
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  /* Final */
+  .final {
+    background: #1a3d1a;
+    color: #fff;
+    border-radius: 14px;
+    padding: 30px;
+    text-align: center;
+    margin-top: 30px;
+  }
+  .final h2 { font-size: 1.5em; margin-bottom: 14px; }
+  .final p { font-size: 1.05em; margin-bottom: 20px; opacity: 0.95; }
+  .btn-final {
+    background: #fff;
+    color: #1a3d1a;
+    border: none;
+    padding: 16px 34px;
+    font-size: 1.1em;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    margin: 6px;
+  }
+  .btn-final:hover { background: #e8f5e8; }
+  .btn-limpiar {
+    background: transparent;
+    color: #fff;
+    border: 2px solid #fff;
+  }
+  .btn-limpiar:hover { background: rgba(255,255,255,0.1); }
+
+  .save-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #1a3d1a;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .save-indicator.show { opacity: 0.9; }
+
+  @media (max-width: 600px) {
+    body { padding: 12px; font-size: 16px; }
+    .pregunta { padding: 18px 18px; }
+    .pregunta .ayuda { padding-left: 0; }
+    .botones-yes-no { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Hola Ricard 👋</h1>
+  <p>Son <strong>12 preguntas</strong> rápidas sobre cómo compras coches.<br>
+  Responde lo que sepas y lo que no, déjalo en blanco.</p>
+</div>
+
+<div class="intro">
+  <strong>Cómo va:</strong> marca las opciones que te encajan, o escribe en los recuadros. Lo que escribas se guarda solo. Al final hay un botón verde grande: <strong>"Enviar respuestas"</strong>, que descarga un archivo que me pasas por WhatsApp o email.
+</div>
+
+<!-- P1 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">1</span> ¿A quién le compras los coches?</h2>
+  <p class="ayuda">Marca todos los que uses. Si falta alguno, escríbelo debajo.</p>
+  <div class="opciones" data-q="q1_fuentes">
+    <label class="opcion"><input type="checkbox" value="Auto1"><span>Auto1 (subastas Alemania)</span></label>
+    <label class="opcion"><input type="checkbox" value="Particular"><span>Particulares (gente normal que vende su coche)</span></label>
+    <label class="opcion"><input type="checkbox" value="Concesionario"><span>Concesionarios (contactos tuyos)</span></label>
+    <label class="opcion"><input type="checkbox" value="Subasta online ES"><span>Subastas online españolas</span></label>
+    <label class="opcion"><input type="checkbox" value="Empresa"><span>Empresas españolas</span></label>
+  </div>
+  <div class="extra-texto">
+    <label>¿Algún otro? <span class="etiqueta-opcional">opcional</span></label>
+    <textarea data-q="q1_otros" placeholder="Ejemplo: amigo que trae coches de Francia, una web concreta, etc."></textarea>
+  </div>
+</div>
+
+<!-- P2 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">2</span> Antes de comprar un coche, ¿qué miras?</h2>
+  <p class="ayuda">Marca lo que realmente miras. No hace falta marcar todo — solo lo importante para ti.</p>
+  <div class="opciones" data-q="q2_criterios">
+    <label class="opcion"><input type="checkbox" value="Precio compra"><span>Precio de compra</span></label>
+    <label class="opcion"><input type="checkbox" value="Precio mercado"><span>Precio al que se vende en coches.net</span></label>
+    <label class="opcion"><input type="checkbox" value="Km"><span>Kilómetros</span></label>
+    <label class="opcion"><input type="checkbox" value="Antiguedad"><span>Antigüedad</span></label>
+    <label class="opcion"><input type="checkbox" value="Estado mecanico"><span>Estado mecánico</span></label>
+    <label class="opcion"><input type="checkbox" value="Chapa"><span>Estado de la chapa</span></label>
+    <label class="opcion"><input type="checkbox" value="Demanda modelo"><span>Si el modelo se vende bien</span></label>
+    <label class="opcion"><input type="checkbox" value="Color"><span>Color</span></label>
+    <label class="opcion"><input type="checkbox" value="Margen"><span>Margen esperado (lo que ganaría)</span></label>
+  </div>
+  <div class="extra-texto">
+    <label>¿Alguna regla que sigas siempre? <span class="etiqueta-opcional">opcional</span></label>
+    <textarea data-q="q2_regla" placeholder="Ej: 'nunca compro diésel de más de 8 años' o 'solo compro si veo un margen mínimo de X €'"></textarea>
+  </div>
+</div>
+
+<!-- P3 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">3</span> Cuando compras a un particular, ¿haces "autofactura"?</h2>
+  <p class="ayuda">(Autofactura = tú te haces la factura a ti mismo porque el particular no la puede hacer)</p>
+  <div class="botones-yes-no" data-q="q3_autofactura">
+    <button type="button" class="btn-opcion" data-val="Siempre">Siempre</button>
+    <button type="button" class="btn-opcion" data-val="A veces">A veces</button>
+    <button type="button" class="btn-opcion" data-val="Nunca">Nunca</button>
+  </div>
+  <div class="extra-texto">
+    <label>Si es "a veces": ¿cuándo sí y cuándo no? <span class="etiqueta-opcional">opcional</span></label>
+    <textarea data-q="q3_detalle" placeholder="Ej: 'solo si el coche es para REBU' o 'solo si va a financiación'"></textarea>
+  </div>
+</div>
+
+<!-- P4 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">4</span> ¿Quién trae los coches desde Auto1 a España?</h2>
+  <p class="ayuda">Marca todas las formas que usas.</p>
+  <div class="opciones" data-q="q4_transporte">
+    <label class="opcion"><input type="checkbox" value="Yo mismo"><span>Yo mismo voy a buscarlo</span></label>
+    <label class="opcion"><input type="checkbox" value="Transporte pago"><span>Contrato un transporte</span></label>
+    <label class="opcion"><input type="checkbox" value="Persona confianza"><span>Mando a alguien de confianza</span></label>
+    <label class="opcion"><input type="checkbox" value="Auto1 entrega"><span>Auto1 me lo trae</span></label>
+  </div>
+  <div class="extra-texto">
+    <label>¿Cómo decides qué opción usar? <span class="etiqueta-opcional">opcional</span></label>
+    <textarea data-q="q4_criterio" placeholder="Ej: 'si está cerca voy yo, si es lejos lo mando transportar'"></textarea>
+  </div>
+</div>
+
+<!-- P5 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">5</span> Provisional de circulación (Gestoría Ruppmann)</h2>
+  <p class="ayuda">El permiso temporal para poder mover el coche mientras se cambia de nombre.</p>
+  <div class="opciones" data-q="q5_provisional">
+    <label class="opcion"><input type="checkbox" value="Yo pido"><span>La pido yo a la gestoría</span></label>
+    <label class="opcion"><input type="checkbox" value="Auto1 incluye"><span>Auto1 ya me la da incluida</span></label>
+    <label class="opcion"><input type="checkbox" value="No siempre necesaria"><span>No siempre la necesito</span></label>
+  </div>
+  <div class="extra-texto">
+    <label>¿Te ayudaría que la app te la pida sola cuando registras una compra?</label>
+    <div class="botones-yes-no" data-q="q5_automatizar">
+      <button type="button" class="btn-opcion" data-val="Sí">Sí, me ahorraría tiempo</button>
+      <button type="button" class="btn-opcion" data-val="No">No, prefiero hacerlo yo</button>
+      <button type="button" class="btn-opcion" data-val="Depende">Depende del caso</button>
+    </div>
+  </div>
+</div>
+
+<!-- P6 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">6</span> La factura de compra, ¿cuándo te llega?</h2>
+  <p class="ayuda">Dijiste que muchas veces llega después del coche. Afina un poco.</p>
+  <div class="opciones" data-q="q6_factura_cuando">
+    <label class="opcion"><input type="checkbox" value="Antes"><span>Antes de recibir el coche</span></label>
+    <label class="opcion"><input type="checkbox" value="Mismo dia"><span>El mismo día que llega el coche</span></label>
+    <label class="opcion"><input type="checkbox" value="Dias despues"><span>Días después</span></label>
+    <label class="opcion"><input type="checkbox" value="Semanas"><span>A veces pasan semanas</span></label>
+  </div>
+  <div class="extra-texto">
+    <label>¿Cómo te la mandan normalmente?</label>
+    <div class="opciones horizontal" data-q="q6_factura_como">
+      <label class="opcion"><input type="checkbox" value="Email"><span>📧 Email</span></label>
+      <label class="opcion"><input type="checkbox" value="Papel"><span>📄 Papel (físico)</span></label>
+      <label class="opcion"><input type="checkbox" value="Descarga web"><span>💻 Descargo de una web</span></label>
+      <label class="opcion"><input type="checkbox" value="WhatsApp"><span>📱 WhatsApp</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- P7 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">7</span> ¿En qué momento quieres registrar la compra en la app?</h2>
+  <p class="ayuda">Elige lo que más te encaje.</p>
+  <div class="botones-yes-no" data-q="q7_momento">
+    <button type="button" class="btn-opcion" data-val="Al pagar">Al pagar</button>
+    <button type="button" class="btn-opcion" data-val="Al recibir coche">Al recibir el coche</button>
+    <button type="button" class="btn-opcion" data-val="Al tener factura">Al tener la factura</button>
+    <button type="button" class="btn-opcion" data-val="Cuando pueda">Cuando tengo un rato</button>
+  </div>
+  <div class="extra-texto">
+    <label>Detalle: <span class="etiqueta-opcional">opcional</span></label>
+    <textarea data-q="q7_detalle" placeholder="Ej: 'al pagar solo pongo proveedor e importe, y completo lo demás luego'"></textarea>
+  </div>
+</div>
+
+<!-- P8 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">8</span> Cuando vendes un coche, ¿qué le mandas a la gestoría?</h2>
+  <p class="ayuda">Dijiste que quieres que la app mande info a la gestoría sola. ¿Qué tiene que llevar ese email?</p>
+  <div class="opciones" data-q="q8_gestoria">
+    <label class="opcion"><input type="checkbox" value="Factura venta"><span>La factura de venta</span></label>
+    <label class="opcion"><input type="checkbox" value="DNI cliente"><span>El DNI del cliente</span></label>
+    <label class="opcion"><input type="checkbox" value="Permiso circulacion"><span>El permiso de circulación</span></label>
+    <label class="opcion"><input type="checkbox" value="Ficha tecnica"><span>La ficha técnica</span></label>
+    <label class="opcion"><input type="checkbox" value="Contrato compraventa"><span>Contrato de compraventa</span></label>
+    <label class="opcion"><input type="checkbox" value="Mandato gestoria"><span>Mandato de gestoría firmado</span></label>
+  </div>
+  <div class="extra-texto">
+    <label>¿Algo más que suelas añadir al email? <span class="etiqueta-opcional">opcional</span></label>
+    <textarea data-q="q8_extra" placeholder="Ej: 'a veces pongo el itv', 'número de cuenta del cliente si financia', etc."></textarea>
+  </div>
+</div>
+
+<!-- P9 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">9</span> Seguro por días</h2>
+  <p class="ayuda">Dijiste que lo contratas según necesidad. Una cosita más.</p>
+  <div class="extra-texto">
+    <label>¿Qué seguro usas? (marca/web)</label>
+    <textarea data-q="q9_proveedor" placeholder="Ej: MySafetyCar, Mutua Madrileña por días, etc."></textarea>
+  </div>
+  <div class="extra-texto">
+    <label>¿Cuándo lo activas normalmente?</label>
+    <div class="opciones" data-q="q9_cuando">
+      <label class="opcion"><input type="checkbox" value="Mover taller"><span>Cuando llevo el coche al taller</span></label>
+      <label class="opcion"><input type="checkbox" value="Visita cliente"><span>Cuando un cliente viene a verlo</span></label>
+      <label class="opcion"><input type="checkbox" value="Prueba cliente"><span>Cuando un cliente lo prueba</span></label>
+      <label class="opcion"><input type="checkbox" value="Entrega"><span>El día de la entrega al comprador</span></label>
+      <label class="opcion"><input type="checkbox" value="Traer coche"><span>Cuando voy a buscar el coche a otro sitio</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- P10 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">10</span> ¿Quieres que la app vincule solita los pagos del banco?</h2>
+  <p class="ayuda">Si en el banco sale "Pago Auto1 4.500€", la app lo relaciona con el coche que compraste. Para cuadrar cuentas sin liarte.</p>
+  <div class="botones-yes-no" data-q="q10_banco">
+    <button type="button" class="btn-opcion" data-val="Sí">Sí, sería útil</button>
+    <button type="button" class="btn-opcion" data-val="No">No, lo llevo aparte</button>
+    <button type="button" class="btn-opcion" data-val="Depende">Según el caso</button>
+  </div>
+  <div class="extra-texto">
+    <label>Detalle: <span class="etiqueta-opcional">opcional</span></label>
+    <textarea data-q="q10_detalle" placeholder="Ej: 'sí pero solo para compras grandes, lo pequeño da igual'"></textarea>
+  </div>
+</div>
+
+<!-- P11 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">11</span> Las 40 fotos mínimo por coche</h2>
+  <p class="ayuda">¿Es siempre 40 o varía?</p>
+  <div class="botones-yes-no" data-q="q11_fotos">
+    <button type="button" class="btn-opcion" data-val="Siempre 40">Siempre 40 o más</button>
+    <button type="button" class="btn-opcion" data-val="Menos coches baratos">A veces menos en coches baratos</button>
+    <button type="button" class="btn-opcion" data-val="Mas coches premium">Más en coches premium</button>
+    <button type="button" class="btn-opcion" data-val="Depende">Depende del coche</button>
+  </div>
+</div>
+
+<!-- P12 -->
+<div class="pregunta">
+  <h2><span class="pregunta-num">12</span> Publicidad (destacados en coches.net, etc.)</h2>
+  <p class="ayuda">Dijiste que es un gasto global, no por coche. Una pregunta para acabar.</p>
+  <div class="extra-texto">
+    <label>¿Cada cuánto pagas publicidad?</label>
+    <div class="botones-yes-no" data-q="q12_frecuencia">
+      <button type="button" class="btn-opcion" data-val="Mensual">Una cuota mensual</button>
+      <button type="button" class="btn-opcion" data-val="Por campana">Por campaña puntual</button>
+      <button type="button" class="btn-opcion" data-val="Mixto">Las dos cosas</button>
+    </div>
+  </div>
+  <div class="extra-texto">
+    <label>Proveedor principal de publicidad <span class="etiqueta-opcional">opcional</span></label>
+    <textarea data-q="q12_proveedor" placeholder="Ej: coches.net (pack premium), AutoScout24, Instagram ads, etc."></textarea>
+  </div>
+</div>
+
+<!-- Extra libre -->
+<div class="pregunta" style="border-color: #c9a876; background: #fdf9f0;">
+  <h2><span class="pregunta-num" style="background:#8b6f3a;">+</span> ¿Algo más?</h2>
+  <p class="ayuda">Cualquier cosa que te haya venido a la cabeza mientras respondías.</p>
+  <textarea data-q="extra" placeholder="Escribe lo que quieras..." style="min-height: 120px;"></textarea>
+</div>
+
+<!-- Final -->
+<div class="final">
+  <h2>✅ ¡Gracias!</h2>
+  <p>Pulsa el botón verde para descargar tus respuestas y me las pasas.</p>
+  <button class="btn-final" onclick="exportar()">📥 Enviar respuestas</button>
+  <button class="btn-final btn-limpiar" onclick="borrar()">🗑️ Borrar todo</button>
+</div>
+
+<div class="save-indicator" id="saveIndicator">💾 Guardado</div>
+
+<script>
+  const STORAGE_KEY = 'codinacars_preguntas_ricard_v1';
+
+  // Botones exclusivos (yes/no/depende)
+  document.querySelectorAll('.btn-opcion').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = btn.parentElement;
+      group.querySelectorAll('.btn-opcion').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      guardar();
+    });
+  });
+
+  // Checkboxes
+  document.querySelectorAll('.opciones input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', guardar);
+  });
+
+  // Textareas
+  document.querySelectorAll('textarea').forEach(t => {
+    t.addEventListener('input', guardar);
+  });
+
+  function guardar() {
+    const data = {};
+    document.querySelectorAll('[data-q]').forEach(el => {
+      const q = el.dataset.q;
+      if (el.tagName === 'TEXTAREA') {
+        if (el.value.trim()) data[q] = el.value;
+      } else if (el.classList.contains('opciones')) {
+        const vals = Array.from(el.querySelectorAll('input:checked')).map(i => i.value);
+        if (vals.length) data[q] = vals;
+      } else if (el.classList.contains('botones-yes-no')) {
+        const sel = el.querySelector('.btn-opcion.selected');
+        if (sel) data[q] = sel.dataset.val;
+      }
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    mostrarGuardado();
+  }
+
+  function cargar() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      document.querySelectorAll('[data-q]').forEach(el => {
+        const q = el.dataset.q;
+        const val = data[q];
+        if (!val) return;
+        if (el.tagName === 'TEXTAREA') {
+          el.value = val;
+        } else if (el.classList.contains('opciones')) {
+          el.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            if (val.includes(cb.value)) cb.checked = true;
+          });
+        } else if (el.classList.contains('botones-yes-no')) {
+          el.querySelectorAll('.btn-opcion').forEach(b => {
+            if (b.dataset.val === val) b.classList.add('selected');
+          });
+        }
+      });
+    } catch (e) { /* ignorar */ }
+  }
+
+  let saveTimer;
+  function mostrarGuardado() {
+    const el = document.getElementById('saveIndicator');
+    el.classList.add('show');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => el.classList.remove('show'), 1200);
+  }
+
+  function borrar() {
+    if (!confirm('¿Seguro que quieres borrar todas las respuestas?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    document.querySelectorAll('textarea').forEach(t => t.value = '');
+    document.querySelectorAll('.opciones input[type="checkbox"]').forEach(c => c.checked = false);
+    document.querySelectorAll('.btn-opcion.selected').forEach(b => b.classList.remove('selected'));
+  }
+
+  function exportar() {
+    const labels = {
+      q1_fuentes: '1a. ¿A quién le compras los coches?',
+      q1_otros: '1b. Otros proveedores',
+      q2_criterios: '2a. ¿Qué miras antes de comprar?',
+      q2_regla: '2b. Regla que sigues siempre',
+      q3_autofactura: '3a. ¿Haces autofactura con particulares?',
+      q3_detalle: '3b. Detalle autofactura',
+      q4_transporte: '4a. ¿Quién trae el coche desde Auto1?',
+      q4_criterio: '4b. Criterio de transporte',
+      q5_provisional: '5a. Provisional de circulación',
+      q5_automatizar: '5b. ¿Automatizar provisional desde la app?',
+      q6_factura_cuando: '6a. ¿Cuándo llega la factura de compra?',
+      q6_factura_como: '6b. ¿Cómo la mandan?',
+      q7_momento: '7a. ¿Cuándo registras la compra en la app?',
+      q7_detalle: '7b. Detalle momento registro',
+      q8_gestoria: '8a. Info que envías a la gestoría',
+      q8_extra: '8b. Extra gestoría',
+      q9_proveedor: '9a. Proveedor seguro por días',
+      q9_cuando: '9b. Cuándo activas el seguro',
+      q10_banco: '10a. ¿Vincular pagos del banco?',
+      q10_detalle: '10b. Detalle banco',
+      q11_fotos: '11. 40 fotos mínimo',
+      q12_frecuencia: '12a. Frecuencia de publicidad',
+      q12_proveedor: '12b. Proveedor publicidad',
+      extra: '+ Algo más',
+    };
+    const lines = [
+      '# Respuestas Ricard — flujo de compra',
+      '',
+      `Fecha: ${new Date().toLocaleDateString('es-ES')}`,
+      '',
+    ];
+    let hay = false;
+    for (const [key, label] of Object.entries(labels)) {
+      const el = document.querySelector(`[data-q="${key}"]`);
+      if (!el) continue;
+      let val;
+      if (el.tagName === 'TEXTAREA') {
+        val = el.value.trim();
+      } else if (el.classList.contains('opciones')) {
+        val = Array.from(el.querySelectorAll('input:checked')).map(i => i.value).join(', ');
+      } else if (el.classList.contains('botones-yes-no')) {
+        const sel = el.querySelector('.btn-opcion.selected');
+        val = sel ? sel.dataset.val : '';
+      }
+      if (val) {
+        hay = true;
+        lines.push(`## ${label}`, '', val, '');
+      }
+    }
+    if (!hay) {
+      alert('No hay respuestas todavía.');
+      return;
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `respuestas_ricard_compra_${new Date().toISOString().slice(0,10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  document.addEventListener('DOMContentLoaded', cargar);
+</script>
+
+</body>
+</html>
