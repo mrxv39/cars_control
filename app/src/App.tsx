@@ -278,26 +278,30 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
     setClientModal({ mode: "create", sourceLeadId: lead.id, title: "Convertir lead en client" });
   }
 
-  async function exportData() {
+  async function runAction(fn: () => Promise<void>) {
     setSubmitting(true);
     setError(null);
-    setSuccessMessage(null);
     try {
-      const result = await invoke<{ export_path: string; included_files: string[] }>("export_app_data");
-      setSuccessMessage(`Copia exportada en ${result.export_path}`);
-    } catch (exportError) {
-      setError(String(exportError));
+      await fn();
+    } catch (actionError) {
+      setError(String(actionError));
     } finally {
       setSubmitting(false);
     }
   }
 
+  async function exportData() {
+    setSuccessMessage(null);
+    await runAction(async () => {
+      const result = await invoke<{ export_path: string; included_files: string[] }>("export_app_data");
+      setSuccessMessage(`Copia exportada en ${result.export_path}`);
+    });
+  }
+
   async function submitStock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!stockModal) return;
-    setSubmitting(true);
-    setError(null);
-    try {
+    await runAction(async () => {
       let savedVehicle: StockVehicle;
       if (stockModal.mode === "create") {
         savedVehicle = await invoke<StockVehicle>("create_vehicle", { name: vehicleNameInput });
@@ -308,19 +312,13 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
       setThumbnails({});
       closeAllModals();
       await loadState();
-    } catch (submitError) {
-      setError(String(submitError));
-    } finally {
-      setSubmitting(false);
-    }
+    });
   }
 
   async function submitLead(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!leadModal) return;
-    setSubmitting(true);
-    setError(null);
-    try {
+    await runAction(async () => {
       if (leadModal.mode === "create") {
         await invoke("create_lead", { input: { ...leadForm, vehicleFolderPath: selectedLeadVehicle || null } });
       } else {
@@ -328,19 +326,13 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
       }
       closeAllModals();
       await loadState();
-    } catch (submitError) {
-      setError(String(submitError));
-    } finally {
-      setSubmitting(false);
-    }
+    });
   }
 
   async function submitClient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!clientModal) return;
-    setSubmitting(true);
-    setError(null);
-    try {
+    await runAction(async () => {
       if (clientModal.mode === "edit") {
         await invoke("update_client", { id: clientModal.client.id, input: { ...clientForm, vehicleFolderPath: selectedClientVehicle || null } });
       } else if ("sourceLeadId" in clientModal && clientModal.sourceLeadId) {
@@ -350,19 +342,12 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
       }
       closeAllModals();
       await loadState();
-    } catch (submitError) {
-      setError(String(submitError));
-    } finally {
-      setSubmitting(false);
-    }
+    });
   }
 
   function confirmDelete(kind: DeleteKind, idOrPath: number | string, name: string) {
     const copy = DELETE_COPY[kind];
-    dialog.requestConfirm(copy.title, copy.message(name), async () => {
-    setSubmitting(true);
-    setError(null);
-    try {
+    dialog.requestConfirm(copy.title, copy.message(name), () => runAction(async () => {
       if (kind === "vehicle") {
         await invoke("delete_vehicle", { folderPath: idOrPath });
         setThumbnails((current) => {
@@ -382,12 +367,7 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
         setPurchaseRecords((current) => current.filter((r) => r.id !== idOrPath));
       }
       await loadState();
-    } catch (deleteError) {
-      setError(String(deleteError));
-    } finally {
-      setSubmitting(false);
-    }
-    });
+    }));
   }
 
   const displayError = error || appError;
