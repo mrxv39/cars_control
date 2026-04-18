@@ -572,7 +572,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
                           }}
                         />
                         {d.photoUrls[0] && (
-                          <img src={d.photoUrls[0]} alt="" style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 4 }} />
+                          <img src={d.photoUrls[0]} alt={d.name || "Vehículo a importar"} style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 4 }} />
                         )}
                         <div style={{ flex: 1 }}>
                           <strong>{d.name}</strong>

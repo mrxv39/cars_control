@@ -181,8 +181,8 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
           )}
           {photos.length > 1 && (
             <div className="catalog-detail-thumbs">
-              {photos.map((p) => (
-                <img key={p.id} src={p.url} alt="" loading="lazy"
+              {photos.map((p, idx) => (
+                <img key={p.id} src={p.url} alt={`Foto ${idx + 1} de ${vehicle.name}`} loading="lazy"
                   className={selectedPhoto === p.id || (!selectedPhoto && p === photos[0]) ? "active" : ""}
                   onClick={() => setSelectedPhoto(p.id)} />
               ))}
