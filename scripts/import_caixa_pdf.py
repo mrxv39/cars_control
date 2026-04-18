@@ -59,14 +59,13 @@ Variables de entorno (sólo si NO es dry-run):
 from __future__ import annotations
 
 import argparse
-import glob
 import hashlib
 import json
 import os
 import re
 import sys
-from dataclasses import dataclass, field
-from datetime import date, datetime
+from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -180,10 +179,7 @@ def _is_ignored(line: str) -> bool:
         return True
     if IGNORE_PAGE_RE.match(line):
         return True
-    for prefix in IGNORE_PREFIX_LITERALS:
-        if line.startswith(prefix):
-            return True
-    return False
+    return line.startswith(IGNORE_PREFIX_LITERALS)
 
 
 def parse_text_lines(lines: list[str], source_name: str = "") -> list[PdfTransaction]:
@@ -494,24 +490,14 @@ def run_import(
 
     if dry_run:
         # Añade 5 ejemplos de ingresos y 5 de gastos para sanity check visual
-        ingresos = [r for r in rows if r.amount is not None and r.amount > 0]
-        gastos = [r for r in rows if r.amount is not None and r.amount < 0]
-        summary["sample_ingresos"] = [
-            {
+        def _sample(r: PdfTransaction) -> dict:
+            return {
                 "date": r.booking_date.isoformat(),
                 "amount": str(r.amount),
                 "concepto": r.concepto,
             }
-            for r in ingresos[:5]
-        ]
-        summary["sample_gastos"] = [
-            {
-                "date": r.booking_date.isoformat(),
-                "amount": str(r.amount),
-                "concepto": r.concepto,
-            }
-            for r in gastos[:5]
-        ]
+        summary["sample_ingresos"] = [_sample(r) for r in rows if r.amount is not None and r.amount > 0][:5]
+        summary["sample_gastos"] = [_sample(r) for r in rows if r.amount is not None and r.amount < 0][:5]
         return summary
 
     url = os.environ.get("SUPABASE_URL")
@@ -547,7 +533,7 @@ def run_import(
     client._request(
         "PATCH",
         f"/rest/v1/bank_accounts?id=eq.{bank_account_id}",
-        {"last_synced_at": datetime.utcnow().isoformat() + "Z"},
+        {"last_synced_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")},
     )
 
     summary["account"] = accounts_db[0]["alias"]
