@@ -100,7 +100,7 @@ export async function listVehiclePhotos(vehicleId: number): Promise<VehiclePhoto
     ...p,
     url: p.storage_path ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path).data.publicUrl : (p.source_url || ""),
     thumbUrl: p.storage_path
-      ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path, { transform: { width: 400, quality: 70 } }).data.publicUrl
+      ? supabase.storage.from("vehicle-photos").getPublicUrl(p.storage_path).data.publicUrl
       : null,
   }));
 }
@@ -179,7 +179,7 @@ export async function getStockPhotoSummary(vehicleIds: number[]): Promise<Map<nu
     entry.count += 1;
     if (entry.thumbUrl === null) {
       if (row.storage_path) {
-        entry.thumbUrl = supabase.storage.from("vehicle-photos").getPublicUrl(row.storage_path, { transform: { width: 400, quality: 70, resize: "contain" } }).data.publicUrl;
+        entry.thumbUrl = supabase.storage.from("vehicle-photos").getPublicUrl(row.storage_path).data.publicUrl;
       } else if (row.source_url) {
         entry.thumbUrl = row.source_url;
       }
