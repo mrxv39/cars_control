@@ -5,6 +5,7 @@ import { showToast } from "../../lib/toast";
 import { translateError } from "../../lib/translateError";
 import { usePagination } from "../../hooks/usePagination";
 import { PaginationControls } from "./PaginationControls";
+import { ImportCochesPanel } from "./ImportCochesPanel";
 
 // Mínimo de fotos validado con Ricard (sesión 2026-04-04): un coche está
 // "listo" para ser publicado/vendido cuando tiene al menos 40 fotos.
@@ -540,79 +541,19 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
       )}
 
       {importPreview && (
-        <div className="modal-overlay" onClick={() => !importing && setImportPreview(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "780px", maxHeight: "85vh", overflowY: "auto" }}>
-            <h3 style={{ margin: "0 0 0.5rem" }}>Importar desde coches.net</h3>
-            <p className="muted" style={{ margin: "0 0 var(--space-lg)", fontSize: "var(--text-sm)" }}>
-              {importPreview.listing.length} coches en el perfil ·
-              {" "}{importPreview.newDetails.length} nuevos detectados ·
-              {" "}{importPreview.removedExternalIds.length} ya no aparecen
-            </p>
-
-            {importPreview.newDetails.length > 0 ? (
-              <>
-                <h4 style={{ margin: "0.75rem 0 0.5rem" }}>Nuevos coches</h4>
-                <p className="muted" style={{ fontSize: "var(--text-xs)", margin: "0 0 var(--space-sm)" }}>
-                  Marca los que quieras importar (todos por defecto)
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {importPreview.newDetails.map((d) => {
-                    const id = d.externalId || "";
-                    const checked = selectedToImport.has(id);
-                    return (
-                      <label key={id} style={{ display: "flex", gap: "0.75rem", padding: "0.5rem", border: "1px solid #e5e5e5", borderRadius: "8px", cursor: "pointer" }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            const next = new Set(selectedToImport);
-                            if (e.target.checked) next.add(id);
-                            else next.delete(id);
-                            setSelectedToImport(next);
-                          }}
-                        />
-                        {d.photoUrls[0] && (
-                          <img src={d.photoUrls[0]} alt={d.name || "Vehículo a importar"} style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 4 }} />
-                        )}
-                        <div style={{ flex: 1 }}>
-                          <strong>{d.name}</strong>
-                          <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
-                            {[d.year, d.km ? `${d.km.toLocaleString()} km` : null, d.fuelType, d.transmission, d.color].filter(Boolean).join(" · ")}
-                          </div>
-                          <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
-                            {d.photoUrls.length} fotos · {d.equipment.length} equipamientos
-                            {d.videoUrls.length > 0 && ` · ${d.videoUrls.length} vídeos`}
-                          </div>
-                        </div>
-                        <div style={{ fontWeight: "bold" }}>{d.price?.toLocaleString("es-ES")} €</div>
-                      </label>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <p className="muted">No hay coches nuevos en coches.net.</p>
-            )}
-
-            {importPreview.removedExternalIds.length > 0 && (
-              <>
-                <h4 style={{ margin: "var(--space-lg) 0 var(--space-sm)", color: "var(--color-warning)" }}>Ya no aparecen en coches.net</h4>
-                <p className="muted" style={{ fontSize: "var(--text-xs)", margin: 0 }}>
-                  Estos {importPreview.removedExternalIds.length} coches se marcarán para revisión.
-                </p>
-              </>
-            )}
-
-            <div className="form-actions" style={{ marginTop: "1rem" }}>
-              <button type="button" className="button secondary" onClick={() => setImportPreview(null)} disabled={importing}>
-                Cancelar
-              </button>
-              <button type="button" className="button primary" onClick={() => void confirmImport()} disabled={importing || selectedToImport.size === 0}>
-                {importing ? "Importando..." : `Importar ${selectedToImport.size} coches`}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ImportCochesPanel
+          preview={importPreview}
+          importing={importing}
+          selectedToImport={selectedToImport}
+          onToggleSelection={(id, checked) => {
+            const next = new Set(selectedToImport);
+            if (checked) next.add(id);
+            else next.delete(id);
+            setSelectedToImport(next);
+          }}
+          onCancel={() => setImportPreview(null)}
+          onConfirm={() => void confirmImport()}
+        />
       )}
     </>
   );
