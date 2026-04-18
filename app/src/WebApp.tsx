@@ -207,7 +207,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       <main className="shell">
         <aside className="sidebar">
           <div>
-            <p className="eyebrow"><Car size={14} style={{ verticalAlign: "-2px", marginRight: "0.3rem" }} />Cars Control</p>
+            <p className="eyebrow"><Car size={14} className="icon-inline" />Cars Control</p>
             <div className="skeleton-line skeleton-lg" style={{ marginTop: "0.5rem" }} />
             <div className="skeleton-line skeleton-sm" style={{ marginTop: "0.5rem" }} />
           </div>
@@ -232,14 +232,14 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       {mobileMenuOpen && <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)} />}
       <aside className={`sidebar ${mobileMenuOpen ? "sidebar-open" : ""}`}>
         <div>
-          <p className="eyebrow"><Car size={14} style={{ verticalAlign: "-2px", marginRight: "0.3rem" }} />Cars Control</p>
+          <p className="eyebrow"><Car size={14} className="icon-inline" />Cars Control</p>
           <button
             type="button"
             className="sidebar-link"
             onClick={() => { setCurrentView("company"); setMobileMenuOpen(false); }}
             title="Editar datos de empresa"
           >
-            <h1 className="sidebar-title"><Building2 size={16} style={{ verticalAlign: "-2px", marginRight: "0.4rem", opacity: 0.7 }} />{session.company.trade_name}</h1>
+            <h1 className="sidebar-title"><Building2 size={16} className="icon-inline icon-inline--wider icon-inline--soft" />{session.company.trade_name}</h1>
           </button>
           <button
             type="button"
@@ -247,11 +247,11 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
             onClick={() => { setCurrentView("profile"); setMobileMenuOpen(false); }}
             title="Editar mi perfil"
           >
-            <p className="muted" style={{ margin: 0 }}><User size={13} style={{ verticalAlign: "-2px", marginRight: "0.3rem", opacity: 0.7 }} />{session.user.full_name} ({ROLE_LABELS[session.user.role] || session.user.role})</p>
+            <p className="muted" style={{ margin: 0 }}><User size={13} className="icon-inline icon-inline--soft" />{session.user.full_name} ({ROLE_LABELS[session.user.role] || session.user.role})</p>
           </button>
         </div>
-        <div style={{ position: "relative" }}>
-          <Search size={15} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", opacity: 0.5, pointerEvents: "none" }} />
+        <div className="sidebar-search">
+          <Search size={15} className="sidebar-search-icon" />
           <input
             ref={searchInputRef}
             value={globalSearch}
@@ -259,7 +259,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
             placeholder="Buscar... (pulsa / para enfocar)"
             aria-expanded={globalSearch.trim().length >= 2}
             aria-haspopup="listbox"
-            style={{ width: "100%", padding: "0.7rem 1rem 0.7rem 2.2rem", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "inherit", fontSize: "0.88rem" }}
+            className="sidebar-search-input"
           />
           {globalSearch.trim().length >= 2 && (
             <GlobalSearchResults
@@ -298,8 +298,8 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
               Panel plataforma
             </button>
           )}
-          <button type="button" className="button primary full-width" onClick={() => setShowOnboarding(true)} style={{ marginBottom: "0.5rem", background: "rgba(59,130,246,0.15)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.3)" }}>
-            <ClipboardCheck size={15} style={{ verticalAlign: "-2px", marginRight: "0.4rem" }} />Ayuda / Tutorial
+          <button type="button" className="button primary full-width button-hint" onClick={() => setShowOnboarding(true)}>
+            <ClipboardCheck size={15} className="icon-inline icon-inline--wider" />Ayuda / Tutorial
           </button>
           <button type="button" className="button danger full-width" onClick={onLogout}>
             <LogOut size={16} style={{ verticalAlign: "-3px", marginRight: "0.4rem" }} />Cerrar sesión
@@ -309,9 +309,9 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       <section className="content">
         {loading && <div className="content-loading-bar" />}
         {loadError && (
-          <div className="error-banner" role="alert" style={{ margin: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="error-banner error-banner--retry" role="alert">
             <span>{loadError}</span>
-            <button type="button" className="button primary" style={{ marginLeft: "1rem", whiteSpace: "nowrap" }} onClick={() => void loadAll()}>Reintentar</button>
+            <button type="button" className="button primary" onClick={() => void loadAll()}>Reintentar</button>
           </div>
         )}
         {currentView === "dashboard" && (
@@ -355,7 +355,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       {toast && (
         <div className={`toast ${toast.type}`} role={toast.type === "error" ? "alert" : "status"} key={toast.key}>
           {toast.message}
-          <button type="button" style={{ background: "none", border: "none", color: "inherit", marginLeft: "0.75rem", cursor: "pointer", fontSize: "0.85rem" }} onClick={() => setToast(null)} aria-label="Cerrar">✕</button>
+          <button type="button" className="toast-close" onClick={() => setToast(null)} aria-label="Cerrar">✕</button>
         </div>
       )}
 
