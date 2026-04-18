@@ -96,18 +96,21 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 
 | Archivo | Líneas | Notas |
 |---------|--------|-------|
-| `app/src/WebApp.tsx` | ~565 | Shell web — login, sidebar, routing |
+| `app/src/WebApp.tsx` | ~375 | Shell web — routing, sidebar (login/búsqueda extraídos) |
+| `app/src/components/web/LoginForm.tsx` | ~199 | Login, OAuth Google, recuperar contraseña |
+| `app/src/components/web/GlobalSearchResults.tsx` | ~70 | Dropdown búsqueda global con filtros memoizados |
 | `app/src/lib/api.ts` | ~115 | Fachada — re-exports de api-types, api-vehicles, api-bank, api-records |
 | `app/src/lib/api-vehicles.ts` | ~286 | Vehículos, fotos, docs, inspecciones, import coches.net |
 | `app/src/lib/translateError.ts` | ~11 | Traducción errores Supabase/red a mensajes usuario |
 | `app/src/lib/toast.ts` | ~16 | Pub/sub toasts globales — import showToast() desde cualquier componente |
-| `app/src/components/web/VehicleDetailPanel.tsx` | ~553 | Ficha vehículo: detalle, fotos, docs, leads, compra |
-| `app/src/components/web/StockList.tsx` | ~594 | Listado stock admin con filtros e import coches.net |
-| `app/src/components/BankList.tsx` | ~532 | Listado banco con categorización |
-| `app/src/components/web/RecordLists.tsx` | ~480 | Clientes, ventas, compras, proveedores (con búsqueda y paginación) |
-| `app/src/components/web/PublicCatalog.tsx` | ~340 | Catálogo público, galería, contacto |
-| `app/src/components/web/RevisionSheet.tsx` | ~318 | Hoja revisión vehículo + historial |
-| `app/src/components/web/ProfileCompanyViews.tsx` | ~228 | Perfil usuario y datos empresa |
+| `app/src/components/web/VehicleDetailPanel.tsx` | ~420 | Ficha vehículo: detalle, fotos, gastos, leads |
+| `app/src/components/web/vehicle-detail/*.tsx` | ~175 | VDFactura, VDLeads, VDVehicleDocs, VDPurchaseInfo (subsecciones) |
+| `app/src/components/web/StockList.tsx` | ~560 | Listado stock admin con filtros e import coches.net |
+| `app/src/components/BankList.tsx` | ~549 | Listado banco con categorización |
+| `app/src/components/web/RecordLists.tsx` | ~488 | Clientes, ventas, compras, proveedores (con búsqueda y paginación) |
+| `app/src/components/web/PublicCatalog.tsx` | ~369 | Catálogo público, galería, contacto |
+| `app/src/components/web/RevisionSheet.tsx` | ~333 | Hoja revisión vehículo + historial |
+| `app/src/components/web/ProfileCompanyViews.tsx` | ~233 | Perfil usuario y datos empresa |
 
 ## Pendiente
 
@@ -119,4 +122,4 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 
 ## Sesiones de validación
 
-Log completo en `docs/sessions.md`. Última: 2026-04-19a (simplify rondas 1-4, 10 archivos refactorizados).
+Log completo en `docs/sessions.md`. Última: 2026-04-19b (project-maintenance, 13 ítems aprobados, 568 tests).
