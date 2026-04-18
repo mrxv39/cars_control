@@ -68,6 +68,15 @@ function LeadChat({ leadId, leadNotes }: { leadId: number; leadNotes?: string })
 
 type LeadFilter = "todos" | "sin_contestar" | "activos" | "cerrados";
 
+const CLOSED_ESTADOS = ["cerrado", "perdido", "descartado", "vendido"];
+
+const FILTER_LABELS: Record<LeadFilter, string> = {
+  todos: "Todos",
+  sin_contestar: "Sin contestar",
+  activos: "Activos",
+  cerrados: "Cerrados",
+};
+
 export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
   const dialog = useConfirmDialog();
   const [search, setSearch] = useState("");
@@ -112,9 +121,9 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
     if (filter === "sin_contestar") {
       list = list.filter((l) => !l.estado || l.estado === "nuevo");
     } else if (filter === "activos") {
-      list = list.filter((l) => !["cerrado", "perdido", "descartado", "vendido"].includes(l.estado || ""));
+      list = list.filter((l) => !CLOSED_ESTADOS.includes(l.estado || ""));
     } else if (filter === "cerrados") {
-      list = list.filter((l) => ["cerrado", "perdido", "descartado", "vendido"].includes(l.estado || ""));
+      list = list.filter((l) => CLOSED_ESTADOS.includes(l.estado || ""));
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -123,12 +132,16 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
     return list;
   }, [leads, search, filter]);
 
-  const counts = useMemo(() => ({
-    todos: leads.length,
-    sin_contestar: leads.filter((l) => !l.estado || l.estado === "nuevo").length,
-    activos: leads.filter((l) => !["cerrado", "perdido", "descartado", "vendido"].includes(l.estado || "")).length,
-    cerrados: leads.filter((l) => ["cerrado", "perdido", "descartado", "vendido"].includes(l.estado || "")).length,
-  }), [leads]);
+  const counts = useMemo(() => {
+    const acc = { todos: leads.length, sin_contestar: 0, activos: 0, cerrados: 0 };
+    for (const l of leads) {
+      const estado = l.estado || "";
+      if (!estado || estado === "nuevo") acc.sin_contestar += 1;
+      if (CLOSED_ESTADOS.includes(estado)) acc.cerrados += 1;
+      else acc.activos += 1;
+    }
+    return acc;
+  }, [leads]);
   const { paged: pagedLeads, page: leadsPage, totalPages: leadsTotalPages, setPage: setLeadsPage } = usePagination(filtered);
 
   const phoneDuplicate = useMemo(() => {
@@ -210,12 +223,6 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
         <section className="panel filter-panel">
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
             {(["sin_contestar", "activos", "todos", "cerrados"] as LeadFilter[]).map((key) => {
-              const labels: Record<LeadFilter, string> = {
-                todos: "Todos",
-                sin_contestar: "Sin contestar",
-                activos: "Activos",
-                cerrados: "Cerrados",
-              };
               const isActive = filter === key;
               return (
                 <button
@@ -224,7 +231,7 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
                   className={`button ${isActive ? "primary" : "secondary"} xs`}
                   onClick={() => setFilter(key)}
                 >
-                  {labels[key]} <span style={{ opacity: 0.7, marginLeft: "0.25rem" }}>({counts[key]})</span>
+                  {FILTER_LABELS[key]} <span style={{ opacity: 0.7, marginLeft: "0.25rem" }}>({counts[key]})</span>
                 </button>
               );
             })}
@@ -248,7 +255,7 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
             {editingId === lead.id ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Nombre" className={!editForm.name.trim() && editingId ? "input-error" : ""} />
-                {!editForm.name.trim() && editingId && <p className="input-error-message" role="alert">El nombre es obligatorio</p>}
+                {!editForm.name.trim() && <p className="input-error-message" role="alert">El nombre es obligatorio</p>}
                 <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Teléfono" />
                 {phoneDuplicate && <p style={{ color: "#b45309", fontSize: "0.78rem", margin: "-0.25rem 0 0" }}>⚠ {phoneDuplicate}</p>}
                 <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
