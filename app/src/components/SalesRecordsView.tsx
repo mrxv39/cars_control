@@ -24,7 +24,7 @@ export function SalesRecordsView({ records, stock, clients, onReload, onAddRecor
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const vehicleMap = new Map(stock.map((v) => [v.folder_path, v]));
+  const vehicleMap = useMemo(() => new Map(stock.map((v) => [v.folder_path, v])), [stock]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -51,9 +51,19 @@ export function SalesRecordsView({ records, stock, clients, onReload, onAddRecor
     });
   }, [records, search, sortBy, sortDir, vehicleMap]);
 
-  const totalBeneficio = records.reduce((sum, r) => sum + r.price_final, 0);
-  const promedioBeneficio = records.length > 0 ? totalBeneficio / records.length : 0;
-  const mejorVenta = records.length > 0 ? Math.max(...records.map((r) => r.price_final)) : 0;
+  const stats = useMemo(() => {
+    let total = 0;
+    let mejor = 0;
+    for (const r of records) {
+      total += r.price_final;
+      if (r.price_final > mejor) mejor = r.price_final;
+    }
+    return {
+      total,
+      promedio: records.length > 0 ? total / records.length : 0,
+      mejor,
+    };
+  }, [records]);
 
   function toggleSort(col: typeof sortBy) {
     if (sortBy === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -71,9 +81,9 @@ export function SalesRecordsView({ records, stock, clients, onReload, onAddRecor
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError("");
-    if (!formVehicle) { setFormError("Selecciona un vehiculo"); return; }
+    if (!formVehicle) { setFormError("Selecciona un vehículo"); return; }
     const price = parseFloat(formPrice);
-    if (isNaN(price) || price <= 0) { setFormError("Introduce un precio valido"); return; }
+    if (isNaN(price) || price <= 0) { setFormError("Introduce un precio válido"); return; }
     setSaving(true);
     try {
       await onAddRecord(formVehicle, formClient ? parseInt(formClient) : null, price, formNotes);
@@ -122,9 +132,9 @@ export function SalesRecordsView({ records, stock, clients, onReload, onAddRecor
           <form onSubmit={(e) => void handleSubmit(e)} className="sales-form">
             <div className="sales-form-grid">
               <div className="sales-form-field">
-                <label className="field-label">Vehiculo *</label>
+                <label className="field-label">Vehículo *</label>
                 <select value={formVehicle} onChange={(e) => setFormVehicle(e.target.value)}>
-                  <option value="">Seleccionar vehiculo...</option>
+                  <option value="">Seleccionar vehículo...</option>
                   {stock.map((v) => (
                     <option key={v.folder_path} value={v.folder_path}>
                       {v.name} {v.precio_venta ? `(${v.precio_venta.toLocaleString("es-ES")} EUR)` : ""}
@@ -183,19 +193,19 @@ export function SalesRecordsView({ records, stock, clients, onReload, onAddRecor
           <div className="panel sales-stat-card">
             <span className="sales-stat-label">Total facturado</span>
             <span className="sales-stat-value sales-stat-primary">
-              {totalBeneficio.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+              {stats.total.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
             </span>
           </div>
           <div className="panel sales-stat-card">
             <span className="sales-stat-label">Promedio por venta</span>
             <span className="sales-stat-value">
-              {promedioBeneficio.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+              {stats.promedio.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
             </span>
           </div>
           <div className="panel sales-stat-card">
             <span className="sales-stat-label">Mejor venta</span>
             <span className="sales-stat-value sales-stat-success">
-              {mejorVenta.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+              {stats.mejor.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
             </span>
           </div>
           <div className="panel sales-stat-card">
@@ -226,7 +236,7 @@ export function SalesRecordsView({ records, stock, clients, onReload, onAddRecor
               <thead>
                 <tr>
                   <th className="sales-th sortable" onClick={() => toggleSort("vehicle")}>
-                    Vehiculo{sortIcon("vehicle")}
+                    Vehículo{sortIcon("vehicle")}
                   </th>
                   <th className="sales-th sortable" onClick={() => toggleSort("date")}>
                     Fecha{sortIcon("date")}
@@ -235,7 +245,7 @@ export function SalesRecordsView({ records, stock, clients, onReload, onAddRecor
                     Precio final{sortIcon("price")}
                   </th>
                   <th className="sales-th">Notas</th>
-                  <th className="sales-th sales-th-center">Accion</th>
+                  <th className="sales-th sales-th-center">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -290,7 +300,7 @@ export function SalesRecordsView({ records, stock, clients, onReload, onAddRecor
           <p className="eyebrow">Sin registros</p>
           <h2>No hay ventas registradas</h2>
           <p className="muted">
-            Pulsa "Nueva Venta" para registrar tu primera operacion.
+            Pulsa "Nueva Venta" para registrar tu primera operación.
           </p>
           <div className="actions" style={{ marginTop: "1rem" }}>
             <button type="button" className="button primary" onClick={() => setShowForm(true)}>
