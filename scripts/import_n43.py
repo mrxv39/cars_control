@@ -35,9 +35,10 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass, field, asdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -239,7 +240,6 @@ def parse_n43(content: str) -> list[N43Account]:
 
 def categorize(description: str, rules: list[dict[str, Any]]) -> str:
     """Aplica las reglas en orden de prioridad. Primera que coincide gana."""
-    import re
     text = description or ""
     for rule in sorted(rules, key=lambda r: r.get("priority", 100)):
         if not rule.get("active", True):
@@ -401,7 +401,7 @@ def run_import(file_path: Path, bank_account_id: int, dry_run: bool) -> dict:
     client._request(
         "PATCH",
         f"/rest/v1/bank_accounts?id=eq.{bank_account_id}",
-        {"last_synced_at": datetime.utcnow().isoformat() + "Z"},
+        {"last_synced_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")},
     )
 
     return {
