@@ -1,11 +1,12 @@
 import React, { useState, FormEvent } from "react";
 import * as api from "../../lib/api";
-import { supabase } from "../../lib/supabase";
 import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import { showToast } from "../../lib/toast";
 import ConfirmDialog from "./ConfirmDialog";
-import EmptyState from "./EmptyState";
 import { translateError } from "../../lib/translateError";
+import { VDLeads } from "./vehicle-detail/VDLeads";
+import { VDVehicleDocs } from "./vehicle-detail/VDVehicleDocs";
+import { VDPurchaseInfo } from "./vehicle-detail/VDPurchaseInfo";
 
 export { translateError };
 
@@ -116,171 +117,6 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
 
   return { form, setForm, photos, loadingPhotos, docs, facturas, selectedPhoto, setSelectedPhoto, saving, uploading, uploadProgress, uploadingDoc, success, error, setError,
     fileRef, docFileRef, handleSave, handleUpload, handleDeletePhoto, handleSetPrimary, handleUploadDoc, handleDeleteDoc, mainPhoto, margin, marginWarning, loadPhotos, loadDocs, dialog };
-}
-
-// Shared: Factura section
-function VDFactura({ facturas, docFileRef, uploadingDoc, handleUploadDoc, handleDeleteDoc }: { facturas: api.VehicleDocument[]; docFileRef: React.RefObject<HTMLInputElement | null>; uploadingDoc: boolean; handleUploadDoc: (e: React.ChangeEvent<HTMLInputElement>) => void; handleDeleteDoc: (d: api.VehicleDocument) => void }) {
-  return (
-    <>
-      <p className="eyebrow" style={{ marginBottom: "var(--space-sm)" }}>Factura de compra</p>
-      {facturas.map((d) => (
-        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "var(--space-md)", padding: "var(--space-sm)", background: "var(--color-bg-secondary)", borderRadius: "var(--radius-sm)", marginBottom: "var(--space-xs)" }}>
-          <span style={{ flex: 1, fontSize: "var(--text-sm)" }}>{d.file_name}</span>
-          <a href={d.url} target="_blank" rel="noopener noreferrer" className="button secondary xs">Ver</a>
-          <button type="button" className="button danger xs" onClick={() => void handleDeleteDoc(d)}>Eliminar</button>
-        </div>
-      ))}
-      {facturas.length === 0 && <p className="muted" style={{ margin: "0 0 var(--space-xs)", fontSize: "var(--text-sm)" }}>No hay factura adjunta.</p>}
-      <input ref={docFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: "none" }} onChange={(e) => void handleUploadDoc(e)} />
-      <button type="button" className="button secondary sm" onClick={() => docFileRef.current?.click()} disabled={uploadingDoc}>{uploadingDoc ? "Subiendo..." : "Adjuntar factura"}</button>
-    </>
-  );
-}
-
-// Shared: Leads sidebar/section
-function VDLeads({ vehicleLeads }: { vehicleLeads: api.Lead[] }) {
-  if (vehicleLeads.length === 0) return <EmptyState title="Sin leads" description="Este vehículo no tiene leads asociados" />;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-      {vehicleLeads.map((l) => (
-        <div key={l.id} style={{ padding: "var(--space-md)", background: "var(--color-bg-secondary)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-light)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", fontWeight: 600, fontSize: "var(--text-sm)" }}><span className={`lead-status-dot ${l.estado || "nuevo"}`} />{l.name}</span>
-            <span className="muted" style={{ fontSize: "var(--text-xs)" }}>{l.canal} · {l.estado}</span>
-          </div>
-          {l.phone && <p style={{ margin: "var(--space-xs) 0 0", fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>Tel: {l.phone}</p>}
-          {l.email && <p style={{ margin: "var(--space-xs) 0 0", fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>{l.email}</p>}
-          {l.notes && <p style={{ margin: "var(--space-xs) 0 0", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>{l.notes}</p>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Documentación del vehículo (ficha técnica, permiso, seguro) ──
-function VDVehicleDocs({ docs, vehicleId, onReload }: { docs: api.VehicleDocument[]; vehicleId: number; onReload: () => void }) {
-  const fileRef = React.useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = React.useState(false);
-  const [uploadType, setUploadType] = React.useState<string | null>(null);
-
-  const DOC_TYPES = [
-    { key: "ficha_tecnica", label: "Ficha técnica" },
-    { key: "permiso_circulacion", label: "Permiso de circulación" },
-    { key: "seguro", label: "Seguro del vehículo" },
-  ] as const;
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !uploadType) return;
-    setUploading(true);
-    try {
-      await api.uploadVehicleDocument(vehicleId, file, uploadType);
-      onReload();
-    } finally {
-      setUploading(false);
-      setUploadType(null);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  }
-
-  function triggerUpload(docType: string) {
-    setUploadType(docType);
-    setTimeout(() => fileRef.current?.click(), 50);
-  }
-
-  return (
-    <section className="panel vd-sidebar-panel">
-      <div className="vd-section-header"><p className="eyebrow">Documentación vehículo</p></div>
-      <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: "none" }} onChange={(e) => void handleUpload(e)} />
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-        {DOC_TYPES.map(({ key, label }) => {
-          const doc = docs.find((d) => d.doc_type === key);
-          return (
-            <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-sm) var(--space-md)", background: "var(--color-bg-secondary)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", fontSize: "var(--text-sm)" }}>
-                <span
-                  role="img"
-                  aria-label={doc ? "Documento adjuntado" : "Pendiente"}
-                  style={{ width: 8, height: 8, borderRadius: "50%", background: doc ? "var(--color-success)" : "var(--color-text-faint)", flexShrink: 0 }}
-                />
-                <span style={{ fontWeight: 600 }}>{label}</span>
-              </div>
-              {doc ? (
-                <a href={doc.url} target="_blank" rel="noopener noreferrer" className="button secondary xs">Ver</a>
-              ) : (
-                <button type="button" className="button secondary xs" disabled={uploading} onClick={() => triggerUpload(key)}>
-                  {uploading && uploadType === key ? "..." : "Adjuntar"}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-// ── Info compra (proveedor, factura, movimiento banco) ──
-function VDPurchaseInfo({ suppliers, supplierId, onSupplierChange, facturas, docFileRef, uploadingDoc, handleUploadDoc, handleDeleteDoc, purchaseRecords }: {
-  suppliers: api.Supplier[];
-  supplierId: number | null;
-  onSupplierChange: (id: number | null) => void;
-  facturas: api.VehicleDocument[];
-  docFileRef: React.RefObject<HTMLInputElement | null>;
-  uploadingDoc: boolean;
-  handleUploadDoc: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleDeleteDoc: (d: api.VehicleDocument) => void;
-  purchaseRecords: api.PurchaseRecord[];
-}) {
-  const purchaseRecord = purchaseRecords.find((p) => p.expense_type === "COMPRA_VEHICULO");
-  // Look for linked bank transaction via purchase_record
-  const [bankTx, setBankTx] = React.useState<api.BankTransaction | null>(null);
-  React.useEffect(() => {
-    if (!purchaseRecord) { setBankTx(null); return; }
-    void (async () => {
-      try {
-        const { data } = await supabase
-          .from("bank_transactions")
-          .select("*")
-          .eq("linked_purchase_id", purchaseRecord.id)
-          .limit(1);
-        setBankTx((data && data.length > 0) ? data[0] as api.BankTransaction : null);
-      } catch { setBankTx(null); }
-    })();
-  }, [purchaseRecord?.id]);
-
-  return (
-    <section className="panel vd-sidebar-panel">
-      <div className="vd-section-header"><p className="eyebrow">Info compra</p></div>
-      <div className="form-stack">
-        <div>
-          <label className="field-label">Proveedor</label>
-          <select value={supplierId || ""} onChange={(e) => onSupplierChange(e.target.value ? parseInt(e.target.value) : null)}>
-            <option value="">Sin proveedor</option>
-            {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="field-label">Factura de compra</label>
-          <VDFactura facturas={facturas} docFileRef={docFileRef} uploadingDoc={uploadingDoc} handleUploadDoc={handleUploadDoc} handleDeleteDoc={handleDeleteDoc} />
-        </div>
-        <div>
-          <label className="field-label">Movimiento del banco</label>
-          {bankTx ? (
-            <div style={{ padding: "var(--space-sm) var(--space-md)", background: "var(--color-bg-secondary)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: "var(--text-sm)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontWeight: 600 }}>{bankTx.counterparty_name || "Movimiento"}</span>
-                <span style={{ fontWeight: 700, color: bankTx.amount < 0 ? "var(--color-danger)" : "var(--color-success)" }}>{bankTx.amount.toLocaleString("es-ES")} €</span>
-              </div>
-              <p className="muted" style={{ margin: "var(--space-xs) 0 0", fontSize: "var(--text-xs)" }}>{bankTx.booking_date} · {bankTx.category}</p>
-            </div>
-          ) : (
-            <p className="muted" style={{ fontSize: "var(--text-sm)" }}>No hay movimiento vinculado</p>
-          )}
-        </div>
-      </div>
-    </section>
-  );
 }
 
 // ── PROPOSAL A: Sidebar layout (redesigned) ──
