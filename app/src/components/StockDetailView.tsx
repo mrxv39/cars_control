@@ -8,6 +8,15 @@ interface VehiclePhoto {
   data_url: string;
 }
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 interface Props {
   vehicle: StockVehicle;
   thumbnail: string | null;
@@ -95,15 +104,6 @@ export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, on
     }
   }
 
-  function fileToDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -167,7 +167,7 @@ export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, on
 
       <div>
         <section className="panel" style={{ padding: "1.5rem" }}>
-          <p className="eyebrow" style={{ marginBottom: "1rem" }}>Datos del vehiculo</p>
+          <p className="eyebrow" style={{ marginBottom: "1rem" }}>Datos del vehículo</p>
           <form onSubmit={(e) => void handleSubmit(e)} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             <div>
               <label className="field-label" htmlFor="detail-name">Marca y modelo</label>
@@ -275,7 +275,7 @@ export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, on
             ))}
           </div>
         ) : (
-          <p className="muted">No hay fotos. Pulsa "Subir fotos" para añadir imagenes del vehiculo.</p>
+          <p className="muted">No hay fotos. Pulsa "Subir fotos" para añadir imágenes del vehículo.</p>
         )}
       </section>
     </>
