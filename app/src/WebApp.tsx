@@ -295,10 +295,6 @@ function WebApp() {
   }} />;
 }
 
-// PublicCatalog, CatalogHeader, PublicVehicleDetail, ContactForm -> extracted to components/web/PublicCatalog.tsx
-
-// ── Pagination Controls ──
-// ── Global Search Results ──
 function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
   query: string;
   vehicles: api.Vehicle[];
@@ -364,6 +360,13 @@ function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
     </div>
   );
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Propietario",
+  admin: "Administrador",
+  viewer: "Visor",
+  super_admin: "Super Admin",
+};
 
 const NAV_ITEMS: Array<{ key: ViewKey; label: string; icon: React.ComponentType<{ size?: number }> }> = [
   { key: "dashboard", label: "Resumen", icon: LayoutDashboard },
@@ -486,7 +489,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
             onClick={() => { setCurrentView("profile"); setMobileMenuOpen(false); }}
             title="Editar mi perfil"
           >
-            <p className="muted" style={{ margin: 0 }}><User size={13} style={{ verticalAlign: "-2px", marginRight: "0.3rem", opacity: 0.7 }} />{session.user.full_name} ({({ owner: "Propietario", admin: "Administrador", viewer: "Visor", super_admin: "Super Admin" } as Record<string, string>)[session.user.role] || session.user.role})</p>
+            <p className="muted" style={{ margin: 0 }}><User size={13} style={{ verticalAlign: "-2px", marginRight: "0.3rem", opacity: 0.7 }} />{session.user.full_name} ({ROLE_LABELS[session.user.role] || session.user.role})</p>
           </button>
         </div>
         <div style={{ position: "relative" }}>
@@ -602,8 +605,6 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
     </main>
   );
 }
-
-// RevisionSheet -> extracted to components/web/RevisionSheet.tsx
 
 function WebAppWithBoundary() {
   return (
