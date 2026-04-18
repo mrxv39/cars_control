@@ -23,11 +23,9 @@ import email.policy
 import hashlib
 import json
 import mailbox
-import os
 import random
 import re
 import sys
-import tempfile
 import zipfile
 from email.message import Message
 from pathlib import Path
@@ -187,32 +185,30 @@ def iter_mbox(path: Path) -> Iterator[Message]:
         box.close()
 
 
-def maybe_extract_zip(input_path: Path) -> tuple[Path, Path | None]:
-    """Si input es un .zip, extrae el primer .mbox a un temporal y lo devuelve."""
+def maybe_extract_zip(input_path: Path) -> Path:
+    """Si input es un .zip, extrae el primer .mbox al cache en data/ y lo devuelve."""
     if input_path.suffix.lower() != ".zip":
-        return input_path, None
+        return input_path
     # Cache permanente en data/ para no re-extraer 1.85GB en cada run
     cache = Path("data") / f"{input_path.stem}.mbox"
     if cache.exists():
         print(f"-> Usando mbox cacheado en {cache}")
-        return cache, None
+        return cache
     print(f"-> Detectado zip, extrayendo mbox de {input_path.name} a {cache} ...")
     cache.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(input_path) as zf:
         mbox_names = [n for n in zf.namelist() if n.lower().endswith(".mbox")]
         if not mbox_names:
             raise SystemExit("El zip no contiene ningun .mbox")
-        target_name = mbox_names[0]
-        out = cache
-        with zf.open(target_name) as src, open(out, "wb") as dst:
+        with zf.open(mbox_names[0]) as src, open(cache, "wb") as dst:
             while True:
                 chunk = src.read(1024 * 1024)
                 if not chunk:
                     break
                 dst.write(chunk)
-        size_mb = out.stat().st_size / (1024 * 1024)
+        size_mb = cache.stat().st_size / (1024 * 1024)
         print(f"   extraido ({size_mb:.0f} MB)")
-        return out, None
+        return cache
 
 
 def load_existing_keys(out_path: Path) -> set[str]:
@@ -246,7 +242,7 @@ def main() -> int:
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    mbox_path, tmpdir = maybe_extract_zip(src)
+    mbox_path = maybe_extract_zip(src)
 
     # ---- pasada 1: indexar mensajes por Message-ID (solo metadata + body lazy)
     print("-> Pasada 1/2: indexando mensajes por Message-ID ...")
@@ -363,15 +359,6 @@ def main() -> int:
             print(safe_lead)
             print(f"\nRICARD ({len(s['ricard_reply'])} chars):")
             print(safe_ric)
-
-    if tmpdir:
-        # Limpieza del temporal
-        try:
-            for p in tmpdir.iterdir():
-                p.unlink()
-            tmpdir.rmdir()
-        except OSError:
-            pass
 
     return 0
 
