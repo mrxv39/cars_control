@@ -13,6 +13,15 @@ function getAppMode(): "store" | "admin" | "both" {
 }
 const APP_MODE = getAppMode();
 
+const ESTADO_LABELS: Record<string, string> = {
+  disponible: "Disponible",
+  reservado: "Reservado",
+  vendido: "Vendido",
+  listo_para_venta: "Listo para venta",
+};
+
+const FINANCING_NOTE_PREFIX = "Desde";
+
 export function CatalogHeader({ onLogin, onCatalog }: { onLogin: () => void; onCatalog: () => void }) {
   return (
     <header className="catalog-topbar">
@@ -192,10 +201,10 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
               {vehicle.cv && <tr><td>Potencia</td><td>{vehicle.cv}</td></tr>}
               {vehicle.transmission && <tr><td>Cambio</td><td>{vehicle.transmission}</td></tr>}
               {vehicle.color && <tr><td>Color</td><td>{vehicle.color}</td></tr>}
-              <tr><td>Estado</td><td>{{ disponible: "Disponible", reservado: "Reservado", vendido: "Vendido", listo_para_venta: "Listo para venta" }[vehicle.estado] || vehicle.estado}</td></tr>
+              <tr><td>Estado</td><td>{ESTADO_LABELS[vehicle.estado] || vehicle.estado}</td></tr>
             </tbody>
           </table>
-          {vehicle.notes && vehicle.notes.startsWith("Desde") && (
+          {vehicle.notes && vehicle.notes.startsWith(FINANCING_NOTE_PREFIX) && (
             <div className="catalog-detail-financing">
               <p className="eyebrow" style={{ marginBottom: "0.4rem" }}>Financiación</p>
               <p className="catalog-detail-financing-text">{vehicle.notes}</p>
@@ -336,7 +345,7 @@ export function PublicCatalog({ onLogin }: { onLogin: () => void }) {
                       {v.color && <span>{v.color}</span>}
                     </div>
                     {v.precio_venta && <p className="catalog-card-price">{v.precio_venta.toLocaleString("es-ES")} €</p>}
-                    {v.notes && v.notes.startsWith("Desde") && <p className="catalog-card-financing">{v.notes.split("|")[0].trim()}</p>}
+                    {v.notes && v.notes.startsWith(FINANCING_NOTE_PREFIX) && <p className="catalog-card-financing">{v.notes.split("|")[0].trim()}</p>}
                   </div>
                 </article>
               );
