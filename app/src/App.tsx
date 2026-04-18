@@ -1,4 +1,4 @@
-import React, { FormEvent, useCallback, useState } from "react";
+import React, { FormEvent, useCallback, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   ViewKey,
@@ -56,6 +56,31 @@ const NAV_ITEMS: Array<{ key: ViewKey; label: string }> = [
   { key: "sales", label: "Ventas Legacy" },
 ];
 
+type DeleteKind = "vehicle" | "lead" | "client" | "sales_record" | "purchase_record";
+
+const DELETE_COPY: Record<DeleteKind, { title: string; message: (name: string) => string }> = {
+  vehicle: {
+    title: "Eliminar vehículo",
+    message: (name) => `¿Eliminar ${name}? Se borrará la carpeta y todo su contenido.`,
+  },
+  lead: {
+    title: "Eliminar lead",
+    message: (name) => `¿Eliminar el lead ${name}? Se perderá el historial de contacto guardado.`,
+  },
+  client: {
+    title: "Eliminar cliente",
+    message: (name) => `¿Eliminar el cliente ${name}? El lead original, si existe, dejará de estar enlazado.`,
+  },
+  purchase_record: {
+    title: "Eliminar compra",
+    message: (name) => `¿Eliminar el registro de compra ${name}?`,
+  },
+  sales_record: {
+    title: "Eliminar venta",
+    message: (name) => `¿Eliminar el registro de venta ${name}?`,
+  },
+};
+
 function App() {
   const [session, setSession] = useState<LoginResult | null>(null);
   const [loginUsername, setLoginUsername] = useState("");
@@ -82,8 +107,8 @@ function App() {
       <main className="shell" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
         <section className="panel" style={{ maxWidth: 400, width: "100%", padding: "2rem" }}>
           <p className="eyebrow">Cars Control</p>
-          <h1 style={{ marginBottom: "0.5rem" }}>Iniciar sesion</h1>
-          <p className="muted" style={{ marginBottom: "1.5rem" }}>Introduce tus credenciales para acceder a la aplicacion.</p>
+          <h1 style={{ marginBottom: "0.5rem" }}>Iniciar sesión</h1>
+          <p className="muted" style={{ marginBottom: "1.5rem" }}>Introduce tus credenciales para acceder a la aplicación.</p>
           <form onSubmit={(e) => void handleLogin(e)}>
             <div style={{ marginBottom: "1rem" }}>
               <label className="field-label" htmlFor="login-user">Usuario</label>
@@ -97,13 +122,13 @@ function App() {
               />
             </div>
             <div style={{ marginBottom: "1rem" }}>
-              <label className="field-label" htmlFor="login-pass">Contrasena</label>
+              <label className="field-label" htmlFor="login-pass">Contraseña</label>
               <input
                 id="login-pass"
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="Contrasena"
+                placeholder="Contraseña"
               />
             </div>
             {loginError && <p className="error-banner" style={{ marginBottom: "1rem" }}>{loginError}</p>}
@@ -122,7 +147,6 @@ function App() {
 function AuthenticatedApp({ session, onLogout }: { session: LoginResult; onLogout: () => void }) {
   const [showPlatform, setShowPlatform] = useState(false);
 
-  // Panel de plataforma super-admin
   if (showPlatform && isSuperAdmin(session.user.role)) {
     return (
       <PlatformLayout
@@ -158,7 +182,6 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
   const { records: purchaseRecords, setRecords: setPurchaseRecords, reload: reloadPurchases } = useRecords<PurchaseRecord>("get_purchase_records");
   const dialog = useConfirmDialog();
 
-  // Load thumbnails when stock changes
   React.useEffect(() => {
     if (!appState?.stock.length) return;
     const missing = appState.stock.filter((vehicle) => !(vehicle.folder_path in thumbnails));
@@ -200,6 +223,11 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
 
   const { search: clientSearch, setSearch: setClientSearch, filtered: filteredClients } = useSearchFilter(
     appState?.clients ?? [], appState?.stock ?? [], getClientFields,
+  );
+
+  const suppliers = useMemo(
+    () => [...new Set(purchaseRecords.map((r) => r.supplier_name).filter(Boolean))].sort(),
+    [purchaseRecords],
   );
 
   function closeAllModals() {
@@ -329,24 +357,9 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
     }
   }
 
-  function confirmDelete(kind: "vehicle" | "lead" | "client" | "sales_record" | "purchase_record", idOrPath: number | string, name: string) {
-    const title =
-      kind === "vehicle" ? "Eliminar vehículo"
-        : kind === "lead" ? "Eliminar lead"
-          : kind === "client" ? "Eliminar cliente"
-            : kind === "purchase_record" ? "Eliminar compra"
-              : "Eliminar venta";
-    const message =
-      kind === "vehicle"
-        ? `¿Eliminar ${name}? Se borrará la carpeta y todo su contenido.`
-        : kind === "lead"
-          ? `¿Eliminar el lead ${name}? Se perderá el historial de contacto guardado.`
-          : kind === "client"
-            ? `¿Eliminar el client ${name}? El lead original, si existe, dejará de estar enlazado.`
-            : kind === "purchase_record"
-              ? `¿Eliminar el registro de compra ${name}?`
-              : `¿Eliminar el registro de venta ${name}?`;
-    dialog.requestConfirm(title, message, async () => {
+  function confirmDelete(kind: DeleteKind, idOrPath: number | string, name: string) {
+    const copy = DELETE_COPY[kind];
+    dialog.requestConfirm(copy.title, copy.message(name), async () => {
     setSubmitting(true);
     setError(null);
     try {
@@ -377,7 +390,6 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
     });
   }
 
-  // Display error state
   const displayError = error || appError;
 
   if (loading) {
@@ -386,7 +398,7 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
         <section className="panel status-panel">
           <p className="eyebrow">Cars Control</p>
           <h1>Cargando</h1>
-          <p className="muted">Leyendo stock, leads y clients desde la carpeta de datos de la app.</p>
+          <p className="muted">Leyendo stock, leads y clientes desde la carpeta de datos de la app.</p>
         </section>
       </main>
     );
@@ -443,7 +455,7 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
             </button>
           )}
           <button type="button" className="button danger" onClick={onLogout} style={{ width: "100%" }}>
-            Cerrar sesion
+            Cerrar sesión
           </button>
         </div>
       </aside>
@@ -619,7 +631,7 @@ function CompanyApp({ session, onLogout, onOpenPlatform }: { session: LoginResul
         setStockVehicleForm={setStockVehicleForm}
         supplierInput={supplierInput}
         setSupplierInput={setSupplierInput}
-        suppliers={[...new Set(purchaseRecords.map((r) => r.supplier_name).filter(Boolean))].sort()}
+        suppliers={suppliers}
         submitting={submitting}
         onSubmit={(event) => void submitStock(event)}
         onClose={closeAllModals}
