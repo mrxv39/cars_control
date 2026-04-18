@@ -108,7 +108,7 @@ export async function createCompanyUser(
       role,
       active: true,
     })
-    .select()
+    .select("id, company_id, full_name, username, email, role, active")
     .single();
   if (error) throw new Error(error.message);
   return data;
