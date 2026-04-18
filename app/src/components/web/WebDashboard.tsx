@@ -1,4 +1,12 @@
+import type { KeyboardEvent } from "react";
 import * as api from "../../lib/api";
+
+function handleCardKeyDown(e: KeyboardEvent) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).click();
+  }
+}
 
 export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purchaseRecords, onReload, onNavigate }: {
   vehicles: api.Vehicle[];
@@ -54,15 +62,15 @@ export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purch
       </header>
 
       <div className="sales-stats-grid">
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0} onKeyDown={handleCardKeyDown}>
           <p className="sales-stat-label">Stock disponible</p>
           <p className="sales-stat-value sales-stat-primary">{stockDisponible}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0} onKeyDown={handleCardKeyDown}>
           <p className="sales-stat-label">Reservados</p>
           <p className="sales-stat-value">{stockReservado}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("stock")} role="button" tabIndex={0} onKeyDown={handleCardKeyDown}>
           <p className="sales-stat-label">Vendidos</p>
           <p className="sales-stat-value sales-stat-success">{stockVendido}</p>
         </section>
@@ -73,26 +81,26 @@ export function WebDashboard({ vehicles, allVehicles, leads, salesRecords, purch
       </div>
 
       <div className="sales-stats-grid">
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={handleCardKeyDown}>
           <p className="sales-stat-label">Leads nuevos</p>
           <p className="sales-stat-value">{leadsNuevos}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={handleCardKeyDown}>
           <p className="sales-stat-label">Contactados</p>
           <p className="sales-stat-value">{leadsContactados}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={handleCardKeyDown}>
           <p className="sales-stat-label">Negociando</p>
           <p className="sales-stat-value">{leadsNegociando}</p>
         </section>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("leads")} role="button" tabIndex={0} onKeyDown={handleCardKeyDown}>
           <p className="sales-stat-label">Cerrados / Perdidos</p>
           <p className="sales-stat-value">{leadsCerrados} / {leadsPerdidos}</p>
         </section>
       </div>
 
       <div className="sales-stats-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("sales")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <section className="panel sales-stat-card clickable" onClick={() => onNavigate("sales")} role="button" tabIndex={0} onKeyDown={handleCardKeyDown}>
           <p className="sales-stat-label">Ventas este mes</p>
           <p className="sales-stat-value sales-stat-primary">{ventasMes.length}</p>
           <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
