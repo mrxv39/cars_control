@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo, FormEvent } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import * as api from "./lib/api";
-import { supabase } from "./lib/supabase";
 import { FeedbackButton } from "./components/FeedbackButton";
 import { BankList } from "./components/BankList";
 import { isSuperAdmin } from "./lib/platform-types";
@@ -17,7 +16,9 @@ import { VehicleDetail } from "./components/web/VehicleDetailPanel";
 import { translateError } from "./lib/translateError";
 import { onToast, type ToastType } from "./lib/toast";
 import { SkeletonGrid } from "./components/web/Skeleton";
-import { PublicCatalog, CatalogHeader } from "./components/web/PublicCatalog";
+import { PublicCatalog } from "./components/web/PublicCatalog";
+import { LoginForm } from "./components/web/LoginForm";
+import { GlobalSearchResults } from "./components/web/GlobalSearchResults";
 import OnboardingTour from "./components/web/OnboardingTour";
 import { RevisionSheet } from "./components/web/RevisionSheet";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -76,81 +77,6 @@ function WebApp() {
     } catch { /* ignore */ }
     return null;
   });
-  const [loginUsername, setLoginUsername] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [loginSubmitting, setLoginSubmitting] = useState(false);
-  const [loginFieldErrors, setLoginFieldErrors] = useState<{ user?: string; pass?: string }>({});
-  const [forgotPassword, setForgotPassword] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotMsg, setForgotMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const [forgotSubmitting, setForgotSubmitting] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(false);
-
-  // Detectar callback de Google OAuth al cargar la página
-  useEffect(() => {
-    if (session) return; // Ya tiene sesión
-    const hash = window.location.hash;
-    if (!hash.includes("access_token")) return; // No es un callback OAuth
-
-    setOauthLoading(true);
-    void (async () => {
-      try {
-        const result = await platformApi.linkOAuthSession();
-        if (result) {
-          localStorage.setItem("cc_session", JSON.stringify(result));
-          setSession(result);
-          // Si es super_admin, ir al panel de plataforma directamente
-          setPage(isSuperAdmin(result.user.role) ? "platform" : "admin");
-        } else {
-          setLoginError("Tu email no tiene una cuenta en Cars Control. Contacta con el administrador o registra tu empresa.");
-          setPage("login");
-        }
-      } catch (err) {
-        setLoginError("Error al vincular cuenta Google. Comprueba tu conexión e inténtalo de nuevo.");
-        setPage("login");
-      } finally {
-        setOauthLoading(false);
-        // Limpiar el hash de la URL
-        window.history.replaceState(null, "", window.location.pathname);
-      }
-    })();
-  }, []);
-
-  async function handleGoogleLogin() {
-    setLoginError(null);
-    try {
-      await platformApi.signInWithGoogle();
-      // El navegador redirige a Google, no llegamos aquí hasta el callback
-    } catch (err) {
-      setLoginError("Error al conectar con Google. Comprueba tu conexión e inténtalo de nuevo.");
-    }
-  }
-
-  async function handleLogin(e: FormEvent) {
-    e.preventDefault();
-    const fieldErrors: { user?: string; pass?: string } = {};
-    if (!loginUsername.trim()) fieldErrors.user = "Usuario obligatorio";
-    if (!loginPassword) fieldErrors.pass = "Contraseña obligatoria";
-    if (Object.keys(fieldErrors).length > 0) { setLoginFieldErrors(fieldErrors); return; }
-    setLoginFieldErrors({});
-    setLoginError(null);
-    setLoginSubmitting(true);
-    try {
-      const result = await api.login(loginUsername, loginPassword);
-      localStorage.setItem("cc_session", JSON.stringify(result));
-      setSession(result);
-      setPage("admin");
-    } catch (err) {
-      const msg = String(err);
-      if (msg.includes("Usuario o contrasena")) setLoginError("Usuario o contraseña incorrectos.");
-      else if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed")) setLoginError("Error de conexion. Comprueba tu internet.");
-      else setLoginError("Error al iniciar sesión. Inténtalo de nuevo.");
-    } finally {
-      setLoginSubmitting(false);
-    }
-  }
-
   // Registration page (public)
   if (page === "register") {
     return <RegistrationPage onBackToLogin={() => setPage("login")} />;
@@ -167,119 +93,17 @@ function WebApp() {
     );
   }
 
-  // OAuth loading splash
-  if (oauthLoading) {
-    return (
-      <main className="shell" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <section className="panel" style={{ padding: "2rem", textAlign: "center" }}>
-          <p className="eyebrow">Cars Control</p>
-          <h2>Verificando cuenta Google...</h2>
-          <p className="muted">Un momento, estamos vinculando tu cuenta.</p>
-        </section>
-      </main>
-    );
-  }
-
   // Login page
   if (page === "login" && !session) {
     return (
-      <div className="catalog-page">
-        <CatalogHeader onLogin={() => setPage("login")} onCatalog={() => {
-          if (APP_MODE === "admin") { window.location.href = STORE_URL; return; }
-          setPage("catalog");
-        }} />
-        <main className="page-container-narrow">
-          <section className="panel" style={{ padding: "2rem" }}>
-            <p className="eyebrow">Acceso usuarios</p>
-            <h2 style={{ margin: "0.3rem 0 0.5rem" }}>Iniciar sesión</h2>
-            <p className="muted" style={{ marginBottom: "1.5rem" }}>Panel de gestión para usuarios autorizados.</p>
-
-            {/* Google OAuth */}
-            <button
-              type="button"
-              onClick={() => void handleGoogleLogin()}
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                marginBottom: "1.5rem",
-                border: "1px solid #ddd",
-                borderRadius: "6px",
-                background: "white",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.5rem",
-                fontSize: "0.95rem",
-                fontWeight: 500,
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 010-9.18l-7.98-6.19a24.07 24.07 0 000 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-              Entrar con Google
-            </button>
-
-            <div style={{ textAlign: "center", marginBottom: "1.5rem", color: "#999", fontSize: "0.85rem" }}>
-              o con usuario y contraseña
-            </div>
-
-            {forgotPassword ? (
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                if (!forgotEmail.trim()) { setForgotMsg({ text: "Introduce tu email.", ok: false }); return; }
-                setForgotSubmitting(true);
-                setForgotMsg(null);
-                const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}` });
-                setForgotSubmitting(false);
-                if (error) { setForgotMsg({ text: "No se pudo enviar el email. Verifica la dirección.", ok: false }); }
-                else { setForgotMsg({ text: "Email enviado. Revisa tu bandeja de entrada (y spam).", ok: true }); }
-              }}>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label className="field-label required" htmlFor="forgot-email">Email de tu cuenta</label>
-                  <input id="forgot-email" type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="tu@email.com" autoFocus required />
-                </div>
-                {forgotMsg && <p className={forgotMsg.ok ? "success-banner" : "error-banner"} role="alert" style={{ marginBottom: "1rem" }}>{forgotMsg.text}</p>}
-                <button type="submit" className="button primary full-width" disabled={forgotSubmitting}>
-                  {forgotSubmitting ? "Enviando..." : "Enviar enlace de recuperación"}
-                </button>
-                <div style={{ textAlign: "center", marginTop: "0.75rem" }}>
-                  <button type="button" className="button secondary" onClick={() => { setForgotPassword(false); setForgotMsg(null); }} style={{ fontSize: "0.85rem" }}>
-                    Volver al login
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <>
-                <form onSubmit={(e) => void handleLogin(e)}>
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label className="field-label required" htmlFor="login-user">Email o usuario</label>
-                    <input id="login-user" type="text" className={loginFieldErrors.user ? "input-error" : ""} value={loginUsername} onChange={(e) => { setLoginUsername(e.target.value); setLoginFieldErrors((f) => ({ ...f, user: undefined })); }} placeholder="tu@email.com o nombre de usuario" autoFocus />
-                    {loginFieldErrors.user && <p className="input-error-message">{loginFieldErrors.user}</p>}
-                  </div>
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label className="field-label required" htmlFor="login-pass">Contraseña</label>
-                    <input id="login-pass" type="password" className={loginFieldErrors.pass ? "input-error" : ""} value={loginPassword} onChange={(e) => { setLoginPassword(e.target.value); setLoginFieldErrors((f) => ({ ...f, pass: undefined })); }} placeholder="Contraseña" />
-                    {loginFieldErrors.pass && <p className="input-error-message">{loginFieldErrors.pass}</p>}
-                  </div>
-                  {loginError && <p className="error-banner" role="alert" style={{ marginBottom: "1rem" }}>{loginError}</p>}
-                  <button type="submit" className="button primary full-width" disabled={loginSubmitting}>
-                    {loginSubmitting ? "Entrando..." : "Entrar"}
-                  </button>
-                </form>
-                <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
-                  <button type="button" style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", fontSize: "0.82rem" }} onClick={() => setForgotPassword(true)}>
-                    ¿Olvidaste tu contraseña?
-                  </button>
-                </div>
-                <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
-                  <button type="button" className="button secondary" onClick={() => setPage("register")} style={{ fontSize: "0.85rem" }}>
-                    ¿No tienes cuenta? Registra tu empresa
-                  </button>
-                </div>
-              </>
-            )}
-          </section>
-        </main>
-      </div>
+      <LoginForm
+        appMode={APP_MODE}
+        storeUrl={STORE_URL}
+        onLoginSuccess={(result) => { setSession(result); setPage("admin"); }}
+        onOpenPlatform={(result) => { setSession(result); setPage("platform"); }}
+        onRegister={() => setPage("register")}
+        onCatalog={() => setPage("catalog")}
+      />
     );
   }
 
@@ -293,72 +117,6 @@ function WebApp() {
     if (APP_MODE === "store") { window.location.href = ADMIN_URL; return; }
     setPage("login");
   }} />;
-}
-
-function GlobalSearchResults({ query, vehicles, leads, clients, onSelect }: {
-  query: string;
-  vehicles: api.Vehicle[];
-  leads: api.Lead[];
-  clients: api.Client[];
-  onSelect: (type: "vehicle" | "lead" | "client", id: number) => void;
-}) {
-  const q = query.toLowerCase().trim();
-
-  const matchedVehicles = vehicles.filter((v) =>
-    [v.name, String(v.anio || "")].some((f) => f.toLowerCase().includes(q))
-  ).slice(0, 5);
-
-  const matchedLeads = leads.filter((l) =>
-    [l.name, l.phone, l.vehicle_interest].some((f) => f.toLowerCase().includes(q))
-  ).slice(0, 5);
-
-  const matchedClients = clients.filter((c) =>
-    [c.name, c.dni, c.email, c.phone].some((f) => f.toLowerCase().includes(q))
-  ).slice(0, 5);
-
-  const hasResults = matchedVehicles.length > 0 || matchedLeads.length > 0 || matchedClients.length > 0;
-
-  return (
-    <div role="listbox" aria-label="Resultados de búsqueda" style={{
-      position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100,
-      background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "12px",
-      marginTop: "0.35rem", maxHeight: "320px", overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-    }}>
-      {!hasResults && (
-        <p style={{ padding: "0.85rem 1rem", margin: 0, color: "rgba(255,255,255,0.5)", fontSize: "0.85rem" }}>Sin resultados</p>
-      )}
-      {matchedVehicles.length > 0 && (
-        <div>
-          <p style={{ padding: "0.5rem 1rem 0.25rem", margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.45)" }}>Vehículos</p>
-          {matchedVehicles.map((v) => (
-            <button key={v.id} type="button" onClick={() => onSelect("vehicle", v.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 1rem", background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "0.88rem" }}>
-              {v.name} <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>{v.anio || ""}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {matchedLeads.length > 0 && (
-        <div>
-          <p style={{ padding: "0.5rem 1rem 0.25rem", margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.45)" }}>Leads</p>
-          {matchedLeads.map((l) => (
-            <button key={l.id} type="button" onClick={() => onSelect("lead", l.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 1rem", background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "0.88rem" }}>
-              {l.name} <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>{l.phone}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {matchedClients.length > 0 && (
-        <div>
-          <p style={{ padding: "0.5rem 1rem 0.25rem", margin: 0, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.45)" }}>Clientes</p>
-          {matchedClients.map((c) => (
-            <button key={c.id} type="button" onClick={() => onSelect("client", c.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 1rem", background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "0.88rem" }}>
-              {c.name} <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.82rem" }}>{c.dni || c.email}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 const ROLE_LABELS: Record<string, string> = {
