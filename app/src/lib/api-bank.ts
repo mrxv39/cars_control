@@ -46,6 +46,27 @@ export async function listBankCategoryRules(companyId: number): Promise<BankCate
   return data || [];
 }
 
+export async function createBankCategoryRule(
+  companyId: number,
+  pattern: string,
+  category: string,
+  defaultExpenseType: string | null = null,
+  priority = 100,
+): Promise<number> {
+  const cleanPattern = pattern.trim();
+  if (!cleanPattern) throw new Error("El patrón no puede estar vacío");
+  const { data, error } = await supabase.from("bank_category_rules").insert({
+    company_id: companyId,
+    pattern: cleanPattern,
+    category,
+    default_expense_type: defaultExpenseType,
+    priority,
+    active: true,
+  }).select("id").single();
+  if (error || !data) throw new Error(error?.message || "no se pudo crear la regla");
+  return data.id;
+}
+
 export async function suggestPurchasesForTransaction(companyId: number, amount: number, bookingDate: string): Promise<PurchaseRecord[]> {
   const target = Math.abs(amount);
   const lo = target - 5;

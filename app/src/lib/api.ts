@@ -35,7 +35,7 @@ export {
 export {
   listBankAccounts, listBankTransactions,
   updateBankTransactionCategory, linkTransactionToPurchase, linkTransactionToSale,
-  listBankCategoryRules, suggestPurchasesForTransaction,
+  listBankCategoryRules, createBankCategoryRule, suggestPurchasesForTransaction,
   listPurchaseIdsWithBankLink, createPurchaseFromTransaction,
 } from "./api-bank";
 
