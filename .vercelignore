@@ -1,0 +1,44 @@
+# Artefactos grandes no necesarios en build Vercel
+app/src-tauri/target/
+app/src-tauri/gen/
+app/ux-screenshots/
+app/playwright-report/
+app/test-results/
+app/e2e/
+node_modules/
+app/node_modules/
+target/
+dist/
+build/
+
+# Datos locales
+data/
+drive_cache/
+storage/
+
+# Scripts Python y entornos virtuales
+scripts/__pycache__/
+.venv/
+venv/
+__pycache__/
+
+# Cachés
+.pytest_cache/
+.coverage
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# Docs legacy
+docs_legacy/
+
+# Archivos grandes de docs
+*.zip
+*.tar.gz
+
+# Credenciales
+.env
+.env.*
+*.pem
+*.key
