@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import * as api from "../lib/api";
 import { showToast } from "../lib/toast";
 import { translateError } from "../lib/translateError";
@@ -22,19 +22,33 @@ function suggestPattern(tx: api.BankTransaction): string {
   const counterparty = (tx.counterparty_name || "").trim();
   if (counterparty.length >= 3) return counterparty;
 
+  // Audit 2026-04-19: tomar SOLO la primera palabra producía patrones peligrosamente
+  // genéricos (ej: "ricard" para "Ricard Codina fac"). Tomamos hasta 3 palabras
+  // consecutivas para producir patrones más específicos.
   const desc = (tx.description || "").toLowerCase();
   const words = desc
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
-    .filter((w) => w.length >= 4 && !STOP_WORDS.has(w) && !/^\d+$/.test(w));
-  return words[0] || counterparty || "";
+    .filter((w) => w.length >= 3 && !STOP_WORDS.has(w) && !/^\d+$/.test(w));
+  return words.slice(0, 3).join(" ") || counterparty || "";
 }
+
+// Patrones por debajo de este umbral son demasiado genéricos y pueden recategorizar
+// movimientos no relacionados (ej: "ricard" coincidiría con cualquier descripción
+// que contenga el nombre del titular). Mostrar advertencia en la UI.
+const GENERIC_PATTERN_MIN_LEN = 6;
 
 export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }: Props) {
   const initialPattern = useMemo(() => suggestPattern(tx), [tx]);
   const [pattern, setPattern] = useState(initialPattern);
   const [priority, setPriority] = useState(100);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -115,12 +129,22 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
               onChange={(e) => setPattern(e.target.value)}
               disabled={submitting}
               placeholder="ej: AUTO1, AGENCIA TRIBUTARIA, ..."
-              style={{ padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1" }}
+              style={{
+                padding: "0.5rem",
+                borderRadius: 6,
+                border: pattern.trim().length > 0 && pattern.trim().length < GENERIC_PATTERN_MIN_LEN ? "1px solid #f59e0b" : "1px solid #cbd5e1",
+              }}
               autoFocus
             />
-            <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-              La búsqueda es insensible a mayúsculas.
-            </span>
+            {pattern.trim().length > 0 && pattern.trim().length < GENERIC_PATTERN_MIN_LEN ? (
+              <span role="alert" style={{ fontSize: "0.75rem", color: "#b45309", fontWeight: 600 }}>
+                ⚠ Patrón muy corto ({pattern.trim().length} caracteres). Puede coincidir con muchos movimientos no relacionados.
+              </span>
+            ) : (
+              <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                La búsqueda es insensible a mayúsculas.
+              </span>
+            )}
           </label>
 
           <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.9rem" }}>

@@ -38,6 +38,9 @@ export function BankList({ companyId }: Props) {
   const [linkingTx, setLinkingTx] = useState<api.BankTransaction | null>(null);
   const [creatingPurchaseTx, setCreatingPurchaseTx] = useState<api.BankTransaction | null>(null);
   const [ruleCandidate, setRuleCandidate] = useState<{ tx: api.BankTransaction; category: string } | null>(null);
+  // ID de la última fila categorizada manualmente — habilita CTA inline "+ regla"
+  // sin abrir un modal intrusivo en cada cambio (audit 2026-04-19, top friction Banco Fase 2).
+  const [lastChangedTxId, setLastChangedTxId] = useState<number | null>(null);
 
   // Cargar cuentas al montar
   useEffect(() => {
@@ -139,15 +142,12 @@ export function BankList({ companyId }: Props) {
   async function changeCategory(txId: number, category: string) {
     const tx = transactions.find((t) => t.id === txId);
     if (!tx || tx.category === category) return;
-    const previousCategory = tx.category;
     try {
       await api.updateBankTransactionCategory(txId, category, true);
       setTransactions((prev) =>
         prev.map((t) => (t.id === txId ? { ...t, category, reviewed_by_user: true } : t)),
       );
-      if (previousCategory === "SIN_CATEGORIZAR" && category !== "SIN_CATEGORIZAR") {
-        setRuleCandidate({ tx: { ...tx, category }, category });
-      }
+      setLastChangedTxId(category === "SIN_CATEGORIZAR" ? null : txId);
     } catch (e) {
       console.error("Error al cambiar categoría:", e);
       showToast(translateError(e), "error");
@@ -497,27 +497,50 @@ export function BankList({ companyId }: Props) {
                             {t.description || <span className="muted">—</span>}
                           </td>
                           <td className="sales-td">
-                            <select
-                              value={t.category}
-                              onChange={(e) => void changeCategory(t.id, e.target.value)}
-                              aria-label={`Categoría para ${t.description || "movimiento"}`}
-                              style={{
-                                padding: "0.2rem 0.4rem",
-                                borderRadius: "var(--radius-sm)",
-                                border: "1px solid var(--color-border-light)",
-                                background: t.category === "SIN_CATEGORIZAR" ? "var(--color-bg-warning)" : "var(--color-bg)",
-                                color: t.category === "SIN_CATEGORIZAR" ? "var(--color-warning)" : "var(--color-text)",
-                                fontSize: "var(--text-xs)",
-                                cursor: "pointer",
-                                maxWidth: "10rem",
-                              }}
-                            >
-                              {Object.keys(CATEGORY_LABELS).map((c) => (
-                                <option key={c} value={c}>
-                                  {CATEGORY_LABELS[c]}
-                                </option>
-                              ))}
-                            </select>
+                            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)", flexWrap: "wrap" }}>
+                              <select
+                                value={t.category}
+                                onChange={(e) => void changeCategory(t.id, e.target.value)}
+                                aria-label={`Categoría para ${t.description || "movimiento"}`}
+                                style={{
+                                  padding: "0.2rem 0.4rem",
+                                  borderRadius: "var(--radius-sm)",
+                                  border: "1px solid var(--color-border-light)",
+                                  background: t.category === "SIN_CATEGORIZAR" ? "var(--color-bg-warning)" : "var(--color-bg)",
+                                  color: t.category === "SIN_CATEGORIZAR" ? "var(--color-warning)" : "var(--color-text)",
+                                  fontSize: "var(--text-xs)",
+                                  cursor: "pointer",
+                                  maxWidth: "10rem",
+                                }}
+                              >
+                                {Object.keys(CATEGORY_LABELS).map((c) => (
+                                  <option key={c} value={c}>
+                                    {CATEGORY_LABELS[c]}
+                                  </option>
+                                ))}
+                              </select>
+                              {t.id === lastChangedTxId && t.category !== "SIN_CATEGORIZAR" && (
+                                <button
+                                  type="button"
+                                  onClick={() => setRuleCandidate({ tx: t, category: t.category })}
+                                  aria-label={`Crear regla para que movimientos similares se categoricen como ${categoryLabel(t.category)}`}
+                                  className="bank-link-button"
+                                  style={{
+                                    padding: "0.15rem 0.45rem",
+                                    fontSize: "var(--text-xs)",
+                                    borderRadius: "var(--radius-sm)",
+                                    border: "1px solid var(--color-primary)",
+                                    background: "var(--color-bg)",
+                                    color: "var(--color-primary)",
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  + regla
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td className="sales-td sales-td-right">
                             <span

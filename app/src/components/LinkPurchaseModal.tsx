@@ -33,6 +33,12 @@ export function LinkPurchaseModal({ tx, companyId, onClose, onLinked }: Props) {
     };
   }, [tx.id, companyId, tx.amount, tx.booking_date]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   async function doLink(purchaseId: number) {
     setLinking(purchaseId);
     try {
@@ -48,6 +54,9 @@ export function LinkPurchaseModal({ tx, companyId, onClose, onLinked }: Props) {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="link-purchase-title"
       style={{
         position: "fixed",
         inset: 0,
@@ -76,7 +85,7 @@ export function LinkPurchaseModal({ tx, companyId, onClose, onLinked }: Props) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
           <div>
             <p className="eyebrow" style={{ margin: 0 }}>Vincular a compra existente</p>
-            <h3 style={{ margin: "0.25rem 0 0", fontSize: "1.1rem" }}>
+            <h3 id="link-purchase-title" style={{ margin: "0.25rem 0 0", fontSize: "1.1rem" }}>
               {formatDate(tx.booking_date)} · {formatEur(Number(tx.amount))}
             </h3>
             <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.85rem" }}>
@@ -86,6 +95,7 @@ export function LinkPurchaseModal({ tx, companyId, onClose, onLinked }: Props) {
           <button
             type="button"
             onClick={onClose}
+            aria-label="Cerrar diálogo"
             style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#64748b" }}
           >
             ×

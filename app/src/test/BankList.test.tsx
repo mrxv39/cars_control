@@ -171,7 +171,10 @@ describe('BankList', () => {
     })
   })
 
-  it('opens rule modal when user recategorizes an uncategorized transaction', async () => {
+  // Audit 2026-04-19: el modal de regla ya NO se abre automáticamente al recategorizar
+  // (era intrusivo cuando había cientos de SIN_CATEGORIZAR). Ahora aparece un botón
+  // inline "+ regla" en la fila recién cambiada y solo el click lo abre.
+  it('shows inline + regla button after recategorizing, without opening modal', async () => {
     vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
     vi.mocked(api.listBankTransactions).mockResolvedValue([
       makeTx({ id: 1, category: 'SIN_CATEGORIZAR', counterparty_name: 'CEPSA', description: 'Combustible' }),
@@ -185,8 +188,27 @@ describe('BankList', () => {
 
     await waitFor(() => {
       expect(api.updateBankTransactionCategory).toHaveBeenCalledWith(1, 'COMBUSTIBLE', true)
-      expect(screen.getByText('Crear regla de categorización')).toBeInTheDocument()
     })
+    expect(screen.queryByText('Crear regla de categorización')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Crear regla.*Combustible/i })).toBeInTheDocument()
+  })
+
+  it('opens rule modal only when inline + regla button is clicked', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, category: 'SIN_CATEGORIZAR', counterparty_name: 'CEPSA', description: 'Combustible' }),
+    ])
+    vi.mocked(api.updateBankTransactionCategory).mockResolvedValue(undefined)
+
+    render(<BankList companyId={1} />)
+
+    const catSelect = await screen.findByLabelText(/Categoría para/)
+    fireEvent.change(catSelect, { target: { value: 'COMBUSTIBLE' } })
+
+    const ruleBtn = await screen.findByRole('button', { name: /Crear regla.*Combustible/i })
+    fireEvent.click(ruleBtn)
+
+    expect(screen.getByText('Crear regla de categorización')).toBeInTheDocument()
   })
 
   it('does not open rule modal when category is already set', async () => {

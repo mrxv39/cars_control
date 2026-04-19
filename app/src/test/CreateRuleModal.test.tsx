@@ -61,6 +61,29 @@ describe('CreateRuleModal', () => {
     expect(input.value.toLowerCase()).toContain('auto1')
   })
 
+  // Audit 2026-04-19: cuando counterparty está vacío y la descripción tiene
+  // varias palabras útiles, suggestPattern toma hasta 3 consecutivas (no solo 1)
+  // para evitar patrones genéricos peligrosos como "ricard".
+  it('suggests multi-word pattern from description (not single word)', () => {
+    render(<CreateRuleModal {...defaultProps} tx={makeTx({ counterparty_name: '', description: 'Ricard Codina fac | 00046 / RICARD CODINA LUDENA' })} />)
+    const input = screen.getByPlaceholderText(/AUTO1/) as HTMLInputElement
+    // Más de una palabra → el patrón es más específico (e.g. "ricard codina fac")
+    expect(input.value.split(/\s+/).filter(Boolean).length).toBeGreaterThan(1)
+  })
+
+  it('warns when pattern is too short and likely too generic', () => {
+    render(<CreateRuleModal {...defaultProps} tx={makeTx({ counterparty_name: 'AB', description: '' })} />)
+    const input = screen.getByPlaceholderText(/AUTO1/) as HTMLInputElement
+    // Forzar patrón corto manualmente
+    fireEvent.change(input, { target: { value: 'abc' } })
+    expect(screen.getByRole('alert')).toHaveTextContent(/Patrón muy corto/i)
+  })
+
+  it('does not warn when pattern has enough characters', () => {
+    render(<CreateRuleModal {...defaultProps} tx={makeTx({ counterparty_name: 'AGENCIA TRIBUTARIA' })} />)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('shows target category in the header', () => {
     render(<CreateRuleModal {...defaultProps} />)
     expect(screen.getByText(/Combustible/)).toBeInTheDocument()

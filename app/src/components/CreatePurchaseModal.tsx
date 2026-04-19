@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as api from "../lib/api";
 import { showToast } from "../lib/toast";
 import { translateError } from "../lib/translateError";
@@ -28,10 +28,27 @@ interface Props {
   onCreated: () => void;
 }
 
+// Audit 2026-04-19: cuando counterparty_name está vacío (común en N43), extraer
+// el nombre del proveedor del primer segmento de la descripción (antes de " | "
+// o " / "). Evita que Ricard tenga que copiar/pegar manualmente para cada compra.
+function suggestSupplier(tx: api.BankTransaction): string {
+  const counterparty = (tx.counterparty_name || "").trim();
+  if (counterparty) return counterparty;
+  const desc = (tx.description || "").trim();
+  if (!desc) return "";
+  return desc.split(/\s*[|/]\s*/)[0]?.trim() || "";
+}
+
 export function CreatePurchaseModal({ tx, companyId, onClose, onCreated }: Props) {
   const [expenseType, setExpenseType] = useState(categoryToExpenseType(tx.category));
-  const [supplierName, setSupplierName] = useState(tx.counterparty_name || "");
+  const [supplierName, setSupplierName] = useState(suggestSupplier(tx));
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

@@ -93,10 +93,17 @@ describe('CreatePurchaseModal', () => {
     })
   })
 
-  it('blocks submit when supplier is empty', async () => {
-    render(<CreatePurchaseModal {...defaultProps} tx={makeTx({ counterparty_name: '' })} />)
+  it('blocks submit when supplier is empty (counterparty + description vacíos)', async () => {
+    render(<CreatePurchaseModal {...defaultProps} tx={makeTx({ counterparty_name: '', description: '' })} />)
     const submit = screen.getByRole('button', { name: /Crear compra/i }) as HTMLButtonElement
     expect(submit.disabled).toBe(true)
+  })
+
+  // Audit 2026-04-19: cuando counterparty está vacío (común en N43), parsear el
+  // primer segmento de la descripción como sugerencia de proveedor.
+  it('falls back to first segment of description when counterparty is empty', () => {
+    render(<CreatePurchaseModal {...defaultProps} tx={makeTx({ counterparty_name: '', description: 'EESS MOLINS DE RE | 09736 / Fecha 07-04' })} />)
+    expect(screen.getByDisplayValue('EESS MOLINS DE RE')).toBeInTheDocument()
   })
 
   it('shows error toast on failure', async () => {
