@@ -35,9 +35,10 @@ Desde feb-2025 cero, desde ago-2025 usa línea de crédito 7550 (solución madur
 Herramienta pendiente: reconciliador automático que busca pares (traspaso, TRF Auto1) con
 fechas ±7 días e importes que cuadran, los marca como MOV_INTERNO, alerta si hay huérfanos.
 
-### 3. Banco Fase 2
-Editor categoría inline existe (commit 68f0b72). Falta: botón "crear regla" y
-`createPurchaseFromTransaction` en UI.
+### ~~3. Banco Fase 2~~ (completado 2026-04-19)
+Editor categoría inline (commit 68f0b72) + `CreatePurchaseModal` y
+`CreateRuleModal`: crear compra desde movimiento con un click, y
+auto-sugerir regla al recategorizar un SIN_CATEGORIZAR manualmente.
 
 ### 4. Banco Fase 3
 Edge function `sync-bank-caixa` con GoCardless. Registro en bankaccountdata.gocardless.com.
