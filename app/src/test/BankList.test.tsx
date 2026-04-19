@@ -9,6 +9,8 @@ vi.mock('../lib/api', () => ({
   updateBankTransactionCategory: vi.fn(),
   suggestPurchasesForTransaction: vi.fn(),
   linkTransactionToPurchase: vi.fn(),
+  createBankCategoryRule: vi.fn(),
+  createPurchaseFromTransaction: vi.fn(),
 }))
 
 const api = await import('../lib/api')
@@ -166,6 +168,71 @@ describe('BankList', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/2 sin categorizar/)).toBeInTheDocument()
+    })
+  })
+
+  it('opens rule modal when user recategorizes an uncategorized transaction', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, category: 'SIN_CATEGORIZAR', counterparty_name: 'CEPSA', description: 'Combustible' }),
+    ])
+    vi.mocked(api.updateBankTransactionCategory).mockResolvedValue(undefined)
+
+    render(<BankList companyId={1} />)
+
+    const catSelect = await screen.findByLabelText(/Categoría para/)
+    fireEvent.change(catSelect, { target: { value: 'COMBUSTIBLE' } })
+
+    await waitFor(() => {
+      expect(api.updateBankTransactionCategory).toHaveBeenCalledWith(1, 'COMBUSTIBLE', true)
+      expect(screen.getByText('Crear regla de categorización')).toBeInTheDocument()
+    })
+  })
+
+  it('does not open rule modal when category is already set', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, category: 'REPARACION' }),
+    ])
+    vi.mocked(api.updateBankTransactionCategory).mockResolvedValue(undefined)
+
+    render(<BankList companyId={1} />)
+
+    const catSelect = await screen.findByLabelText(/Categoría para/)
+    fireEvent.change(catSelect, { target: { value: 'COMBUSTIBLE' } })
+
+    await waitFor(() => {
+      expect(api.updateBankTransactionCategory).toHaveBeenCalled()
+    })
+    expect(screen.queryByText('Crear regla de categorización')).not.toBeInTheDocument()
+  })
+
+  it('shows + Compra button for unlinked expenses', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, amount: -500, linked_purchase_id: null, linked_sale_id: null }),
+    ])
+
+    render(<BankList companyId={1} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Crear compra desde movimiento/ })).toBeInTheDocument()
+    })
+  })
+
+  it('opens create-purchase modal when + Compra is clicked', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, amount: -500, counterparty_name: 'TALLER' }),
+    ])
+
+    render(<BankList companyId={1} />)
+
+    const btn = await screen.findByRole('button', { name: /Crear compra desde movimiento/ })
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      expect(screen.getByText('Crear compra desde movimiento')).toBeInTheDocument()
     })
   })
 })

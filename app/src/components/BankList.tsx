@@ -3,6 +3,8 @@ import * as api from "../lib/api";
 import { showToast } from "../lib/toast";
 import { translateError } from "../lib/translateError";
 import { LinkPurchaseModal } from "./LinkPurchaseModal";
+import { CreatePurchaseModal } from "./CreatePurchaseModal";
+import { CreateRuleModal } from "./CreateRuleModal";
 import { CATEGORY_LABELS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel } from "./bank-utils";
 
 // ============================================================
@@ -34,6 +36,8 @@ export function BankList({ companyId }: Props) {
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [linkingTx, setLinkingTx] = useState<api.BankTransaction | null>(null);
+  const [creatingPurchaseTx, setCreatingPurchaseTx] = useState<api.BankTransaction | null>(null);
+  const [ruleCandidate, setRuleCandidate] = useState<{ tx: api.BankTransaction; category: string } | null>(null);
 
   // Cargar cuentas al montar
   useEffect(() => {
@@ -133,12 +137,17 @@ export function BankList({ companyId }: Props) {
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
 
   async function changeCategory(txId: number, category: string) {
+    const tx = transactions.find((t) => t.id === txId);
+    if (!tx || tx.category === category) return;
+    const previousCategory = tx.category;
     try {
       await api.updateBankTransactionCategory(txId, category, true);
-      // Optimista: actualiza local y recarga
       setTransactions((prev) =>
         prev.map((t) => (t.id === txId ? { ...t, category, reviewed_by_user: true } : t)),
       );
+      if (previousCategory === "SIN_CATEGORIZAR" && category !== "SIN_CATEGORIZAR") {
+        setRuleCandidate({ tx: { ...tx, category }, category });
+      }
     } catch (e) {
       console.error("Error al cambiar categoría:", e);
       showToast(translateError(e), "error");
@@ -186,6 +195,23 @@ export function BankList({ companyId }: Props) {
           companyId={companyId}
           onClose={() => setLinkingTx(null)}
           onLinked={() => void reloadTransactions()}
+        />
+      )}
+      {creatingPurchaseTx && (
+        <CreatePurchaseModal
+          tx={creatingPurchaseTx}
+          companyId={companyId}
+          onClose={() => setCreatingPurchaseTx(null)}
+          onCreated={() => void reloadTransactions()}
+        />
+      )}
+      {ruleCandidate && (
+        <CreateRuleModal
+          tx={ruleCandidate.tx}
+          category={ruleCandidate.category}
+          companyId={companyId}
+          onClose={() => setRuleCandidate(null)}
+          onCreated={() => { /* la regla se aplicará a futuras importaciones */ }}
         />
       )}
 
@@ -511,25 +537,46 @@ export function BankList({ companyId }: Props) {
                                 <span aria-hidden="true">✓ </span>vinculado
                               </span>
                             ) : isExpense ? (
-                              <button
-                                type="button"
-                                onClick={() => setLinkingTx(t)}
-                                aria-label={`Vincular movimiento ${formatEur(v)} a compra`}
-                                className="bank-link-button"
-                                style={{
-                                  padding: "0.2rem 0.5rem",
-                                  fontSize: "var(--text-xs)",
-                                  borderRadius: "var(--radius-sm)",
-                                  border: "1px solid var(--color-primary)",
-                                  background: "var(--color-bg)",
-                                  color: "var(--color-primary)",
-                                  cursor: "pointer",
-                                  fontWeight: 600,
-                                  transition: "background var(--transition-fast), color var(--transition-fast)",
-                                }}
-                              >
-                                Vincular →
-                              </button>
+                              <div style={{ display: "flex", gap: "var(--space-xs)", flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setLinkingTx(t)}
+                                  aria-label={`Vincular movimiento ${formatEur(v)} a compra`}
+                                  className="bank-link-button"
+                                  style={{
+                                    padding: "0.2rem 0.5rem",
+                                    fontSize: "var(--text-xs)",
+                                    borderRadius: "var(--radius-sm)",
+                                    border: "1px solid var(--color-primary)",
+                                    background: "var(--color-bg)",
+                                    color: "var(--color-primary)",
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                    transition: "background var(--transition-fast), color var(--transition-fast)",
+                                  }}
+                                >
+                                  Vincular →
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCreatingPurchaseTx(t)}
+                                  aria-label={`Crear compra desde movimiento ${formatEur(v)}`}
+                                  className="bank-link-button"
+                                  style={{
+                                    padding: "0.2rem 0.5rem",
+                                    fontSize: "var(--text-xs)",
+                                    borderRadius: "var(--radius-sm)",
+                                    border: "1px solid var(--color-border-medium)",
+                                    background: "var(--color-bg)",
+                                    color: "var(--color-text-secondary)",
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                    transition: "background var(--transition-fast), color var(--transition-fast)",
+                                  }}
+                                >
+                                  + Compra
+                                </button>
+                              </div>
                             ) : (
                               <span className="muted" style={{ fontSize: "var(--text-xs)" }}>—</span>
                             )}
