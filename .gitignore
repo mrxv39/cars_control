@@ -93,3 +93,4 @@ MAZDA*/
 docs/maintenance-form-*.html
 docs/ux-audit-*
 .vercel
+supabase/.temp/
