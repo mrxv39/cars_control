@@ -22,15 +22,25 @@ function suggestPattern(tx: api.BankTransaction): string {
   const counterparty = (tx.counterparty_name || "").trim();
   if (counterparty.length >= 3) return counterparty;
 
-  // Audit 2026-04-19: tomar SOLO la primera palabra producía patrones peligrosamente
-  // genéricos (ej: "ricard" para "Ricard Codina fac"). Tomamos hasta 3 palabras
-  // consecutivas para producir patrones más específicos.
-  const desc = (tx.description || "").toLowerCase();
+  // Audit 2026-04-20: el approach anterior filtraba stopwords y las unía con espacio,
+  // lo que producía patrones que NO existen como substring consecutivo en la descripción
+  // real (ej: "EESS MOLINS DE RE | 09736 / Fecha ..." → "eess molins fecha", que no
+  // matchea con ILIKE). El nuevo approach toma el segmento literal inicial cortando
+  // por el primer separador fuerte (pipe, slash, o 3+ dígitos), preservando adyacencia.
+  const desc = (tx.description || "").trim();
+  if (!desc) return "";
+
+  const cutMatch = desc.match(/^(.+?)(?=\s*(?:[|/]|\d{3,}))/);
+  const head = (cutMatch ? cutMatch[1] : desc).trim();
+  if (head.length >= 3) return head;
+
+  // Fallback: primeras 3 palabras significativas (solo si el head sale demasiado corto).
   const words = desc
+    .toLowerCase()
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .filter((w) => w.length >= 3 && !STOP_WORDS.has(w) && !/^\d+$/.test(w));
-  return words.slice(0, 3).join(" ") || counterparty || "";
+  return words.slice(0, 3).join(" ") || "";
 }
 
 // Patrones por debajo de este umbral son demasiado genéricos y pueden recategorizar

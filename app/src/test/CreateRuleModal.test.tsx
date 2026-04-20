@@ -75,6 +75,18 @@ describe('CreateRuleModal', () => {
     expect(input.value.split(/\s+/).filter(Boolean).length).toBeGreaterThan(1)
   })
 
+  // Audit 2026-04-20: el patrón sugerido debe ser una substring literal consecutiva
+  // de la descripción original (para que el ILIKE lo encuentre). El bug reportado:
+  // con "EESS MOLINS DE RE | 09736 / Fecha de operación: 04-0" se proponía
+  // "eess molins fecha", que no existe en el texto y no matchea.
+  it('suggests a literal substring that actually appears in the description', () => {
+    const description = 'EESS MOLINS DE RE | 09736 / Fecha de operación: 04-0'
+    render(<CreateRuleModal {...defaultProps} tx={makeTx({ counterparty_name: '', description })} />)
+    const input = screen.getByPlaceholderText(/AUTO1/) as HTMLInputElement
+    expect(description.toLowerCase()).toContain(input.value.toLowerCase().trim())
+    expect(input.value.toLowerCase()).toContain('eess molins')
+  })
+
   it('warns when pattern is too short and likely too generic', () => {
     render(<CreateRuleModal {...defaultProps} tx={makeTx({ counterparty_name: 'AB', description: '' })} />)
     const input = screen.getByPlaceholderText(/AUTO1/) as HTMLInputElement
