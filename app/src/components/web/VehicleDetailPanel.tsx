@@ -208,8 +208,8 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
             </div>
             <div className="vd-divider" />
             <div className="form-grid-2">
-              <div><label className="field-label">Precio compra</label><input type="number" step="100" min="0" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} placeholder="8500" /></div>
-              <div><label className="field-label">Precio venta</label><input type="number" step="100" min="0" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} placeholder="10500" /></div>
+              <div><label className="field-label">Precio compra</label><input type="number" step="1" min="0" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} placeholder="8500" /></div>
+              <div><label className="field-label">Precio venta</label><input type="number" step="1" min="0" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} placeholder="10500" /></div>
             </div>
             {h.marginWarning && <p className="vd-margin-warning">⚠ {h.marginWarning}</p>}
             {h.error && <p className="error-banner" role="alert">{h.error} <button type="button" onClick={() => h.setError(null)} className="error-banner-close" aria-label="Cerrar error">✕</button></p>}
@@ -316,7 +316,7 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <div>
                 <label className="field-label required">Precio de venta</label>
-                <input type="number" step="100" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="10500" autoFocus required />
+                <input type="number" step="1" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="10500" autoFocus required />
               </div>
               <div>
                 <label className="field-label">Cliente</label>

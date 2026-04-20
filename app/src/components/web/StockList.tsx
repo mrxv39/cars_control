@@ -448,11 +448,11 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
             <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
               <div>
                 <label className="field-label">Precio compra</label>
-                <input type="number" step="100" value={newPrecioCompra} onChange={(e) => setNewPrecioCompra(e.target.value)} placeholder="8000" />
+                <input type="number" step="1" value={newPrecioCompra} onChange={(e) => setNewPrecioCompra(e.target.value)} placeholder="8000" />
               </div>
               <div>
                 <label className="field-label">Precio venta</label>
-                <input type="number" step="100" value={newPrecioVenta} onChange={(e) => setNewPrecioVenta(e.target.value)} placeholder="10500" />
+                <input type="number" step="1" value={newPrecioVenta} onChange={(e) => setNewPrecioVenta(e.target.value)} placeholder="10500" />
               </div>
             </div>
             <div className="form-grid-2" style={{ marginTop: "0.75rem" }}>
