@@ -129,9 +129,10 @@ export async function listVehicleDocuments(vehicleId: number): Promise<VehicleDo
   const docs = data || [];
   if (docs.length === 0) return [];
   const paths = docs.map((d) => d.storage_path).filter(Boolean);
-  const { data: signedList } = await supabase.storage.from("vehicle-docs").createSignedUrls(paths, 3600);
+  const { data: signedList, error: signErr } = await supabase.storage.from("vehicle-docs").createSignedUrls(paths, 3600);
+  if (signErr) console.warn("[listVehicleDocuments] createSignedUrls error:", signErr.message);
   const urlMap = new Map<string, string>();
-  for (const s of signedList || []) { if (s?.path && s?.signedUrl) urlMap.set(s.path, s.signedUrl); }
+  for (const s of signedList || []) { if (s?.path && s?.signedUrl && !s.error) urlMap.set(s.path, s.signedUrl); }
   return docs.map((d) => ({ ...d, url: urlMap.get(d.storage_path) || "" }));
 }
 

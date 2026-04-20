@@ -49,7 +49,11 @@ export function VDVehicleDocs({ docs, vehicleId, onReload }: { docs: api.Vehicle
                 <span style={{ fontWeight: 600 }}>{label}</span>
               </div>
               {doc ? (
-                <a href={doc.url} target="_blank" rel="noopener noreferrer" className="button secondary xs">Ver</a>
+                doc.url ? (
+                  <a href={doc.url} target="_blank" rel="noopener noreferrer" className="button secondary xs">Ver</a>
+                ) : (
+                  <button type="button" className="button secondary xs" disabled title="Archivo no disponible en Storage">No disponible</button>
+                )
               ) : (
                 <button type="button" className="button secondary xs" disabled={uploading} onClick={() => triggerUpload(key)}>
                   {uploading && uploadType === key ? "..." : "Adjuntar"}
