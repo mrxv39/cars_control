@@ -27,7 +27,7 @@ Dos proyectos Vercel, mismo build, comportamiento distinto por hostname:
 ## Estructura principal
 
 ```
-app/src/components/   — Vistas React (StockView, LeadsView, SalesRecordsView, ClientsView, etc.)
+app/                  — Frontend React (Tauri + web). Tabla de archivos grandes en app/CLAUDE.md
 app/src-tauri/        — Backend Rust (db.rs, main.rs)
 docs/                 — Guías HTML para Ricard y documentación de flujos
 scripts/              — Scripts Python (OCR, import banco, import stock). Detalle en scripts/CLAUDE.md
@@ -92,32 +92,12 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - Foto principal = frontal-lateral 3/4. Campo `vehicle_photos.is_primary`.
 - Heurística auto: `1.jpg` / `1.jpeg` se marca como principal al importar.
 
-## Archivos grandes (referencia para agentes)
-
-| Archivo | Líneas | Notas |
-|---------|--------|-------|
-| `app/src/WebApp.tsx` | ~375 | Shell web — routing, sidebar (login/búsqueda extraídos) |
-| `app/src/components/web/LoginForm.tsx` | ~199 | Login, OAuth Google, recuperar contraseña |
-| `app/src/components/web/GlobalSearchResults.tsx` | ~70 | Dropdown búsqueda global con filtros memoizados |
-| `app/src/lib/api.ts` | ~115 | Fachada — re-exports de api-types, api-vehicles, api-bank, api-records |
-| `app/src/lib/api-vehicles.ts` | ~286 | Vehículos, fotos, docs, inspecciones, import coches.net |
-| `app/src/lib/translateError.ts` | ~11 | Traducción errores Supabase/red a mensajes usuario |
-| `app/src/lib/toast.ts` | ~16 | Pub/sub toasts globales — import showToast() desde cualquier componente |
-| `app/src/components/web/VehicleDetailPanel.tsx` | ~420 | Ficha vehículo: detalle, fotos, gastos, leads |
-| `app/src/components/web/vehicle-detail/*.tsx` | ~175 | VDFactura, VDLeads, VDVehicleDocs, VDPurchaseInfo (subsecciones) |
-| `app/src/components/web/StockList.tsx` | ~560 | Listado stock admin con filtros e import coches.net |
-| `app/src/components/BankList.tsx` | ~549 | Listado banco con categorización |
-| `app/src/components/web/RecordLists.tsx` | ~488 | Clientes, ventas, compras, proveedores (con búsqueda y paginación) |
-| `app/src/components/web/PublicCatalog.tsx` | ~369 | Catálogo público, galería, contacto |
-| `app/src/components/web/RevisionSheet.tsx` | ~333 | Hoja revisión vehículo + historial |
-| `app/src/components/web/ProfileCompanyViews.tsx` | ~233 | Perfil usuario y datos empresa |
-
 ## Pendiente
 
 - Template factura REBU/IVA (datos fiscales Ricard en tabla `companies`)
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
 - Descargar fotos coches.net a Storage propio
-- Banco: reconciliador MOV_INTERNO, Fase 2/3 (ver `supabase/CLAUDE.md`)
+- Banco Fase 3: GoCardless `sync-bank-caixa` (ver `supabase/CLAUDE.md`). MOV_INTERNO hecho 2026-04-21 (96 pares)
 - Sync-leads: migrar a pg_cron, bloqueado por OAuth2 Gmail de Ricard (ver `supabase/CLAUDE.md`)
 
 ## Sesiones de validación
