@@ -32,6 +32,7 @@
  */
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { parseListing, parseDetail } from "./parser.ts";
 
 const ALLOWED_ORIGINS = [
@@ -91,10 +92,29 @@ serve(async (req) => {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   }
 
-  // Auth: require valid Supabase JWT or service role key
-  const authHeader = req.headers.get("authorization") ?? req.headers.get("apikey") ?? "";
-  if (!authHeader) {
-    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+  // Auth manual: el proyecto emite JWT con ES256 que el verify_jwt nativo del
+  // edge runtime no soporta (UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM). Deployamos
+  // con verify_jwt=false y validamos aquí llamando al Auth API con el token del
+  // usuario — si no es válido, rechazamos con 401.
+  const authHeader = req.headers.get("authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized: missing bearer token" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return new Response(JSON.stringify({ ok: false, error: "Server misconfigured: supabase env missing" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: userData, error: authErr } = await supabaseClient.auth.getUser();
+  if (authErr || !userData?.user) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized: invalid token" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -154,8 +174,9 @@ serve(async (req) => {
     );
   } catch (err) {
     console.error("Function error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
     return new Response(
-      JSON.stringify({ ok: false, error: "Error interno del servidor" }),
+      JSON.stringify({ ok: false, error: msg || "Error interno del servidor" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
