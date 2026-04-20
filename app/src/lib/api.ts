@@ -37,6 +37,7 @@ export {
   updateBankTransactionCategory, linkTransactionToPurchase, linkTransactionToSale,
   listBankCategoryRules, createBankCategoryRule, suggestPurchasesForTransaction,
   listPurchaseIdsWithBankLink, createPurchaseFromTransaction,
+  countUncategorizedMatching, applyCategoryToUncategorizedMatching,
 } from "./api-bank";
 
 // ── Tauri detection ──

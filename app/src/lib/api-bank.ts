@@ -67,6 +67,57 @@ export async function createBankCategoryRule(
   return data.id;
 }
 
+// ilike usa % y _ como comodines. Escapar para que un patrón literal no dispare
+// coincidencias accidentales. Los paréntesis/comas no hace falta porque no usamos
+// .or() aquí — solo un filtro ilike sobre description.
+function escapeIlike(pattern: string): string {
+  return pattern.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
+async function accountIdsForCompany(companyId: number): Promise<number[]> {
+  const { data, error } = await supabase.from("bank_accounts").select("id").eq("company_id", companyId);
+  throwIfError(error);
+  return (data || []).map((a) => a.id);
+}
+
+export async function countUncategorizedMatching(companyId: number, pattern: string): Promise<number> {
+  const cleanPattern = pattern.trim();
+  if (cleanPattern.length < 3) return 0;
+  const accountIds = await accountIdsForCompany(companyId);
+  if (accountIds.length === 0) return 0;
+  const { count, error } = await supabase
+    .from("bank_transactions")
+    .select("id", { count: "exact", head: true })
+    .in("bank_account_id", accountIds)
+    .eq("category", "SIN_CATEGORIZAR")
+    .ilike("description", `%${escapeIlike(cleanPattern)}%`);
+  throwIfError(error);
+  return count ?? 0;
+}
+
+// Recategoriza en bulk los SIN_CATEGORIZAR cuyo description coincida con el patrón.
+// 🔴 Seguridad: solo toca filas SIN_CATEGORIZAR — nunca pisa categorías ya asignadas
+// manualmente. Scope limitado a cuentas de la misma company (RLS lo refuerza).
+export async function applyCategoryToUncategorizedMatching(
+  companyId: number,
+  pattern: string,
+  category: string,
+): Promise<number> {
+  const cleanPattern = pattern.trim();
+  if (!cleanPattern) return 0;
+  const accountIds = await accountIdsForCompany(companyId);
+  if (accountIds.length === 0) return 0;
+  const { data, error } = await supabase
+    .from("bank_transactions")
+    .update({ category, reviewed_by_user: true })
+    .in("bank_account_id", accountIds)
+    .eq("category", "SIN_CATEGORIZAR")
+    .ilike("description", `%${escapeIlike(cleanPattern)}%`)
+    .select("id");
+  throwIfError(error);
+  return (data || []).length;
+}
+
 export async function suggestPurchasesForTransaction(companyId: number, amount: number, bookingDate: string): Promise<PurchaseRecord[]> {
   const target = Math.abs(amount);
   const lo = target - 5;

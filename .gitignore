@@ -92,3 +92,4 @@ MAZDA*/
 # Formularios de mantenimiento generados
 docs/maintenance-form-*.html
 docs/ux-audit-*
+.vercel

@@ -5,6 +5,8 @@ import type { BankTransaction } from '../lib/api'
 
 vi.mock('../lib/api', () => ({
   createBankCategoryRule: vi.fn(),
+  countUncategorizedMatching: vi.fn(),
+  applyCategoryToUncategorizedMatching: vi.fn(),
 }))
 
 vi.mock('../lib/toast', () => ({
@@ -39,6 +41,8 @@ function makeTx(overrides: Partial<BankTransaction> = {}): BankTransaction {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(api.countUncategorizedMatching).mockResolvedValue(0)
+  vi.mocked(api.applyCategoryToUncategorizedMatching).mockResolvedValue(0)
 })
 
 describe('CreateRuleModal', () => {
@@ -124,5 +128,62 @@ describe('CreateRuleModal', () => {
     render(<CreateRuleModal {...defaultProps} />)
     fireEvent.click(screen.getByLabelText('Cerrar diálogo'))
     expect(defaultProps.onClose).toHaveBeenCalled()
+  })
+
+  // Audit 2026-04-20 (propuesta Ricard): al crear una regla, los SIN_CATEGORIZAR que
+  // coinciden hoy también deben categorizarse — no solo los futuros imports. Evita
+  // que el usuario tenga que tocar uno a uno los 3-4 "EESS MOLINS" ya importados.
+  it('previews matching uncategorized transactions and applies retroactively on submit', async () => {
+    vi.mocked(api.countUncategorizedMatching).mockResolvedValue(3)
+    vi.mocked(api.applyCategoryToUncategorizedMatching).mockResolvedValue(3)
+    vi.mocked(api.createBankCategoryRule).mockResolvedValue(7)
+
+    render(<CreateRuleModal {...defaultProps} />)
+
+    await waitFor(() => {
+      expect(api.countUncategorizedMatching).toHaveBeenCalledWith(1, 'CEPSA')
+    })
+    expect(await screen.findByText(/3 movimientos sin categorizar/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear regla/i }))
+
+    await waitFor(() => {
+      expect(api.createBankCategoryRule).toHaveBeenCalled()
+      expect(api.applyCategoryToUncategorizedMatching).toHaveBeenCalledWith(1, 'CEPSA', 'COMBUSTIBLE')
+      expect(defaultProps.onCreated).toHaveBeenCalled()
+    })
+  })
+
+  it('skips retroactive apply when user unchecks the box', async () => {
+    vi.mocked(api.countUncategorizedMatching).mockResolvedValue(2)
+    vi.mocked(api.createBankCategoryRule).mockResolvedValue(9)
+
+    render(<CreateRuleModal {...defaultProps} />)
+    await screen.findByText(/2 movimientos sin categorizar/)
+
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: /Crear regla/i }))
+
+    await waitFor(() => {
+      expect(api.createBankCategoryRule).toHaveBeenCalled()
+    })
+    expect(api.applyCategoryToUncategorizedMatching).not.toHaveBeenCalled()
+  })
+
+  it('does not call apply when no uncategorized matches exist', async () => {
+    vi.mocked(api.countUncategorizedMatching).mockResolvedValue(0)
+    vi.mocked(api.createBankCategoryRule).mockResolvedValue(10)
+
+    render(<CreateRuleModal {...defaultProps} />)
+    await waitFor(() => {
+      expect(api.countUncategorizedMatching).toHaveBeenCalled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear regla/i }))
+
+    await waitFor(() => {
+      expect(api.createBankCategoryRule).toHaveBeenCalled()
+    })
+    expect(api.applyCategoryToUncategorizedMatching).not.toHaveBeenCalled()
   })
 })

@@ -43,12 +43,43 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
   const [pattern, setPattern] = useState(initialPattern);
   const [priority, setPriority] = useState(100);
   const [submitting, setSubmitting] = useState(false);
+  // Preview retroactivo: cuántos SIN_CATEGORIZAR coinciden con el patrón actual.
+  // null = aún no calculado (o patrón inválido). Debounced para no disparar queries
+  // en cada tecla.
+  const [matchCount, setMatchCount] = useState<number | null>(null);
+  const [countLoading, setCountLoading] = useState(false);
+  const [applyRetro, setApplyRetro] = useState(true);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useEffect(() => {
+    const clean = pattern.trim();
+    if (clean.length < 3) {
+      setMatchCount(null);
+      setCountLoading(false);
+      return;
+    }
+    setCountLoading(true);
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      try {
+        const n = await api.countUncategorizedMatching(companyId, clean);
+        if (!cancelled) setMatchCount(n);
+      } catch {
+        if (!cancelled) setMatchCount(null);
+      } finally {
+        if (!cancelled) setCountLoading(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [pattern, companyId]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,7 +90,15 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
     setSubmitting(true);
     try {
       await api.createBankCategoryRule(companyId, pattern, category, null, priority);
-      showToast(`Regla creada: movimientos con "${pattern.trim()}" serán "${categoryLabel(category)}"`, "success");
+      let retroCount = 0;
+      if (applyRetro && matchCount && matchCount > 0) {
+        retroCount = await api.applyCategoryToUncategorizedMatching(companyId, pattern, category);
+      }
+      const catLabel = categoryLabel(category);
+      const msg = retroCount > 0
+        ? `Regla creada · ${retroCount} movimiento${retroCount !== 1 ? "s" : ""} categorizado${retroCount !== 1 ? "s" : ""} como "${catLabel}"`
+        : `Regla creada: movimientos con "${pattern.trim()}" serán "${catLabel}"`;
+      showToast(msg, "success");
       onCreated();
       onClose();
     } catch (e) {
@@ -146,6 +185,43 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
               </span>
             )}
           </label>
+
+          {pattern.trim().length >= 3 && (
+            <div
+              style={{
+                background: matchCount && matchCount > 0 ? "#ecfdf5" : "#f1f5f9",
+                border: matchCount && matchCount > 0 ? "1px solid #6ee7b7" : "1px solid #e2e8f0",
+                padding: "0.6rem 0.75rem",
+                borderRadius: 8,
+                fontSize: "0.85rem",
+                color: "#334155",
+              }}
+            >
+              {countLoading || matchCount === null ? (
+                <span style={{ color: "#64748b" }}>Buscando coincidencias…</span>
+              ) : matchCount === 0 ? (
+                <span>Ningún movimiento existente coincide con este patrón.</span>
+              ) : (
+                <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={applyRetro}
+                    onChange={(e) => setApplyRetro(e.target.checked)}
+                    disabled={submitting}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    Aplicar también a <b>{matchCount} movimiento{matchCount !== 1 ? "s" : ""} sin categorizar</b>
+                    {" "}que ya coinciden.
+                    <br />
+                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                      Solo se tocan los "Sin categorizar". Los ya categorizados manualmente no se modifican.
+                    </span>
+                  </span>
+                </label>
+              )}
+            </div>
+          )}
 
           <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.9rem" }}>
             <span style={{ fontWeight: 600 }}>Prioridad</span>

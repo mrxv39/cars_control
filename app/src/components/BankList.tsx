@@ -211,7 +211,7 @@ export function BankList({ companyId }: Props) {
           category={ruleCandidate.category}
           companyId={companyId}
           onClose={() => setRuleCandidate(null)}
-          onCreated={() => { /* la regla se aplicará a futuras importaciones */ }}
+          onCreated={() => void reloadTransactions()}
         />
       )}
 
