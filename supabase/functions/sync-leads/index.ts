@@ -141,13 +141,14 @@ async function markAsRead(token: string, messageId: string): Promise<void> {
 // ── Email parsing helpers ──────────────────────────────────────────
 
 function base64UrlDecode(data: string): string {
+  // Gmail API entrega el body como base64url UTF-8. `atob` devuelve una cadena
+  // donde cada byte está en un code point (Latin-1 efectivo), rompiendo acentos
+  // y el símbolo € (E2 82 AC). Hay que decodificar como UTF-8 explícitamente.
   const base64 = data.replace(/-/g, "+").replace(/_/g, "/");
-  try {
-    return atob(base64);
-  } catch {
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    return new TextDecoder("utf-8").decode(bytes);
-  }
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder("utf-8").decode(bytes);
 }
 
 function getHeader(msg: GmailMessage, name: string): string {
@@ -351,6 +352,22 @@ interface ParsedLead {
   notes: string;
   canal: string;
   reply_to_email: string;
+  message: string;
+}
+
+// Extrae el mensaje real del lead del JSON que coches.net embebe en el email.
+// El payload tiene la forma: ..."inquiry":"<mensaje>"...
+// Si no hay inquiry, devuelve "" (el caller usará un fallback más corto).
+function extractInquiry(body: string): string {
+  const m = body.match(/"inquiry"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (!m) return "";
+  return m[1]
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "")
+    .replace(/\\t/g, " ")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, "\\")
+    .trim();
 }
 
 function parseCochesNetLead(subject: string, body: string, fromHeader = ""): ParsedLead {
@@ -362,6 +379,7 @@ function parseCochesNetLead(subject: string, body: string, fromHeader = ""): Par
     notes: "",
     canal: "coches.net",
     reply_to_email: "",
+    message: "",
   };
 
   // Extraer reply_to_email del header From. Patrón típico:
@@ -462,6 +480,11 @@ function parseCochesNetLead(subject: string, body: string, fromHeader = ""): Par
   // Build notes
   lead.notes = `[coches.net] ${subject}\n\nResponder en coches.net para mantener puntuacion.\n\n---\n${body.slice(0, 500)}`;
 
+  // Extraer el mensaje real del lead del JSON embebido. Si no hay inquiry,
+  // `lead.message` queda vacío y NO se inserta mensaje — Ricard solo quiere
+  // ver el mensaje original del lead, no notificaciones de "hay un interesado".
+  lead.message = extractInquiry(body);
+
   return lead;
 }
 
@@ -543,7 +566,23 @@ serve(async (req) => {
     const logs: string[] = [];
     logs.push(`MODE: ${isBackfill ? `backfill ${backfillDays}d` : "live"} | ${messageIds.length} emails`);
 
+    // Pre-cargar gmail_message_ids ya procesados para evitar reprocesamiento
+    // cuando el cron re-ejecuta cada 5 min y encuentra los mismos emails.
+    // Un email ya tiene lead_messages → saltar sin tocar nada más (ya enriqueció
+    // la primera vez; re-enriquecer solo pisaría fecha_contacto con la hora actual).
+    const { data: processedRows } = await sb
+      .from("lead_messages")
+      .select("gmail_message_id")
+      .in("gmail_message_id", messageIds);
+    const processedIds = new Set(
+      (processedRows ?? []).map((r: { gmail_message_id: string }) => r.gmail_message_id)
+    );
+
     for (const msgId of messageIds) {
+      if (processedIds.has(msgId)) {
+        logs.push(`Email ${msgId}: SKIP (already processed)`);
+        continue;
+      }
       const msg = await fetchMessage(token, msgId);
       const subject = getHeader(msg, "Subject");
       const from = getHeader(msg, "From");
@@ -647,11 +686,10 @@ serve(async (req) => {
           const existingLeadId = existingLead.id as number;
           logs.push(`  MATCH: existing lead id=${existingLeadId} — appending message + enrich`);
 
-          const msgContent = lead.notes.split("\n\n---\n")[0].replace("[coches.net] ", "");
           const n = await insertMessages(sb, existingLeadId, [{
             sender: "lead",
             sender_name: lead.name,
-            content: msgContent,
+            content: lead.message,
             timestamp: new Date().toISOString(),
           }], msgId);
           messagesInserted += n;
@@ -759,11 +797,11 @@ serve(async (req) => {
 
         // Insert first message into lead_messages
         const newLeadId = insertedData?.[0]?.id;
-        if (newLeadId && lead.notes) {
+        if (newLeadId && lead.message) {
           const n = await insertMessages(sb, newLeadId, [{
             sender: "lead",
             sender_name: lead.name,
-            content: lead.notes.split("\n\n---\n")[0].replace("[coches.net] ", ""),
+            content: lead.message,
             timestamp: new Date().toISOString(),
           }], msgId);
           messagesInserted += n;

@@ -9,6 +9,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import EmptyState from "./EmptyState";
 import Spinner from "./Spinner";
 import { PaginationControls } from "./PaginationControls";
+import { cleanLeadMessage } from "../../lib/leadMessageClean";
 
 function formatDateCompact(ts: string | null | undefined): string {
   if (!ts) return "";
@@ -70,7 +71,7 @@ function InboxChat({ leadId, leadNotes }: { leadId: number; leadNotes?: string }
         <div className="leads-inbox-chat" ref={scrollRef}>
           <div className="chat-bubble lead">
             <div className="chat-sender">Mensaje original</div>
-            <div>{leadNotes}</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{cleanLeadMessage(leadNotes)}</div>
           </div>
         </div>
       );
@@ -85,7 +86,7 @@ function InboxChat({ leadId, leadNotes }: { leadId: number; leadNotes?: string }
           <p className="leads-inbox-day-label">{g.label}</p>
           {g.items.map((msg) => (
             <div key={msg.id} className={`chat-bubble ${msg.sender}`}>
-              <div>{msg.content}</div>
+              <div style={{ whiteSpace: "pre-wrap" }}>{cleanLeadMessage(msg.content)}</div>
               <div className="chat-time">{formatTime(msg.timestamp)}</div>
             </div>
           ))}

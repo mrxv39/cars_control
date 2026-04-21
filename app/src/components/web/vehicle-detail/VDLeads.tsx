@@ -4,6 +4,7 @@ import EmptyState from "../EmptyState";
 import Spinner from "../Spinner";
 import { showToast } from "../../../lib/toast";
 import { translateError } from "../../../lib/translateError";
+import { cleanLeadMessage } from "../../../lib/leadMessageClean";
 
 type Tab = "mensajes" | "llamadas";
 
@@ -67,7 +68,7 @@ function VDChat({ leadId, leadNotes }: { leadId: number; leadNotes?: string }) {
         <div className="leads-inbox-chat" ref={scrollRef}>
           <div className="chat-bubble lead">
             <div className="chat-sender">Mensaje original</div>
-            <div>{leadNotes}</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{cleanLeadMessage(leadNotes)}</div>
           </div>
         </div>
       );
@@ -82,7 +83,7 @@ function VDChat({ leadId, leadNotes }: { leadId: number; leadNotes?: string }) {
           <p className="leads-inbox-day-label">{g.label}</p>
           {g.items.map((msg) => (
             <div key={msg.id} className={`chat-bubble ${msg.sender}`}>
-              <div>{msg.content}</div>
+              <div style={{ whiteSpace: "pre-wrap" }}>{cleanLeadMessage(msg.content)}</div>
               <div className="chat-time">{formatTime(msg.timestamp)}</div>
             </div>
           ))}
