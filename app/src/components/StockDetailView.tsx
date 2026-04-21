@@ -186,11 +186,11 @@ export function StockDetailView({ vehicle, thumbnail: _thumbnail, submitting, on
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div>
                 <label className="field-label" htmlFor="detail-precio-compra">Precio compra</label>
-                <input id="detail-precio-compra" type="number" step="100" value={form.precio_compra || ""} onChange={(e) => setForm({ ...form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} placeholder="8500" />
+                <input id="detail-precio-compra" type="number" step="1" value={form.precio_compra || ""} onChange={(e) => setForm({ ...form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} placeholder="8500" />
               </div>
               <div>
                 <label className="field-label" htmlFor="detail-precio-venta">Precio venta</label>
-                <input id="detail-precio-venta" type="number" step="100" value={form.precio_venta || ""} onChange={(e) => setForm({ ...form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} placeholder="10500" />
+                <input id="detail-precio-venta" type="number" step="1" value={form.precio_venta || ""} onChange={(e) => setForm({ ...form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} placeholder="10500" />
               </div>
             </div>
             <div>

@@ -98,7 +98,7 @@ export function StockModal({
             <div>
               <label className="field-label" htmlFor="vehicle-precio-compra">Precio compra</label>
               <input
-                id="vehicle-precio-compra" type="number" step="100"
+                id="vehicle-precio-compra" type="number" step="1"
                 value={stockVehicleForm.precio_compra || ""}
                 onChange={(e) => setStockVehicleForm({ ...stockVehicleForm, precio_compra: e.currentTarget.value ? parseFloat(e.currentTarget.value) : null })}
                 placeholder="8500" min="0"
@@ -107,7 +107,7 @@ export function StockModal({
             <div>
               <label className="field-label" htmlFor="vehicle-precio-venta">Precio venta</label>
               <input
-                id="vehicle-precio-venta" type="number" step="100"
+                id="vehicle-precio-venta" type="number" step="1"
                 value={stockVehicleForm.precio_venta || ""}
                 onChange={(e) => setStockVehicleForm({ ...stockVehicleForm, precio_venta: e.currentTarget.value ? parseFloat(e.currentTarget.value) : null })}
                 placeholder="10500" min="0"
