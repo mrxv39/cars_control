@@ -382,12 +382,28 @@ function parseCochesNetLead(subject: string, body: string, fromHeader = ""): Par
   const isImageAltText = (s: string) =>
     /^(Icon|Logo|Picto|Img|Pic|Btn|Btnbook)([\s\-_]|$)/i.test(s);
 
-  // Extract name
+  // Palabras que nunca forman parte de un nombre real — si aparecen en la captura es
+  // que el regex se ha extendido a trozos de plantilla ("Responde desde la herramienta...").
+  const NAME_STOPWORDS = [
+    "desde", "responde", "contesta", "herramienta", "profesional",
+    "anuncio", "mensaje", "enviar", "gracias", "saludos", "hola",
+    "responder", "contactar", "contestar", "email",
+  ];
+  const sanitizeName = (raw: string): string => {
+    const cleaned = raw.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+    if (cleaned.length === 0 || cleaned.length > 60) return "";
+    const lower = cleaned.toLowerCase();
+    if (NAME_STOPWORDS.some((w) => lower.includes(w))) return "";
+    return cleaned;
+  };
+
+  // Extract name. Keywords case-insensitive; captura exige mayúscula inicial
+  // para evitar absorber plantilla en minúsculas.
   const nameMatch = body.match(
-    /(?:nombre|name|de parte de|contacto)\s*:?\s*([A-Z][a-záéíóúñ]+(?:\s+[A-Z][a-záéíóúñ]+)*)/i
+    /(?:[Nn]ombre|[Nn]ame|[Dd]e parte de|[Cc]ontacto)\s*:?\s*([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/
   );
   if (nameMatch) {
-    lead.name = nameMatch[1].trim();
+    lead.name = sanitizeName(nameMatch[1]);
   }
   if (lead.name && isImageAltText(lead.name)) {
     lead.name = "";
@@ -414,10 +430,11 @@ function parseCochesNetLead(subject: string, body: string, fromHeader = ""): Par
 
   // Fallback name from email
   if (!lead.name && lead.email_contact) {
-    lead.name = lead.email_contact
+    const fallback = lead.email_contact
       .split("@")[0]
       .replace(/\./g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase());
+    lead.name = sanitizeName(fallback);
     if (isImageAltText(lead.name)) {
       lead.name = "";
     }
@@ -470,12 +487,13 @@ serve(async (req) => {
   const maxResultsParam = Math.max(0, parseInt(url.searchParams.get("max") ?? "0", 10) || 0);
   const pageTokenParam = url.searchParams.get("page_token") ?? undefined;
   const isBackfill = backfillDays > 0;
-  const maybeMarkRead = async (msgId: string) => {
-    if (!isBackfill) await markAsRead(token, msgId);
-  };
 
   try {
     const token = await getAccessToken();
+    const maybeMarkRead = async (msgId: string) => {
+      if (!isBackfill) await markAsRead(token, msgId);
+    };
+
     const { ids: messageIds, nextPageToken } = await searchLeadEmails(token, {
       backfillDays: isBackfill ? backfillDays : undefined,
       maxResults: maxResultsParam || undefined,

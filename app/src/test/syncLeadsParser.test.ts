@@ -55,8 +55,20 @@ function parseCochesNetLead(subject: string, body: string): ParsedLead {
   if (vehicleMatch) lead.vehicle_interest = vehicleMatch[1].trim();
   const isImageAltText = (s: string) =>
     /^(Icon|Logo|Picto|Img|Pic|Btn|Btnbook)([\s\-_]|$)/i.test(s);
-  const nameMatch = body.match(/(?:nombre|name|de parte de|contacto)\s*:?\s*([A-Z][a-záéíóúñ]+(?:\s+[A-Z][a-záéíóúñ]+)*)/i);
-  if (nameMatch) lead.name = nameMatch[1].trim();
+  const NAME_STOPWORDS = [
+    "desde", "responde", "contesta", "herramienta", "profesional",
+    "anuncio", "mensaje", "enviar", "gracias", "saludos", "hola",
+    "responder", "contactar", "contestar", "email",
+  ];
+  const sanitizeName = (raw: string): string => {
+    const cleaned = raw.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+    if (cleaned.length === 0 || cleaned.length > 60) return "";
+    const lower = cleaned.toLowerCase();
+    if (NAME_STOPWORDS.some((w) => lower.includes(w))) return "";
+    return cleaned;
+  };
+  const nameMatch = body.match(/(?:[Nn]ombre|[Nn]ame|[Dd]e parte de|[Cc]ontacto)\s*:?\s*([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/);
+  if (nameMatch) lead.name = sanitizeName(nameMatch[1]);
   if (lead.name && isImageAltText(lead.name)) lead.name = "";
   const phones = body.match(/\b(?:\+?34?\s*)?(\d{3}[\s.\-]?\d{3}[\s.\-]?\d{3})\b/);
   if (phones) lead.phone = phones[0].replace(/[\s.\-]/g, "");
@@ -70,7 +82,8 @@ function parseCochesNetLead(subject: string, body: string): ParsedLead {
   });
   if (contactEmails.length > 0) lead.email_contact = contactEmails[0];
   if (!lead.name && lead.email_contact) {
-    lead.name = lead.email_contact.split("@")[0].replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    const fallback = lead.email_contact.split("@")[0].replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    lead.name = sanitizeName(fallback);
     if (isImageAltText(lead.name)) lead.name = "";
   }
   if (!lead.name) {
@@ -263,6 +276,37 @@ describe("parseCochesNetLead", () => {
       const lead = parseCochesNetLead("x", e);
       expect(lead.email_contact).toBe("");
     }
+  });
+
+  it("rejects template fragments as names (lowercase 'desde la herramienta')", () => {
+    const lead = parseCochesNetLead(
+      "Consulta",
+      "Responde a este email o contesta desde la herramienta profesional para mandarle una respuesta"
+    );
+    expect(lead.name).not.toContain("desde");
+    expect(lead.name).not.toContain("herramienta");
+  });
+
+  it("strips CR/LF and collapses whitespace inside captured names", () => {
+    const lead = parseCochesNetLead(
+      "Consulta",
+      "contacto\r\n\r\nAnna Colomer\r\nannacolomer@gmail.com"
+    );
+    expect(lead.name).toBe("Anna Colomer");
+  });
+
+  it("rejects names longer than 60 chars or containing stopwords", () => {
+    const longName = "A".repeat(65);
+    const lead1 = parseCochesNetLead("x", `contacto: ${longName}`);
+    expect(lead1.name).not.toBe(longName);
+
+    const lead2 = parseCochesNetLead(
+      "x",
+      "Nombre: Mensaje Enviado Desde La Herramienta Profesional"
+    );
+    // Should NOT accept this as a name (contains stopwords)
+    expect(lead2.name.toLowerCase()).not.toContain("desde");
+    expect(lead2.name.toLowerCase()).not.toContain("profesional");
   });
 });
 
