@@ -401,13 +401,22 @@ function parseCochesNetLead(subject: string, body: string, fromHeader = ""): Par
     return cleaned;
   };
 
-  // Extract name. Keywords case-insensitive; captura exige mayúscula inicial
-  // para evitar absorber plantilla en minúsculas.
-  const nameMatch = body.match(
-    /(?:[Nn]ombre|[Nn]ame|[Dd]e parte de|[Cc]ontacto)\s*:?\s*([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/
+  // Extract name. Primero patrón específico de coches.net (estructura fija):
+  //   "Tienes un nuevo contacto\ncontacto\n<NAME>\n\n<email> <phone>"
+  // Si no matchea, caer en el patrón genérico por keyword.
+  const cochesNetMatch = body.match(
+    /Tienes un nuevo(?:\s+contacto)+\s+([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/
   );
-  if (nameMatch) {
-    lead.name = sanitizeName(nameMatch[1]);
+  if (cochesNetMatch) {
+    lead.name = sanitizeName(cochesNetMatch[1]);
+  }
+  if (!lead.name) {
+    const nameMatch = body.match(
+      /(?:[Nn]ombre|[Nn]ame|[Dd]e parte de|[Cc]ontacto)\s*:?\s*([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/
+    );
+    if (nameMatch) {
+      lead.name = sanitizeName(nameMatch[1]);
+    }
   }
   if (lead.name && isImageAltText(lead.name)) {
     lead.name = "";

@@ -67,8 +67,12 @@ function parseCochesNetLead(subject: string, body: string): ParsedLead {
     if (NAME_STOPWORDS.some((w) => lower.includes(w))) return "";
     return cleaned;
   };
-  const nameMatch = body.match(/(?:[Nn]ombre|[Nn]ame|[Dd]e parte de|[Cc]ontacto)\s*:?\s*([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/);
-  if (nameMatch) lead.name = sanitizeName(nameMatch[1]);
+  const cochesNetMatch = body.match(/Tienes un nuevo(?:\s+contacto)+\s+([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/);
+  if (cochesNetMatch) lead.name = sanitizeName(cochesNetMatch[1]);
+  if (!lead.name) {
+    const nameMatch = body.match(/(?:[Nn]ombre|[Nn]ame|[Dd]e parte de|[Cc]ontacto)\s*:?\s*([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/);
+    if (nameMatch) lead.name = sanitizeName(nameMatch[1]);
+  }
   if (lead.name && isImageAltText(lead.name)) lead.name = "";
   const phones = body.match(/\b(?:\+?34?\s*)?(\d{3}[\s.\-]?\d{3}[\s.\-]?\d{3})\b/);
   if (phones) lead.phone = phones[0].replace(/[\s.\-]/g, "");
@@ -293,6 +297,18 @@ describe("parseCochesNetLead", () => {
       "contacto\r\n\r\nAnna Colomer\r\nannacolomer@gmail.com"
     );
     expect(lead.name).toBe("Anna Colomer");
+  });
+
+  it("captures name from coches.net-specific structure 'Tienes un nuevo contacto contacto NAME'", () => {
+    const body = "Hola Codina Cars,\n\nTienes un nuevo contacto\ncontacto\nMarco\n\nmareframir@gmail.com 632380599";
+    const lead = parseCochesNetLead("Consulta", body);
+    expect(lead.name).toBe("Marco");
+  });
+
+  it("captures multi-word names from coches.net structure", () => {
+    const body = "Tienes un nuevo contacto\ncontacto\nAnna Achon\n\nanna@gmail.com 600720480";
+    const lead = parseCochesNetLead("x", body);
+    expect(lead.name).toBe("Anna Achon");
   });
 
   it("rejects names longer than 60 chars or containing stopwords", () => {
