@@ -69,11 +69,15 @@ async function searchLeadEmails(token: string, opts: SearchOptions = {}): Promis
 
   // Backfill mode: dominio estricto @contactos.coches.net (solo conversaciones reales
   // con leads, nunca newsletters ni notificaciones de llamada).
+  // Live mode: últimas 24h de coches.net independientemente del estado leído/no leído
+  // — Ricard puede abrir mails en Gmail y el sync no debe perderlos. El dedupe por
+  // phone/email/reply_to_email + el dedupe de lead_messages por (ts, sender, content)
+  // hacen que reprocesar mails antiguos no cree duplicados, solo enriquece.
   const queryParts = isBackfill
     ? [`from:contactos.coches.net`, `newer_than:${backfillDays}d`]
-    : [`is:unread`, `(from:coches.net OR from:adevinta OR from:noreply@coches.net)`];
+    : [`newer_than:1d`, `(from:coches.net OR from:adevinta OR from:noreply@coches.net)`];
 
-  const limit = maxResults ?? (isBackfill ? 100 : 20);
+  const limit = maxResults ?? (isBackfill ? 100 : 50);
   const query = encodeURIComponent(queryParts.join(" "));
   let url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=${limit}`;
   if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
@@ -490,8 +494,13 @@ serve(async (req) => {
 
   try {
     const token = await getAccessToken();
-    const maybeMarkRead = async (msgId: string) => {
-      if (!isBackfill) await markAsRead(token, msgId);
+    // No-op: ya no marcamos como leído ni en live ni en backfill. Ricard gestiona
+    // el estado leído/no leído de su bandeja sin que el sync lo pise. El dedupe
+    // hace que reprocesar emails sea idempotente.
+    // Firma mantenida para no rehacer llamadas; `markAsRead` sigue disponible para
+    // una futura invocación manual si hace falta.
+    const maybeMarkRead = async (_msgId: string) => {
+      // intentionally left blank
     };
 
     const { ids: messageIds, nextPageToken } = await searchLeadEmails(token, {
@@ -609,8 +618,10 @@ serve(async (req) => {
         continue;
       }
 
-      // Dedupe: phone OR email OR reply_to_email. En backfill hay leads con reply_to_email
-      // pero sin phone, así que comprobar solo phone no basta.
+      // Match lead existente por phone OR email OR reply_to_email. Si existe:
+      //  - añadir el body del email como un mensaje nuevo (conversa)
+      //  - enriquecer campos que estaban vacíos (reply_to_email, phone, vehicle_id)
+      //  - NO crear un lead duplicado.
       const orParts: string[] = [];
       if (lead.phone) orParts.push(`phone.eq.${lead.phone}`);
       if (lead.email_contact) orParts.push(`email.eq.${lead.email_contact}`);
@@ -618,11 +629,46 @@ serve(async (req) => {
       if (orParts.length > 0) {
         const { data: existing } = await sb
           .from("leads")
-          .select("id")
+          .select("id, phone, reply_to_email, vehicle_id")
           .eq("company_id", COMPANY_ID)
-          .or(orParts.join(","));
+          .or(orParts.join(","))
+          .limit(1);
         if (existing && existing.length > 0) {
-          logs.push(`  SKIP: lead already exists (id=${existing[0].id})`);
+          const existingLead = existing[0];
+          const existingLeadId = existingLead.id as number;
+          logs.push(`  MATCH: existing lead id=${existingLeadId} — appending message + enrich`);
+
+          const msgContent = lead.notes.split("\n\n---\n")[0].replace("[coches.net] ", "");
+          const n = await insertMessages(sb, existingLeadId, [{
+            sender: "lead",
+            sender_name: lead.name,
+            content: msgContent,
+            timestamp: new Date().toISOString(),
+          }], msgId);
+          messagesInserted += n;
+
+          // Rellenar campos vacíos del lead previo con los datos del email nuevo
+          const patch: Record<string, unknown> = {};
+          if (!existingLead.phone && lead.phone) patch.phone = lead.phone;
+          if (!existingLead.reply_to_email && lead.reply_to_email) patch.reply_to_email = lead.reply_to_email;
+          if (!existingLead.vehicle_id) {
+            // Re-ejecutar match de vehículo (ad ID o fuzzy) para el email nuevo
+            const adIdMatch = (body + " " + subject).match(/coches\.net\/[^\s]*?-?(\d{7,9})/i);
+            if (adIdMatch) {
+              const { data: listings } = await sb
+                .from("vehicle_listings")
+                .select("vehicle_id")
+                .eq("external_source", "coches_net")
+                .ilike("external_url", `%${adIdMatch[1]}%`)
+                .limit(1);
+              if (listings && listings.length > 0) patch.vehicle_id = listings[0].vehicle_id;
+            }
+          }
+          if (Object.keys(patch).length > 0) {
+            await sb.from("leads").update(patch).eq("id", existingLeadId);
+            logs.push(`  ENRICHED lead id=${existingLeadId}: ${Object.keys(patch).join(",")}`);
+          }
+
           await maybeMarkRead(msgId);
           continue;
         }
