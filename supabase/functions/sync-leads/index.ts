@@ -656,8 +656,10 @@ serve(async (req) => {
           }], msgId);
           messagesInserted += n;
 
-          // Rellenar campos vacíos del lead previo con los datos del email nuevo
-          const patch: Record<string, unknown> = {};
+          // Rellenar campos vacíos del lead previo con los datos del email nuevo.
+          // fecha_contacto siempre se actualiza a ahora: representa "última actividad"
+          // para que al llegar un mensaje nuevo el lead suba al top de la bandeja.
+          const patch: Record<string, unknown> = { fecha_contacto: new Date().toISOString() };
           if (!existingLead.phone && lead.phone) patch.phone = lead.phone;
           if (!existingLead.reply_to_email && lead.reply_to_email) patch.reply_to_email = lead.reply_to_email;
           if (!existingLead.vehicle_id) {
@@ -673,10 +675,8 @@ serve(async (req) => {
               if (listings && listings.length > 0) patch.vehicle_id = listings[0].vehicle_id;
             }
           }
-          if (Object.keys(patch).length > 0) {
-            await sb.from("leads").update(patch).eq("id", existingLeadId);
-            logs.push(`  ENRICHED lead id=${existingLeadId}: ${Object.keys(patch).join(",")}`);
-          }
+          await sb.from("leads").update(patch).eq("id", existingLeadId);
+          logs.push(`  ENRICHED lead id=${existingLeadId}: ${Object.keys(patch).join(",")}`);
 
           await maybeMarkRead(msgId);
           continue;

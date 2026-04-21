@@ -9,7 +9,14 @@ function throwIfError(error: { message: string } | null): asserts error is null 
 // ── Leads ──
 
 export async function listLeads(companyId: number): Promise<Lead[]> {
-  const { data, error } = await supabase.from("leads").select("*").eq("company_id", companyId).order("name");
+  // Ordenar por fecha_contacto desc (más nuevos primero); fallback a created_at
+  // para leads legacy sin fecha_contacto. nullsLast evita que null suba al top.
+  const { data, error } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("fecha_contacto", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
   throwIfError(error);
   return data || [];
 }
