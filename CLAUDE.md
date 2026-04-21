@@ -98,7 +98,7 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
 - Descargar fotos coches.net a Storage propio
 - Banco Fase 3: GoCardless `sync-bank-caixa` (ver `supabase/CLAUDE.md`). MOV_INTERNO hecho 2026-04-21 (96 pares)
-- Sync-leads: migrar a pg_cron, bloqueado por OAuth2 Gmail de Ricard (ver `supabase/CLAUDE.md`)
+- Sync-leads: **hecho 2026-04-22**. pg_cron cada 5min, vault auth, live `newer_than:1d` (no marca leído), enrich-on-dedupe. Task Windows `\SyncLeadsCoches` deshabilitada.
 
 ## Sesiones de validación
 
