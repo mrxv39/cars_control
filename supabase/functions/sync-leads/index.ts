@@ -321,9 +321,10 @@ interface ParsedLead {
   vehicle_interest: string;
   notes: string;
   canal: string;
+  reply_to_email: string;
 }
 
-function parseCochesNetLead(subject: string, body: string): ParsedLead {
+function parseCochesNetLead(subject: string, body: string, fromHeader = ""): ParsedLead {
   const lead: ParsedLead = {
     name: "",
     phone: "",
@@ -331,7 +332,17 @@ function parseCochesNetLead(subject: string, body: string): ParsedLead {
     vehicle_interest: "",
     notes: "",
     canal: "coches.net",
+    reply_to_email: "",
   };
+
+  // Extraer reply_to_email del header From. Patrón típico:
+  //   "Jan <acacefea-97e5-4263-b56c-5954116bf0ff@contactos.coches.net>"
+  // Contestar a ese UUID propaga la respuesta al chat de coches.net.
+  const replyToMatch = fromHeader.match(/<([^>]+@contactos?\.coches\.net)>/i)
+    ?? fromHeader.match(/([\w\-.]+@contactos?\.coches\.net)/i);
+  if (replyToMatch) {
+    lead.reply_to_email = replyToMatch[1].trim();
+  }
 
   // Extract vehicle from subject
   const vehicleMatch = subject.match(
@@ -467,7 +478,7 @@ serve(async (req) => {
 
       // Type 1: New lead
       logs.push("  TYPE: new lead");
-      const lead = parseCochesNetLead(subject, body);
+      const lead = parseCochesNetLead(subject, body, from);
       logs.push(`  Lead: ${redactName(lead.name)} | ${redactPhone(lead.phone)} | ${lead.vehicle_interest}`);
 
       // Check if lead already exists by phone
@@ -544,6 +555,9 @@ serve(async (req) => {
         canal: "coches.net",
         fecha_contacto: new Date().toISOString(),
       };
+      if (lead.reply_to_email) {
+        leadData.reply_to_email = lead.reply_to_email;
+      }
       if (vehicle_id) {
         leadData.vehicle_id = vehicle_id;
       }

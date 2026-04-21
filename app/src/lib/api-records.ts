@@ -58,6 +58,80 @@ export async function listLeadMessages(leadId: number): Promise<LeadMessage[]> {
   return data ?? [];
 }
 
+export interface SuggestReplyResult {
+  ok: boolean;
+  reply: string;
+  language?: "es" | "ca";
+  error?: string;
+  took_ms?: number;
+}
+
+export interface SendReplyResult {
+  ok: boolean;
+  gmail_message_id?: string;
+  lead_message_id?: number;
+  error?: string;
+  canSend?: boolean;
+}
+
+export async function sendLeadReply(leadId: number, text: string): Promise<SendReplyResult> {
+  const secret = import.meta.env.VITE_SUGGEST_REPLY_SECRET as string | undefined;
+  if (!secret) {
+    return { ok: false, error: "VITE_SUGGEST_REPLY_SECRET no configurado", canSend: false };
+  }
+  const { data, error } = await supabase.functions.invoke("send-lead-reply", {
+    body: { leadId, text },
+    headers: { "x-app-secret": secret },
+  });
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  const payload = (data ?? {}) as {
+    ok?: boolean; gmail_message_id?: string; lead_message_id?: number;
+    error?: string; can_send?: boolean; warning?: string;
+  };
+  if (payload.ok) {
+    return {
+      ok: true,
+      gmail_message_id: payload.gmail_message_id,
+      lead_message_id: payload.lead_message_id,
+    };
+  }
+  return {
+    ok: false,
+    error: payload.error ?? "No se pudo enviar",
+    canSend: payload.can_send ?? false,
+  };
+}
+
+export async function suggestLeadReply(leadId: number): Promise<SuggestReplyResult> {
+  const secret = import.meta.env.VITE_SUGGEST_REPLY_SECRET as string | undefined;
+  if (!secret) {
+    return { ok: false, reply: "", error: "VITE_SUGGEST_REPLY_SECRET no configurado" };
+  }
+  const { data, error } = await supabase.functions.invoke("suggest-reply", {
+    body: { leadId },
+    headers: { "x-app-secret": secret },
+  });
+  if (error) {
+    return { ok: false, reply: "", error: error.message };
+  }
+  const payload = (data ?? {}) as {
+    ok?: boolean; reply?: string; language?: "es" | "ca";
+    error?: string; fallback?: string; took_ms?: number;
+  };
+  if (payload.ok && payload.reply) {
+    return { ok: true, reply: payload.reply, language: payload.language, took_ms: payload.took_ms };
+  }
+  return {
+    ok: false,
+    reply: payload.fallback ?? "",
+    language: payload.language,
+    error: payload.error ?? "No se pudo generar la sugerencia",
+    took_ms: payload.took_ms,
+  };
+}
+
 // ── Clients ──
 
 export async function listClients(companyId: number): Promise<Client[]> {

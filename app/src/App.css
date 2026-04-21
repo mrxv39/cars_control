@@ -2269,6 +2269,289 @@ select:focus-visible {
   font-style: italic;
 }
 
+/* ── Leads Inbox (vista global de interesados, split tipo coches.net) ── */
+.leads-inbox-tabs {
+  display: flex;
+  gap: var(--space-lg);
+  border-bottom: 1px solid var(--color-border-light);
+  margin-bottom: var(--space-md);
+}
+.leads-inbox-tab {
+  background: none;
+  border: none;
+  padding: 0.6rem 0;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.leads-inbox-tab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-primary);
+}
+.leads-inbox-tab.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.leads-inbox-badge {
+  background: #dc2626;
+  color: white;
+  border-radius: 999px;
+  padding: 0 0.45rem;
+  font-size: 0.7rem;
+  min-width: 1.3rem;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+.leads-inbox-badge.muted {
+  background: #9ca3af;
+}
+
+.leads-inbox {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  gap: var(--space-md);
+  min-height: 620px;
+  align-items: stretch;
+}
+@media (max-width: 880px) {
+  .leads-inbox {
+    grid-template-columns: 1fr;
+  }
+}
+
+.leads-inbox-col-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  background: white;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  max-height: 80vh;
+}
+.leads-inbox-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.leads-inbox-search {
+  width: 100%;
+  font-size: 0.88rem;
+  padding: 0.45rem 0.6rem;
+}
+.leads-inbox-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+.leads-inbox-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.6rem 0.65rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s, border-color 0.12s;
+}
+.leads-inbox-item:hover { background: rgba(0,0,0,0.03); }
+.leads-inbox-item.active {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+.leads-inbox-check {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 3px;
+  margin-top: 2px;
+}
+.leads-inbox-item-body { flex: 1; min-width: 0; }
+.leads-inbox-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.leads-inbox-item-name {
+  font-size: 0.92rem;
+  font-weight: var(--font-bold);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+.leads-inbox-item-date {
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.leads-inbox-item-sub {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin: 0.25rem 0 0.35rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.leads-inbox-item-badges {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.leads-inbox-empty {
+  padding: 1rem;
+  text-align: center;
+}
+
+.leads-inbox-col-detail {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-height: 80vh;
+}
+.leads-inbox-empty-detail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 400px;
+  padding: 2rem;
+}
+.leads-inbox-detail-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1.1rem;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-light);
+}
+.leads-inbox-detail-title {
+  font-size: 1.15rem;
+  font-weight: var(--font-bold);
+  margin: 0;
+}
+.leads-inbox-detail-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.leads-inbox-detail-name {
+  font-size: 1.15rem;
+  font-weight: var(--font-bold);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.leads-inbox-detail-meta {
+  display: flex;
+  gap: 0.7rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 0.3rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.leads-inbox-detail-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.leads-inbox-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  background: white;
+  min-height: 240px;
+}
+.leads-inbox-chat.empty {
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 0.88rem;
+}
+.leads-inbox-day-group { display: flex; flex-direction: column; gap: var(--space-xs); }
+.leads-inbox-day-label {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin: 0.35rem 0;
+  font-weight: var(--font-semibold);
+}
+.leads-inbox-suggest-error {
+  padding: 0.5rem 1.25rem;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.78rem;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.leads-inbox-composer {
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-bg-secondary);
+}
+.leads-inbox-composer textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-light);
+}
+.leads-inbox-composer-actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 0.45rem;
+}
+.leads-inbox-edit {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.leads-inbox-notes {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--color-border-light);
+  background: rgba(0,0,0,0.02);
+}
+
 /* ── Dashboard View ── */
 .dashboard-grid {
   display: grid;

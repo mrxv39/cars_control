@@ -25,12 +25,13 @@ export {
 export {
   listLeads, createLead, updateLead, deleteLead,
   listLeadNotes, createLeadNote, deleteLeadNote,
-  listLeadMessages,
+  listLeadMessages, suggestLeadReply, sendLeadReply,
   listClients, createClient, updateClient, deleteClient,
   listSalesRecords, addSalesRecord, deleteSalesRecord,
   listPurchaseRecords, addPurchaseRecord, deletePurchaseRecord,
   listSuppliers, createSupplier, updateSupplier, deleteSupplier,
 } from "./api-records";
+export type { SuggestReplyResult, SendReplyResult } from "./api-records";
 
 export {
   listBankAccounts, listBankTransactions,

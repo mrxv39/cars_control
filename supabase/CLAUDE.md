@@ -43,6 +43,32 @@ auto-sugerir regla al recategorizar un SIN_CATEGORIZAR manualmente.
 ### 4. Banco Fase 3
 Edge function `sync-bank-caixa` con GoCardless. Registro en bankaccountdata.gocardless.com.
 
+## Edge function suggest-reply (autoresponder leads)
+
+Genera un borrador de respuesta para un lead de coches.net usando Claude API (Haiku 4.5).
+Ricard edita y copia a coches.net manualmente — NO se envía nada.
+
+**Archivos:** `supabase/functions/suggest-reply/` → `index.ts` (entry), `handler.ts` (lógica testable),
+`few_shots.ts` (6 pares reales de Ricard, extraídos de `_leads_analysis_2026-04-21/pairs_v2.json`),
+`lang_detect.ts` (regex castellano/catalán), `sanitize.ts` (redacta tel/email excepto 646131565).
+
+**Invocación desde frontend:** `api.suggestLeadReply(leadId)` → `app/src/lib/api-records.ts`.
+Llama con body `{leadId}` y header `x-app-secret` (leído de `import.meta.env.VITE_SUGGEST_REPLY_SECRET`).
+
+**Secretos en Supabase** (`supabase secrets set`):
+- `ANTHROPIC_API_KEY` — clave Claude API de Ricard
+- `SUGGEST_REPLY_SECRET` — random hex (generado con `openssl rand -hex 16`), también en `.env.local` del frontend como `VITE_SUGGEST_REPLY_SECRET`
+
+**Deploy:** `supabase functions deploy suggest-reply --no-verify-jwt` (JWT ES256 custom, ver memoria).
+
+**Output:** `{ok, reply, language, took_ms}` en éxito. En error: `{ok:false, reply:fallback, error, language}`
+— el frontend muestra el fallback siempre para que Ricard no se quede sin nada.
+
+**Datos enviados al LLM:** solo first_name del lead + `name/anio/km/precio/estado/fuel/transmission` del vehículo +
+conversación sanitizada (tel/email redactados). NO se envían apellidos, email ni teléfono del lead.
+
+**Tests:** `deno test supabase/functions/suggest-reply/` (requiere Deno instalado) y `npm test LeadsList` (vitest).
+
 ## Migración cron sync-leads
 
 Estado 2026-04-09:

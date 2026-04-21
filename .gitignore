@@ -94,3 +94,9 @@ docs/maintenance-form-*.html
 docs/ux-audit-*
 .vercel
 supabase/.temp/
+
+# Carpetas de importación masiva de documentos — datos sensibles del cliente
+_import_*/
+
+# Análisis de leads (emails con datos personales RGPD — teléfonos, emails de clientes)
+_leads_*/

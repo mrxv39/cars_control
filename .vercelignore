@@ -33,6 +33,13 @@ __pycache__/
 # Docs legacy
 docs_legacy/
 
+# Imports manuales (4GB+)
+_import_2026-04-20/
+_import_*/
+
+# Análisis de leads (datos personales RGPD)
+_leads_*/
+
 # Archivos grandes de docs
 *.zip
 *.tar.gz

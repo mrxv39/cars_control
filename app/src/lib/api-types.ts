@@ -51,6 +51,7 @@ export interface Lead extends LeadBase {
   estado: string;
   fecha_contacto: string;
   canal: string;
+  reply_to_email?: string | null;
 }
 
 export interface Client extends ClientBase {

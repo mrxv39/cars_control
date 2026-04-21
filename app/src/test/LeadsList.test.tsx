@@ -11,6 +11,8 @@ vi.mock('../lib/api', () => ({
   updateLead: vi.fn(),
   deleteLead: vi.fn(),
   createClient: vi.fn(),
+  suggestLeadReply: vi.fn(),
+  sendLeadReply: vi.fn(),
 }))
 
 vi.mock('../lib/supabase', () => ({ supabase: { from: vi.fn() } }))
@@ -51,7 +53,11 @@ beforeEach(() => {
   vi.mocked(api.updateLead).mockResolvedValue({} as Lead)
   vi.mocked(api.deleteLead).mockResolvedValue(undefined)
   vi.mocked(api.createClient).mockResolvedValue({ id: 99, name: '', phone: '', email: '', dni: '', notes: '', source_lead_id: null, company_id: 1, vehicle_id: null })
+  vi.mocked(api.suggestLeadReply).mockResolvedValue({ ok: true, reply: 'Buenas!!', language: 'es' })
+  vi.mocked(api.sendLeadReply).mockResolvedValue({ ok: true, gmail_message_id: 'gid', lead_message_id: 1 })
 })
+
+// ── Empty state ─────────────────────────────────────────────────────────
 
 describe('LeadsList — empty state', () => {
   it('shows empty state when no leads', () => {
@@ -59,13 +65,15 @@ describe('LeadsList — empty state', () => {
     expect(screen.getByText('Sin leads todavía')).toBeInTheDocument()
   })
 
-  it('does not render filter panel when no leads', () => {
+  it('does not render search when no leads', () => {
     render(<LeadsList {...defaultProps} />)
     expect(screen.queryByPlaceholderText('Buscar lead...')).not.toBeInTheDocument()
   })
 })
 
-describe('LeadsList — rendering', () => {
+// ── Lista de contactos ──────────────────────────────────────────────────
+
+describe('LeadsList — lista', () => {
   const leads = [
     makeLead({ id: 1, name: 'Juan García', estado: 'nuevo', canal: 'web' }),
     makeLead({ id: 2, name: 'María López', estado: 'contactado', canal: 'coches.net', phone: '698000001' }),
@@ -82,7 +90,7 @@ describe('LeadsList — rendering', () => {
     expect(screen.getByText('1 lead')).toBeInTheDocument()
   })
 
-  it('renders all lead names', () => {
+  it('renders all lead names in list', () => {
     render(<LeadsList {...defaultProps} leads={leads} />)
     expect(screen.getByText('Juan García')).toBeInTheDocument()
     expect(screen.getByText('María López')).toBeInTheDocument()
@@ -91,9 +99,7 @@ describe('LeadsList — rendering', () => {
 
   it('shows filter buttons with counts', () => {
     render(<LeadsList {...defaultProps} leads={leads} />)
-    // sin_contestar = leads with estado null or "nuevo" → 1
     expect(screen.getByText(/Sin contestar/)).toBeInTheDocument()
-    // todos → 3
     expect(screen.getByText(/Todos/)).toBeInTheDocument()
   })
 
@@ -103,7 +109,7 @@ describe('LeadsList — rendering', () => {
     expect(badges.length).toBeGreaterThan(0)
   })
 
-  it('shows vehicle interest when present', () => {
+  it('shows vehicle interest when present (in list card)', () => {
     render(<LeadsList {...defaultProps} leads={[makeLead({ vehicle_interest: 'BMW Serie 3' })]} />)
     expect(screen.getByText(/BMW Serie 3/)).toBeInTheDocument()
   })
@@ -112,7 +118,14 @@ describe('LeadsList — rendering', () => {
     render(<LeadsList {...defaultProps} leads={[makeLead({ converted_client_id: 5 })]} />)
     expect(screen.getByText('Convertido')).toBeInTheDocument()
   })
+
+  it('shows empty-detail placeholder when no lead is selected', () => {
+    render(<LeadsList {...defaultProps} leads={leads} />)
+    expect(screen.getByText(/Selecciona un contacto/)).toBeInTheDocument()
+  })
 })
+
+// ── Búsqueda ────────────────────────────────────────────────────────────
 
 describe('LeadsList — search filter', () => {
   const leads = [
@@ -134,6 +147,8 @@ describe('LeadsList — search filter', () => {
     expect(screen.queryByText('Ana Torres')).not.toBeInTheDocument()
   })
 })
+
+// ── Filtros de estado ───────────────────────────────────────────────────
 
 describe('LeadsList — status filters', () => {
   const leads = [
@@ -159,11 +174,38 @@ describe('LeadsList — status filters', () => {
   })
 })
 
+// ── Selección y detalle ─────────────────────────────────────────────────
+
+describe('LeadsList — selección y detalle', () => {
+  const lead = makeLead({ id: 1, name: 'Juan García', estado: 'nuevo', canal: 'coches.net' })
+
+  it('clicking a lead in the list shows its detail header', async () => {
+    render(<LeadsList {...defaultProps} leads={[lead]} />)
+    fireEvent.click(screen.getByText('Juan García'))
+    await waitFor(() => {
+      expect(screen.getByText('Mensaje')).toBeInTheDocument()
+      expect(screen.getByText('juan@example.com')).toBeInTheDocument()
+    })
+  })
+
+  it('shows action buttons only after selecting a lead', () => {
+    render(<LeadsList {...defaultProps} leads={[lead]} />)
+    expect(screen.queryByText('Editar')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Juan García'))
+    expect(screen.getByText('Editar')).toBeInTheDocument()
+    expect(screen.getByText('Eliminar')).toBeInTheDocument()
+    expect(screen.getByText('Notas')).toBeInTheDocument()
+  })
+})
+
+// ── Edit mode ───────────────────────────────────────────────────────────
+
 describe('LeadsList — edit mode', () => {
   const lead = makeLead({ id: 1, name: 'Juan García', estado: 'nuevo' })
 
   it('enters edit mode on Editar click', () => {
     render(<LeadsList {...defaultProps} leads={[lead]} />)
+    fireEvent.click(screen.getByText('Juan García'))
     fireEvent.click(screen.getByText('Editar'))
     expect(screen.getByPlaceholderText('Nombre')).toBeInTheDocument()
   })
@@ -171,6 +213,7 @@ describe('LeadsList — edit mode', () => {
   it('saves changes and calls onReload', async () => {
     const onReload = vi.fn()
     render(<LeadsList {...defaultProps} leads={[lead]} onReload={onReload} />)
+    fireEvent.click(screen.getByText('Juan García'))
     fireEvent.click(screen.getByText('Editar'))
     fireEvent.change(screen.getByPlaceholderText('Nombre'), { target: { value: 'Juan Modificado' } })
     fireEvent.click(screen.getByText('Guardar'))
@@ -181,12 +224,95 @@ describe('LeadsList — edit mode', () => {
   })
 })
 
-describe('LeadsList — notes panel', () => {
+// ── Sugerir y Enviar (AI + Gmail) ───────────────────────────────────────
+
+describe('LeadsList — composer (sugerir y enviar)', () => {
+  const leadCochesNet = makeLead({ id: 1, name: 'Jose Luis', estado: 'nuevo', canal: 'coches.net' })
+  const leadWeb = makeLead({ id: 2, name: 'Ana Web', estado: 'nuevo', canal: 'web', phone: '600000002' })
+
+  it('does not show composer buttons without a selected lead', () => {
+    render(<LeadsList {...defaultProps} leads={[leadCochesNet]} />)
+    expect(screen.queryByText(/Sugerir/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Enviar/)).not.toBeInTheDocument()
+  })
+
+  it('shows composer after selecting any lead', () => {
+    render(<LeadsList {...defaultProps} leads={[leadWeb]} />)
+    fireEvent.click(screen.getByText('Ana Web'))
+    expect(screen.getByPlaceholderText('Escribe tu mensaje...')).toBeInTheDocument()
+    expect(screen.getByText(/Sugerir/)).toBeInTheDocument()
+    expect(screen.getByText(/Enviar/)).toBeInTheDocument()
+  })
+
+  it('Sugerir fills the textarea with the API reply', async () => {
+    vi.mocked(api.suggestLeadReply).mockResolvedValue({ ok: true, reply: 'Buenas Jose Luis!! Soy Ricard', language: 'es' })
+    render(<LeadsList {...defaultProps} leads={[leadCochesNet]} />)
+    fireEvent.click(screen.getByText('Jose Luis'))
+    fireEvent.click(screen.getByText(/Sugerir/))
+    await waitFor(() => {
+      expect(api.suggestLeadReply).toHaveBeenCalledWith(1)
+    })
+    await waitFor(() => {
+      const textarea = screen.getByPlaceholderText('Escribe tu mensaje...') as HTMLTextAreaElement
+      expect(textarea.value).toBe('Buenas Jose Luis!! Soy Ricard')
+    })
+  })
+
+  it('Sugerir shows language badge when language present', async () => {
+    vi.mocked(api.suggestLeadReply).mockResolvedValue({ ok: true, reply: 'bona', language: 'ca' })
+    render(<LeadsList {...defaultProps} leads={[leadCochesNet]} />)
+    fireEvent.click(screen.getByText('Jose Luis'))
+    fireEvent.click(screen.getByText(/Sugerir/))
+    await waitFor(() => {
+      expect(screen.getByText('CA')).toBeInTheDocument()
+    })
+  })
+
+  it('Sugerir on error shows warning and fills with fallback', async () => {
+    vi.mocked(api.suggestLeadReply).mockResolvedValue({
+      ok: false,
+      reply: 'Buenas Jose!! Soy Ricard de CodinaCars.',
+      language: 'es',
+      error: 'Claude API 500: boom',
+    })
+    render(<LeadsList {...defaultProps} leads={[leadCochesNet]} />)
+    fireEvent.click(screen.getByText('Jose Luis'))
+    fireEvent.click(screen.getByText(/Sugerir/))
+    await waitFor(() => {
+      expect(screen.getByText(/Plantilla de respaldo/)).toBeInTheDocument()
+      const textarea = screen.getByPlaceholderText('Escribe tu mensaje...') as HTMLTextAreaElement
+      expect(textarea.value).toContain('Ricard')
+    })
+  })
+
+  it('Enviar calls sendLeadReply with current draft text', async () => {
+    render(<LeadsList {...defaultProps} leads={[leadCochesNet]} />)
+    fireEvent.click(screen.getByText('Jose Luis'))
+    const textarea = screen.getByPlaceholderText('Escribe tu mensaje...') as HTMLTextAreaElement
+    fireEvent.change(textarea, { target: { value: 'Escrito por Ricard' } })
+    fireEvent.click(screen.getByText(/Enviar/))
+    await waitFor(() => {
+      expect(api.sendLeadReply).toHaveBeenCalledWith(1, 'Escrito por Ricard')
+    })
+  })
+
+  it('Enviar is disabled when textarea is empty', () => {
+    render(<LeadsList {...defaultProps} leads={[leadCochesNet]} />)
+    fireEvent.click(screen.getByText('Jose Luis'))
+    const sendBtn = screen.getByRole('button', { name: /Enviar mensaje/i })
+    expect(sendBtn).toBeDisabled()
+  })
+})
+
+// ── Notas ───────────────────────────────────────────────────────────────
+
+describe('LeadsList — notas', () => {
   const lead = makeLead({ id: 1, name: 'María', estado: 'contactado' })
 
-  it('opens notes panel on Notas click', async () => {
+  it('opens notes panel on Notas click (after selecting lead)', async () => {
     vi.mocked(api.listLeadNotes).mockResolvedValue([])
     render(<LeadsList {...defaultProps} leads={[lead]} />)
+    fireEvent.click(screen.getByText('María'))
     fireEvent.click(screen.getByText('Notas'))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Añadir nota...')).toBeInTheDocument()
@@ -198,6 +324,7 @@ describe('LeadsList — notes panel', () => {
       { id: 10, lead_id: 1, content: 'Llamar mañana', timestamp: '2026-04-01T10:00:00Z' },
     ])
     render(<LeadsList {...defaultProps} leads={[lead]} />)
+    fireEvent.click(screen.getByText('María'))
     fireEvent.click(screen.getByText('Notas'))
     await waitFor(() => {
       expect(screen.getByText('Llamar mañana')).toBeInTheDocument()
