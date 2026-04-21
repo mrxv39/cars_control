@@ -53,15 +53,25 @@ function parseCochesNetLead(subject: string, body: string): ParsedLead {
   };
   const vehicleMatch = subject.match(/(?:sobre|en tu|interesado en)\s+(.+?)(?:\s*[-|]|$)/i);
   if (vehicleMatch) lead.vehicle_interest = vehicleMatch[1].trim();
+  const isImageAltText = (s: string) =>
+    /^(Icon|Logo|Picto|Img|Pic|Btn|Btnbook)([\s\-_]|$)/i.test(s);
   const nameMatch = body.match(/(?:nombre|name|de parte de|contacto)\s*:?\s*([A-Z][a-záéíóúñ]+(?:\s+[A-Z][a-záéíóúñ]+)*)/i);
   if (nameMatch) lead.name = nameMatch[1].trim();
+  if (lead.name && isImageAltText(lead.name)) lead.name = "";
   const phones = body.match(/\b(?:\+?34?\s*)?(\d{3}[\s.\-]?\d{3}[\s.\-]?\d{3})\b/);
   if (phones) lead.phone = phones[0].replace(/[\s.\-]/g, "");
   const emails = body.match(/[\w.+\-]+@[\w\-]+\.[\w.]+/g) ?? [];
-  const contactEmails = emails.filter((e) => !COCHES_NET_SENDERS.some((s) => e.toLowerCase().includes(s)));
+  const contactEmails = emails.filter((e) => {
+    const lower = e.toLowerCase();
+    if (COCHES_NET_SENDERS.some((s) => lower.includes(s))) return false;
+    if (/\.(png|jpe?g|gif|svg|webp|bmp)$/i.test(lower)) return false;
+    if (/@\dx\./i.test(lower)) return false;
+    return true;
+  });
   if (contactEmails.length > 0) lead.email_contact = contactEmails[0];
   if (!lead.name && lead.email_contact) {
     lead.name = lead.email_contact.split("@")[0].replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    if (isImageAltText(lead.name)) lead.name = "";
   }
   if (!lead.name) {
     const now = new Date();
@@ -230,6 +240,29 @@ describe("parseCochesNetLead", () => {
     const lead = parseCochesNetLead("Consulta sobre SEAT", "Hola quiero info");
     expect(lead.notes).toContain("[coches.net] Consulta sobre SEAT");
     expect(lead.notes).toContain("Hola quiero info");
+  });
+
+  it("rejects pseudo-emails from image assets (icon-answered-call@2x.png)", () => {
+    const lead = parseCochesNetLead("Contacto", "icon-answered-call@2x.png\nteam@real.com");
+    expect(lead.email_contact).toBe("team@real.com");
+  });
+
+  it("does not use image-alt-text as fallback name from pseudo-email", () => {
+    const lead = parseCochesNetLead("Contacto", "icon-answered-call@2x.png");
+    expect(lead.name).not.toBe("Icon-Answered-Call");
+    expect(lead.name).toMatch(/^Lead coches\.net \(\d{2}\/\d{2} \d{2}:\d{2}\)$/);
+  });
+
+  it("rejects emails ending in image file extensions", () => {
+    const emails = [
+      "logo@brand.png",
+      "banner@site.jpg",
+      "hero@company.jpeg",
+    ];
+    for (const e of emails) {
+      const lead = parseCochesNetLead("x", e);
+      expect(lead.email_contact).toBe("");
+    }
   });
 });
 

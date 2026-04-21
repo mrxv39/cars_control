@@ -20,7 +20,10 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 const COMPANY_ID = 1; // CodinaCars
 const DEALER_NAME = "Codina Cars";
-const COCHES_NET_SENDERS = ["coches.net", "adevinta", "noreply"];
+// Dominios/strings que identifican un email como originado en coches.net/Adevinta.
+// Ojo: no usar "noreply" suelto — matchea noreply@norauto.es y otros remitentes
+// no relacionados que Gmail nos devuelva si el query es laxo.
+const COCHES_NET_SENDERS = ["coches.net", "adevinta", "noreply@coches"];
 
 const MONTH_MAP: Record<string, number> = {
   enero: 1, febrero: 2, marzo: 3, abril: 4,
@@ -49,20 +52,42 @@ async function getAccessToken(): Promise<string> {
   return access_token;
 }
 
-async function searchUnreadFromCoches(token: string): Promise<string[]> {
-  const query = encodeURIComponent(
-    "is:unread (from:coches.net OR from:adevinta OR from:noreply)"
-  );
-  const res = await fetch(
-    `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=20`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
+interface SearchOptions {
+  backfillDays?: number;   // if set, queries newer_than:Nd from @contactos.coches.net
+  maxResults?: number;     // default 20 (live), 100 (backfill)
+  pageToken?: string;      // Gmail API pageToken for pagination
+}
+
+interface SearchResult {
+  ids: string[];
+  nextPageToken: string | null;
+}
+
+async function searchLeadEmails(token: string, opts: SearchOptions = {}): Promise<SearchResult> {
+  const { backfillDays, maxResults, pageToken } = opts;
+  const isBackfill = !!backfillDays && backfillDays > 0;
+
+  // Backfill mode: dominio estricto @contactos.coches.net (solo conversaciones reales
+  // con leads, nunca newsletters ni notificaciones de llamada).
+  const queryParts = isBackfill
+    ? [`from:contactos.coches.net`, `newer_than:${backfillDays}d`]
+    : [`is:unread`, `(from:coches.net OR from:adevinta OR from:noreply@coches.net)`];
+
+  const limit = maxResults ?? (isBackfill ? 100 : 20);
+  const query = encodeURIComponent(queryParts.join(" "));
+  let url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=${limit}`;
+  if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Gmail search error: ${err}`);
   }
   const data = await res.json();
-  return (data.messages ?? []).map((m: { id: string }) => m.id);
+  return {
+    ids: (data.messages ?? []).map((m: { id: string }) => m.id),
+    nextPageToken: data.nextPageToken ?? null,
+  };
 }
 
 interface GmailMessage {
@@ -352,12 +377,20 @@ function parseCochesNetLead(subject: string, body: string, fromHeader = ""): Par
     lead.vehicle_interest = vehicleMatch[1].trim();
   }
 
+  // Strings tipo `Icon-Answered-Call`, `Logo-Ma-Positive`, `Picto-Llamada-Perdida`
+  // provienen de alt-text de imágenes en emails de coches.net PRO — no son nombres reales.
+  const isImageAltText = (s: string) =>
+    /^(Icon|Logo|Picto|Img|Pic|Btn|Btnbook)([\s\-_]|$)/i.test(s);
+
   // Extract name
   const nameMatch = body.match(
     /(?:nombre|name|de parte de|contacto)\s*:?\s*([A-Z][a-záéíóúñ]+(?:\s+[A-Z][a-záéíóúñ]+)*)/i
   );
   if (nameMatch) {
     lead.name = nameMatch[1].trim();
+  }
+  if (lead.name && isImageAltText(lead.name)) {
+    lead.name = "";
   }
 
   // Extract phone
@@ -366,12 +399,15 @@ function parseCochesNetLead(subject: string, body: string, fromHeader = ""): Par
     lead.phone = phones[0].replace(/[\s.\-]/g, "");
   }
 
-  // Extract email (filter out coches.net/adevinta)
+  // Extract email (filter out coches.net/adevinta y pseudo-emails de assets `@2x.png`)
   const emails = body.match(/[\w.+\-]+@[\w\-]+\.[\w.]+/g) ?? [];
-  const contactEmails = emails.filter(
-    (e) =>
-      !COCHES_NET_SENDERS.some((s) => e.toLowerCase().includes(s))
-  );
+  const contactEmails = emails.filter((e) => {
+    const lower = e.toLowerCase();
+    if (COCHES_NET_SENDERS.some((s) => lower.includes(s))) return false;
+    if (/\.(png|jpe?g|gif|svg|webp|bmp)$/i.test(lower)) return false; // nombre de archivo
+    if (/@\dx\./i.test(lower)) return false; // dominios tipo @2x.png
+    return true;
+  });
   if (contactEmails.length > 0) {
     lead.email_contact = contactEmails[0];
   }
@@ -382,6 +418,9 @@ function parseCochesNetLead(subject: string, body: string, fromHeader = ""): Par
       .split("@")[0]
       .replace(/\./g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase());
+    if (isImageAltText(lead.name)) {
+      lead.name = "";
+    }
   }
 
   // Fallback name with timestamp
@@ -422,13 +461,38 @@ serve(async (req) => {
     }
   }
 
+  // Backfill mode: ?backfill_days=180 activa un catch-up one-shot que
+  //  - usa Gmail query `from:contactos.coches.net newer_than:Nd`
+  //  - NO marca como leído
+  //  - dedupe reforzado (phone OR email OR reply_to_email)
+  const url = new URL(req.url);
+  const backfillDays = Math.max(0, parseInt(url.searchParams.get("backfill_days") ?? "0", 10) || 0);
+  const maxResultsParam = Math.max(0, parseInt(url.searchParams.get("max") ?? "0", 10) || 0);
+  const pageTokenParam = url.searchParams.get("page_token") ?? undefined;
+  const isBackfill = backfillDays > 0;
+  const maybeMarkRead = async (msgId: string) => {
+    if (!isBackfill) await markAsRead(token, msgId);
+  };
+
   try {
     const token = await getAccessToken();
-    const messageIds = await searchUnreadFromCoches(token);
+    const { ids: messageIds, nextPageToken } = await searchLeadEmails(token, {
+      backfillDays: isBackfill ? backfillDays : undefined,
+      maxResults: maxResultsParam || undefined,
+      pageToken: pageTokenParam,
+    });
 
     if (messageIds.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No new coches.net emails", created: 0, messages_inserted: 0 }),
+        JSON.stringify({
+          message: isBackfill
+            ? `Backfill ${backfillDays}d: no @contactos.coches.net emails found`
+            : "No new coches.net emails",
+          created: 0,
+          messages_inserted: 0,
+          mode: isBackfill ? "backfill" : "live",
+          next_page_token: nextPageToken,
+        }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
@@ -441,6 +505,7 @@ serve(async (req) => {
     let created = 0;
     let messagesInserted = 0;
     const logs: string[] = [];
+    logs.push(`MODE: ${isBackfill ? `backfill ${backfillDays}d` : "live"} | ${messageIds.length} emails`);
 
     for (const msgId of messageIds) {
       const msg = await fetchMessage(token, msgId);
@@ -453,7 +518,44 @@ serve(async (req) => {
       // Verify sender is from coches.net
       if (!COCHES_NET_SENDERS.some((s) => from.toLowerCase().includes(s))) {
         logs.push("  SKIP: not from coches.net");
-        await markAsRead(token, msgId);
+        await maybeMarkRead(msgId);
+        continue;
+      }
+
+      // Skip promotional/notification emails that should not create leads.
+      // Las llamadas van a otro canal (futuro); las newsletters/ofertas son ruido.
+      const subjLower = subject.toLowerCase();
+      const SKIP_SUBJECT_PATTERNS = [
+        "contacto de llamada",
+        "llamada atendida",
+        "llamada perdida",
+        "llamada no atendida",
+        "te pueden interesar",
+        "próxima aventura",
+        "proxima aventura",
+        "newsletter",
+        "oferta",
+        "comunicación comercial",
+        "comunicacion comercial",
+        "comunicación publicitaria",
+        "comunicacion publicitaria",
+        "estos coches",
+      ];
+      if (SKIP_SUBJECT_PATTERNS.some((p) => subjLower.includes(p))) {
+        logs.push(`  SKIP: promo/notification subject: ${subject.slice(0, 40)}`);
+        await maybeMarkRead(msgId);
+        continue;
+      }
+
+      const fromLower = from.toLowerCase();
+      if (
+        fromLower.includes("sugerencias.coches.net") ||
+        fromLower.includes("email.coches.net") ||
+        fromLower.includes("no-reply@") ||
+        fromLower.includes("noreply@coches")
+      ) {
+        logs.push("  SKIP: promo sender");
+        await maybeMarkRead(msgId);
         continue;
       }
 
@@ -463,7 +565,7 @@ serve(async (req) => {
         const leadId = await findExistingLead(sb, body);
         if (!leadId) {
           logs.push("  SKIP: could not find existing lead for follow-up");
-          await markAsRead(token, msgId);
+          await maybeMarkRead(msgId);
           continue;
         }
 
@@ -472,7 +574,7 @@ serve(async (req) => {
         const n = await insertMessages(sb, leadId, convMessages, msgId);
         messagesInserted += n;
         logs.push(`  Inserted ${n} new messages (deduped)`);
-        await markAsRead(token, msgId);
+        await maybeMarkRead(msgId);
         continue;
       }
 
@@ -481,16 +583,29 @@ serve(async (req) => {
       const lead = parseCochesNetLead(subject, body, from);
       logs.push(`  Lead: ${redactName(lead.name)} | ${redactPhone(lead.phone)} | ${lead.vehicle_interest}`);
 
-      // Check if lead already exists by phone
-      if (lead.phone) {
+      // Descartar emails sin señal real: sin teléfono ni email_contact ni reply_to_email.
+      // El parser ya intenta fallback de nombre por email; si todo vino vacío, es newsletter/ruido.
+      if (!lead.phone && !lead.email_contact && !lead.reply_to_email) {
+        logs.push("  SKIP: email sin datos de contacto (probable newsletter)");
+        await maybeMarkRead(msgId);
+        continue;
+      }
+
+      // Dedupe: phone OR email OR reply_to_email. En backfill hay leads con reply_to_email
+      // pero sin phone, así que comprobar solo phone no basta.
+      const orParts: string[] = [];
+      if (lead.phone) orParts.push(`phone.eq.${lead.phone}`);
+      if (lead.email_contact) orParts.push(`email.eq.${lead.email_contact}`);
+      if (lead.reply_to_email) orParts.push(`reply_to_email.eq.${lead.reply_to_email}`);
+      if (orParts.length > 0) {
         const { data: existing } = await sb
           .from("leads")
           .select("id")
           .eq("company_id", COMPANY_ID)
-          .eq("phone", lead.phone);
+          .or(orParts.join(","));
         if (existing && existing.length > 0) {
-          logs.push(`  SKIP: lead with phone ${redactPhone(lead.phone)} already exists`);
-          await markAsRead(token, msgId);
+          logs.push(`  SKIP: lead already exists (id=${existing[0].id})`);
+          await maybeMarkRead(msgId);
           continue;
         }
       }
@@ -582,7 +697,7 @@ serve(async (req) => {
         }
       }
 
-      await markAsRead(token, msgId);
+      await maybeMarkRead(msgId);
     }
 
     return new Response(
@@ -591,6 +706,8 @@ serve(async (req) => {
         created,
         messages_inserted: messagesInserted,
         total_emails: messageIds.length,
+        mode: isBackfill ? "backfill" : "live",
+        next_page_token: nextPageToken,
         logs,
       }),
       { headers: { "Content-Type": "application/json" } }
