@@ -127,10 +127,16 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
   const [suggestLang, setSuggestLang] = useState<"es" | "ca" | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);
 
+  // Particiones disjuntas: sin_contestar + activos + cerrados = todos.
+  // Antes "activos" incluía también "nuevo/sin_contestar" → counts sumaban más que el total
+  // y Ricard dudaba si los números eran correctos (audit 2026-04-22).
   const filtered = useMemo(() => {
     let list = leads;
     if (filter === "sin_contestar") list = list.filter((l) => !l.estado || l.estado === "nuevo");
-    else if (filter === "activos") list = list.filter((l) => !CLOSED_ESTADOS.includes(l.estado || ""));
+    else if (filter === "activos") list = list.filter((l) => {
+      const e = l.estado || "";
+      return e && e !== "nuevo" && !CLOSED_ESTADOS.includes(e);
+    });
     else if (filter === "cerrados") list = list.filter((l) => CLOSED_ESTADOS.includes(l.estado || ""));
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -144,7 +150,7 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
     for (const l of leads) {
       const estado = l.estado || "";
       if (!estado || estado === "nuevo") acc.sin_contestar += 1;
-      if (CLOSED_ESTADOS.includes(estado)) acc.cerrados += 1;
+      else if (CLOSED_ESTADOS.includes(estado)) acc.cerrados += 1;
       else acc.activos += 1;
     }
     return acc;
