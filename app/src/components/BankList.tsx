@@ -6,7 +6,9 @@ import { LinkPurchaseModal } from "./LinkPurchaseModal";
 import { LinkSaleModal } from "./LinkSaleModal";
 import { CreatePurchaseModal } from "./CreatePurchaseModal";
 import { CreateRuleModal } from "./CreateRuleModal";
-import { CATEGORY_LABELS, CATEGORY_GROUPS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel, suggestPatternFromTx, periodRange } from "./bank-utils";
+import { CATEGORY_LABELS, CATEGORY_GROUPS, categoryLabel, formatEur, formatDate, monthOf, monthLabel, suggestPatternFromTx, periodRange } from "./bank-utils";
+import { BankPeriodTotals } from "./bank/BankPeriodTotals";
+import { BankCategoryBars } from "./bank/BankCategoryBars";
 
 // ============================================================
 // BankList — vista del extracto bancario
@@ -382,108 +384,15 @@ export function BankList({ companyId }: Props) {
         )}
       </section>
 
-      {/* Resumen del periodo: ingresos / gastos / neto */}
-      <section
-        className="panel"
-        style={{ marginBottom: "1rem", display: "flex", gap: "2rem", flexWrap: "wrap" }}
-      >
-        <div>
-          <p className="eyebrow" style={{ margin: 0 }}>Ingresos</p>
-          <p style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "var(--color-success)" }}>
-            {formatEur(totals.ingresos)}
-          </p>
-        </div>
-        <div>
-          <p className="eyebrow" style={{ margin: 0 }}>Gastos</p>
-          <p style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "var(--color-danger)" }}>
-            {formatEur(totals.gastos)}
-          </p>
-        </div>
-        <div>
-          <p className="eyebrow" style={{ margin: 0 }}>Neto</p>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "1.4rem",
-              fontWeight: 700,
-              color: totals.neto >= 0 ? "var(--color-success)" : "var(--color-danger)",
-            }}
-          >
-            {formatEur(totals.neto)}
-          </p>
-        </div>
-      </section>
+      <BankPeriodTotals totals={totals} />
 
-      {/* Resumen por categoría con barras */}
-      {byCategory.length > 0 && (
-        <section className="panel" style={{ marginBottom: "1rem" }}>
-          <p className="eyebrow" style={{ margin: 0, marginBottom: "0.75rem" }}>
-            Distribución por categoría
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {byCategory.map((c) => {
-              const pct = Math.min(100, (c.total / maxCatTotal) * 100);
-              const isActive = filterCategory === c.category;
-              return (
-                <button
-                  key={c.category}
-                  type="button"
-                  aria-pressed={isActive}
-                  aria-label={`Filtrar por ${categoryLabel(c.category)}: ${c.count} movimientos, total ${formatEur(c.total)}`}
-                  onClick={() =>
-                    setFilterCategory(isActive ? "" : c.category)
-                  }
-                  className="bank-cat-button"
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                    <span
-                      style={{
-                        fontSize: "var(--text-sm)",
-                        fontWeight: isActive ? 700 : 500,
-                        color: isActive ? "var(--color-primary)" : "var(--color-text-secondary)",
-                      }}
-                    >
-                      {categoryLabel(c.category)} · {c.count}
-                    </span>
-                    <span style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-text)" }}>
-                      {formatEur(c.total)}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      height: 8,
-                      background: "var(--color-bg-secondary)",
-                      borderRadius: "var(--radius-sm)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      className="bank-cat-bar"
-                      style={{
-                        width: `${pct}%`,
-                        height: "100%",
-                        background: categoryColor(c.category),
-                      }}
-                    />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          {filterCategory && (
-            <p style={{ marginTop: "var(--space-sm)", fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
-              Filtro activo · click otra vez en la categoría para quitar
-            </p>
-          )}
-        </section>
-      )}
+      <BankCategoryBars
+        rows={byCategory}
+        maxTotal={maxCatTotal}
+        activeCategory={filterCategory}
+        onToggle={(cat) => setFilterCategory(filterCategory === cat ? "" : cat)}
+      />
+
 
       {/* Filtros */}
       <section className="panel" style={{ marginBottom: "1rem" }}>
