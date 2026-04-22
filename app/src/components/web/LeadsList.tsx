@@ -134,7 +134,7 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
     else if (filter === "cerrados") list = list.filter((l) => CLOSED_ESTADOS.includes(l.estado || ""));
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter((l) => [l.name, l.phone, l.vehicle_interest].some((v) => v.toLowerCase().includes(q)));
+      list = list.filter((l) => [l.name, l.phone, l.email, l.vehicle_interest].some((v) => (v ?? "").toLowerCase().includes(q)));
     }
     return list;
   }, [leads, search, filter]);

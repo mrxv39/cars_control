@@ -146,6 +146,29 @@ describe('LeadsList — search filter', () => {
     expect(screen.getByText('Carlos Díaz')).toBeInTheDocument()
     expect(screen.queryByText('Ana Torres')).not.toBeInTheDocument()
   })
+
+  // Audit 2026-04-22: el buscador ignoraba el email; Ricard escribía "pedro@"
+  // y no encontraba al lead. Ahora también busca por email y vehicle_interest
+  // con fallback tolerante a campos null.
+  it('filters by email via search', () => {
+    const withEmail = [
+      makeLead({ id: 1, name: 'Ana Torres', phone: '600111222', email: 'ana@gmail.com' }),
+      makeLead({ id: 2, name: 'Carlos Díaz', phone: '600333444', email: 'carlos@acme.es' }),
+    ]
+    render(<LeadsList {...defaultProps} leads={withEmail} />)
+    fireEvent.change(screen.getByPlaceholderText('Buscar lead...'), { target: { value: 'acme' } })
+    expect(screen.getByText('Carlos Díaz')).toBeInTheDocument()
+    expect(screen.queryByText('Ana Torres')).not.toBeInTheDocument()
+  })
+
+  it('search does not crash when a lead field is null', () => {
+    const withNull = [
+      makeLead({ id: 1, name: 'Ana', phone: '600111222', email: null as unknown as string, vehicle_interest: null as unknown as string }),
+    ]
+    render(<LeadsList {...defaultProps} leads={withNull} />)
+    fireEvent.change(screen.getByPlaceholderText('Buscar lead...'), { target: { value: 'ana' } })
+    expect(screen.getByText('Ana')).toBeInTheDocument()
+  })
 })
 
 // ── Filtros de estado ───────────────────────────────────────────────────
