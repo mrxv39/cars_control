@@ -342,3 +342,28 @@ describe('StockList — add vehicle form', () => {
     expect(screen.getByPlaceholderText('Escribe para buscar coincidencias...')).toHaveValue('Seat')
   })
 })
+
+// Audit 2026-04-22: mensaje "(Empresa → Web)" era confuso; ahora el modal
+// ofrece un botón que lleva directamente a la vista Company.
+describe('StockList — import coches.net sin dealerWebsite', () => {
+  it('shows a clearer error and an "Ir a datos de empresa" shortcut', async () => {
+    const onOpenCompany = vi.fn()
+    render(<StockList {...defaultProps} dealerWebsite="" onOpenCompany={onOpenCompany} />)
+    fireEvent.click(screen.getByText('Importar de coches.net'))
+    await waitFor(() => {
+      expect(screen.getByText(/Falta la URL del perfil de coches\.net/)).toBeInTheDocument()
+    })
+    const go = screen.getByRole('button', { name: 'Ir a datos de empresa' })
+    fireEvent.click(go)
+    expect(onOpenCompany).toHaveBeenCalled()
+  })
+
+  it('does not show shortcut when onOpenCompany is not provided', async () => {
+    render(<StockList {...defaultProps} dealerWebsite="" />)
+    fireEvent.click(screen.getByText('Importar de coches.net'))
+    await waitFor(() => {
+      expect(screen.getByText(/Falta la URL del perfil de coches\.net/)).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: 'Ir a datos de empresa' })).not.toBeInTheDocument()
+  })
+})
