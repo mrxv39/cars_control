@@ -172,6 +172,39 @@ describe('LeadsList — status filters', () => {
     expect(screen.queryByText('Nuevo')).not.toBeInTheDocument()
     expect(screen.queryByText('Activo')).not.toBeInTheDocument()
   })
+
+  // Audit 2026-04-22: counts de filtros ahora son particiones disjuntas;
+  // sin_contestar + activos + cerrados == todos.
+  it('shows disjoint counts: sin_contestar + activos + cerrados = todos', () => {
+    const many = [
+      makeLead({ id: 1, estado: 'nuevo' }),
+      makeLead({ id: 2, estado: '', phone: '600000002' }),
+      makeLead({ id: 3, estado: 'contactado', phone: '600000003' }),
+      makeLead({ id: 4, estado: 'negociando', phone: '600000004' }),
+      makeLead({ id: 5, estado: 'cerrado', phone: '600000005' }),
+      makeLead({ id: 6, estado: 'perdido', phone: '600000006' }),
+    ]
+    render(<LeadsList {...defaultProps} leads={many} />)
+    // 6 en total, 2 sin_contestar (nuevo+vacío), 2 activos (contactado+negociando), 2 cerrados (cerrado+perdido)
+    const textOf = (label: string) => screen.getByText(label).closest('button')?.textContent ?? ''
+    expect(textOf('Sin contestar')).toMatch(/\(2\)/)
+    expect(textOf('Activos')).toMatch(/\(2\)/)
+    expect(textOf('Cerrados')).toMatch(/\(2\)/)
+    expect(textOf('Todos')).toMatch(/\(6\)/)
+  })
+
+  it('"Activos" filter excludes nuevos and cerrados', () => {
+    const many = [
+      makeLead({ id: 1, name: 'NuevoLead', estado: 'nuevo' }),
+      makeLead({ id: 2, name: 'ActivoLead', estado: 'contactado', phone: '600000002' }),
+      makeLead({ id: 3, name: 'CerradoLead', estado: 'cerrado', phone: '600000003' }),
+    ]
+    render(<LeadsList {...defaultProps} leads={many} />)
+    fireEvent.click(screen.getByText(/^Activos/))
+    expect(screen.getByText('ActivoLead')).toBeInTheDocument()
+    expect(screen.queryByText('NuevoLead')).not.toBeInTheDocument()
+    expect(screen.queryByText('CerradoLead')).not.toBeInTheDocument()
+  })
 })
 
 // ── Selección y detalle ─────────────────────────────────────────────────
