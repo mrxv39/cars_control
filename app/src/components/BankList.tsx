@@ -5,7 +5,7 @@ import { translateError } from "../lib/translateError";
 import { LinkPurchaseModal } from "./LinkPurchaseModal";
 import { CreatePurchaseModal } from "./CreatePurchaseModal";
 import { CreateRuleModal } from "./CreateRuleModal";
-import { CATEGORY_LABELS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel } from "./bank-utils";
+import { CATEGORY_LABELS, CATEGORY_GROUPS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel } from "./bank-utils";
 
 // ============================================================
 // BankList — vista del extracto bancario
@@ -399,8 +399,12 @@ export function BankList({ companyId }: Props) {
             style={{ padding: "var(--space-sm)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-medium)" }}
           >
             <option value="">Todas las categorías</option>
-            {Object.keys(CATEGORY_LABELS).map((c) => (
-              <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+            {CATEGORY_GROUPS.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.keys.map((c) => (
+                  <option key={c} value={c}>{CATEGORY_LABELS[c] ?? c}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
           <label style={{ display: "flex", gap: "var(--space-xs)", alignItems: "center", fontSize: "var(--text-sm)" }}>
@@ -513,10 +517,12 @@ export function BankList({ companyId }: Props) {
                                   maxWidth: "10rem",
                                 }}
                               >
-                                {Object.keys(CATEGORY_LABELS).map((c) => (
-                                  <option key={c} value={c}>
-                                    {CATEGORY_LABELS[c]}
-                                  </option>
+                                {CATEGORY_GROUPS.map((g) => (
+                                  <optgroup key={g.label} label={g.label}>
+                                    {g.keys.map((c) => (
+                                      <option key={c} value={c}>{CATEGORY_LABELS[c] ?? c}</option>
+                                    ))}
+                                  </optgroup>
                                 ))}
                               </select>
                               {t.id === lastChangedTxId && t.category !== "SIN_CATEGORIZAR" && (

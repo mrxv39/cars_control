@@ -58,6 +58,21 @@ export const CATEGORY_COLOR: Record<string, string> = {
   OTRO: "#94a3b8",
 };
 
+// Grupos para mostrar el <select> con <optgroup> — reduce fricción al
+// elegir entre 29 categorías. Orden pensado para coincidir con el flujo
+// diario de Ricard (primero lo más habitual).
+export const CATEGORY_GROUPS: Array<{ label: string; keys: string[] }> = [
+  { label: "Sin clasificar", keys: ["SIN_CATEGORIZAR"] },
+  { label: "Operaciones vehículo", keys: ["COMPRA_VEHICULO", "VENTA_VEHICULO", "COBRO_FINANCIERA"] },
+  { label: "Reparaciones y piezas", keys: ["REPARACION", "PINTURA", "RECAMBIOS", "NEUMATICOS", "ITV"] },
+  { label: "Trámites", keys: ["GESTORIA", "SEGURO"] },
+  { label: "Logística y local", keys: ["TRANSPORTE", "PARKING", "COMBUSTIBLE", "ALQUILER_LOCAL"] },
+  { label: "Operativo", keys: ["PUBLICIDAD", "SOFTWARE", "FORMACION", "LIMPIEZA"] },
+  { label: "Fiscal", keys: ["IMPUESTO_303", "IMPUESTO_130", "IMPUESTO_OTRO", "AUTONOMO_CUOTA"] },
+  { label: "Banco", keys: ["POLIZA_CAIXA", "COMISION_BANCO"] },
+  { label: "Otros", keys: ["TRASPASO_INTERNO", "RETIRO_PERSONAL", "OTRO"] },
+];
+
 export function categoryLabel(c: string): string {
   return CATEGORY_LABELS[c] ?? c;
 }

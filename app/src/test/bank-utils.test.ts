@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   CATEGORY_LABELS,
   CATEGORY_COLOR,
+  CATEGORY_GROUPS,
   categoryLabel,
   categoryColor,
   formatEur,
@@ -37,6 +38,30 @@ describe('CATEGORY_LABELS', () => {
   it('has entries for all CATEGORY_COLOR keys', () => {
     for (const key of Object.keys(CATEGORY_COLOR)) {
       expect(CATEGORY_LABELS).toHaveProperty(key)
+    }
+  })
+})
+
+describe('CATEGORY_GROUPS', () => {
+  it('covers every category exactly once', () => {
+    const grouped = CATEGORY_GROUPS.flatMap((g) => g.keys)
+    const labels = Object.keys(CATEGORY_LABELS)
+    expect(new Set(grouped).size).toBe(grouped.length)
+    expect(new Set(grouped)).toEqual(new Set(labels))
+  })
+
+  it('uses only keys that exist in CATEGORY_LABELS', () => {
+    for (const g of CATEGORY_GROUPS) {
+      for (const k of g.keys) {
+        expect(CATEGORY_LABELS).toHaveProperty(k)
+      }
+    }
+  })
+
+  it('has a non-empty label on every group', () => {
+    for (const g of CATEGORY_GROUPS) {
+      expect(g.label.trim().length).toBeGreaterThan(0)
+      expect(g.keys.length).toBeGreaterThan(0)
     }
   })
 })
