@@ -96,7 +96,7 @@ function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTyp
   );
 }
 
-export function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, dealerWebsite, onSelect, onReload, externalSearch }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; dealerWebsite: string; onSelect: (v: api.Vehicle) => void; onReload: () => void; externalSearch?: string }) {
+export function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, dealerWebsite, onSelect, onReload, externalSearch, onOpenCompany }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; dealerWebsite: string; onSelect: (v: api.Vehicle) => void; onReload: () => void; externalSearch?: string; onOpenCompany?: () => void }) {
   const [importPreview, setImportPreview] = useState<api.ImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -104,7 +104,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
 
   async function handleImport() {
     if (!dealerWebsite) {
-      setImportError("Define la web de la empresa primero (Empresa → Web)");
+      setImportError("Falta la URL del perfil de coches.net en los datos de tu empresa. Rellénala y vuelve a intentar importar.");
       return;
     }
     setImportError(null);
@@ -534,7 +534,12 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
             <h3 style={{ margin: 0, color: "var(--color-danger-dark)" }}>Error</h3>
             <p>{importError}</p>
             <div className="form-actions">
-              <button type="button" className="button primary" onClick={() => setImportError(null)}>Cerrar</button>
+              {!dealerWebsite && onOpenCompany && (
+                <button type="button" className="button primary" onClick={() => { setImportError(null); onOpenCompany(); }}>
+                  Ir a datos de empresa
+                </button>
+              )}
+              <button type="button" className="button secondary" onClick={() => setImportError(null)}>Cerrar</button>
             </div>
           </div>
         </div>
