@@ -330,7 +330,18 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
         {loadError && (
           <div className="error-banner error-banner--retry" role="alert">
             <span>{loadError}</span>
-            <button type="button" className="button primary" onClick={() => void loadAll()}>Reintentar</button>
+            <div className="error-banner-actions">
+              <button type="button" className="button primary" onClick={() => void loadAll()}>Reintentar</button>
+              <button
+                type="button"
+                className="error-banner-close"
+                onClick={() => setLoadError(null)}
+                aria-label="Cerrar aviso de error"
+                title="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         )}
         {currentView === "dashboard" && (

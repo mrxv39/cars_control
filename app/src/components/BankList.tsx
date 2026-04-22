@@ -6,7 +6,7 @@ import { LinkPurchaseModal } from "./LinkPurchaseModal";
 import { LinkSaleModal } from "./LinkSaleModal";
 import { CreatePurchaseModal } from "./CreatePurchaseModal";
 import { CreateRuleModal } from "./CreateRuleModal";
-import { CATEGORY_LABELS, CATEGORY_GROUPS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel, suggestPatternFromTx } from "./bank-utils";
+import { CATEGORY_LABELS, CATEGORY_GROUPS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel, suggestPatternFromTx, periodRange } from "./bank-utils";
 
 // ============================================================
 // BankList — vista del extracto bancario
@@ -35,6 +35,9 @@ export function BankList({ companyId }: Props) {
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [onlyUnlinked, setOnlyUnlinked] = useState(false);
   const [search, setSearch] = useState("");
+  // Período temporal — audit M4. "all" mantiene el comportamiento anterior
+  // (500 últimas). Presets pensados para la cadencia fiscal de Ricard (303/130).
+  const [period, setPeriod] = useState<"all" | "this_month" | "this_quarter" | "this_year">("all");
   const [error, setError] = useState<string | null>(null);
   const [linkingTx, setLinkingTx] = useState<api.BankTransaction | null>(null);
   const [linkingSaleTx, setLinkingSaleTx] = useState<api.BankTransaction | null>(null);
@@ -89,16 +92,19 @@ export function BankList({ companyId }: Props) {
       return;
     }
     try {
+      const range = periodRange(period);
       const txs = await api.listBankTransactions(selectedAccountId, {
         category: filterCategory || undefined,
         onlyUnlinked: onlyUnlinked || undefined,
         search: search.trim() || undefined,
+        fromDate: range?.from,
+        toDate: range?.to,
       });
       setTransactions(txs);
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [selectedAccountId, filterCategory, onlyUnlinked, search]);
+  }, [selectedAccountId, filterCategory, onlyUnlinked, search, period]);
 
   useEffect(() => {
     void reloadTransactions();
@@ -459,6 +465,17 @@ export function BankList({ companyId }: Props) {
             onChange={(e) => setSearch(e.target.value)}
             style={{ flex: "1 1 240px", padding: "var(--space-sm)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-medium)" }}
           />
+          <select
+            aria-label="Período"
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as typeof period)}
+            style={{ padding: "var(--space-sm)", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-medium)" }}
+          >
+            <option value="all">Todos los períodos</option>
+            <option value="this_month">Este mes</option>
+            <option value="this_quarter">Este trimestre</option>
+            <option value="this_year">Este año</option>
+          </select>
           <select
             aria-label="Filtrar por categoría"
             value={filterCategory}

@@ -92,6 +92,35 @@ const STOP_WORDS = new Set([
   "transferencia", "recibo", "bizum", "traspaso", "pago",
 ]);
 
+export type PeriodKey = "all" | "this_month" | "this_quarter" | "this_year";
+
+// Devuelve el rango inclusivo (YYYY-MM-DD) correspondiente al preset temporal.
+// "all" devuelve null — la API sólo filtra si se pasan fromDate/toDate.
+export function periodRange(key: PeriodKey, now: Date = new Date()): { from: string; to: string } | null {
+  if (key === "all") return null;
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  if (key === "this_month") {
+    return {
+      from: fmt(new Date(Date.UTC(y, m, 1))),
+      to: fmt(new Date(Date.UTC(y, m + 1, 0))),
+    };
+  }
+  if (key === "this_quarter") {
+    const qStart = Math.floor(m / 3) * 3;
+    return {
+      from: fmt(new Date(Date.UTC(y, qStart, 1))),
+      to: fmt(new Date(Date.UTC(y, qStart + 3, 0))),
+    };
+  }
+  // this_year
+  return {
+    from: fmt(new Date(Date.UTC(y, 0, 1))),
+    to: fmt(new Date(Date.UTC(y, 11, 31))),
+  };
+}
+
 export function suggestPatternFromTx(counterpartyName: string | null | undefined, description: string | null | undefined): string {
   const counterparty = (counterpartyName || "").trim();
   if (counterparty.length >= 3) return counterparty;
