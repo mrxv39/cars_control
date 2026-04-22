@@ -255,7 +255,7 @@ export function BankList({ companyId }: Props) {
 
       {/* Selector de cuenta */}
       <section className="panel" style={{ marginBottom: "1rem" }}>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <div className="bank-account-picker">
           {accounts.map((acc) => {
             const isActive = acc.id === selectedAccountId;
             return (
@@ -265,22 +265,14 @@ export function BankList({ companyId }: Props) {
                 onClick={() => setSelectedAccountId(acc.id)}
                 aria-pressed={isActive}
                 aria-label={`Cuenta ${acc.alias}, ${acc.account_type === "credit_line" ? "póliza de crédito" : "cuenta corriente"}${acc.is_personal ? ", personal" : ""}`}
+                className="bank-account-chip"
                 style={{
-                  padding: "0.6rem 1rem",
-                  borderRadius: "var(--radius-sm)",
                   border: isActive ? "2px solid var(--color-primary)" : "2px solid var(--color-border-medium)",
                   background: isActive ? "var(--color-primary)" : "var(--color-bg)",
                   color: isActive ? "var(--color-bg)" : "var(--color-text-secondary)",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  gap: "var(--space-xs)",
-                  transition: "background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast)",
                 }}
               >
-                <span>{acc.alias}</span>
+                <span className="bank-account-chip-alias">{acc.alias}</span>
                 <span style={{ fontSize: "var(--text-xs)", opacity: 0.8 }}>
                   {acc.account_type === "credit_line" ? "Póliza crédito" : "Cuenta corriente"}
                   {acc.is_personal && " · personal"}
@@ -460,20 +452,11 @@ export function BankList({ companyId }: Props) {
           }
           return (
             <section key={yyyymm} className="panel sales-records-panel" style={{ marginBottom: "1rem" }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "var(--space-md)",
-                  paddingBottom: "var(--space-sm)",
-                  borderBottom: "1px solid var(--color-border-light)",
-                }}
-              >
+              <div className="bank-month-header">
                 <h3 style={{ margin: 0, fontSize: "1.05rem", textTransform: "capitalize", color: "var(--color-text)" }}>
                   {monthLabel(yyyymm)}
                 </h3>
-                <div style={{ display: "flex", gap: "1.25rem", fontSize: "var(--text-sm)" }}>
+                <div className="bank-month-totals">
                   <span style={{ color: "var(--color-success)", fontWeight: 600 }}>
                     + {formatEur(monthIngresos)}
                   </span>
