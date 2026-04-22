@@ -4,7 +4,9 @@ import { exportToCSV } from "../../lib/csv-export";
 import { showToast } from "../../lib/toast";
 import { translateError } from "../../lib/translateError";
 import { usePagination } from "../../hooks/usePagination";
+import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import { PaginationControls } from "./PaginationControls";
+import ConfirmDialog from "./ConfirmDialog";
 import { ImportCochesPanel } from "./ImportCochesPanel";
 
 // Mínimo de fotos validado con Ricard (sesión 2026-04-04): un coche está
@@ -97,6 +99,7 @@ function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTyp
 }
 
 export function StockList({ vehicles, allVehicles, leads, purchaseRecords, companyId, dealerWebsite, onSelect, onReload, externalSearch }: { vehicles: api.Vehicle[]; allVehicles: api.Vehicle[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; dealerWebsite: string; onSelect: (v: api.Vehicle) => void; onReload: () => void; externalSearch?: string }) {
+  const dialog = useConfirmDialog();
   const [importPreview, setImportPreview] = useState<api.ImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -169,9 +172,15 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
   const [nameBlurred, setNameBlurred] = useState(false);
   const nameError = nameBlurred && !newName.trim() ? "El nombre es obligatorio" : null;
   const stockFormDirty = !!(newName || newAnio || newKm || newPrecioCompra || newPrecioVenta || newFuel || newColor || newNotes);
-  function handleCancelAdd() {
-    if (stockFormDirty && !window.confirm("Tienes cambios sin guardar. ¿Salir sin guardar?")) return;
+  function resetAddForm() {
     setShowAdd(false); setNewName(""); setNewAnio(""); setNewKm(""); setNewPrecioCompra(""); setNewPrecioVenta(""); setNewFuel(""); setNewColor(""); setNewNotes(""); setNameBlurred(false);
+  }
+  function handleCancelAdd() {
+    if (stockFormDirty) {
+      dialog.requestConfirm("Cambios sin guardar", "Tienes cambios sin guardar. ¿Salir sin guardar?", resetAddForm);
+      return;
+    }
+    resetAddForm();
   }
 
   // Precarga resúmenes de fotos+docs de todos los vehículos en DOS queries
@@ -342,6 +351,7 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
 
   return (
     <>
+      <ConfirmDialog {...dialog.confirmProps} confirmLabel="Salir sin guardar" variant="warning" />
       <header className="hero">
         <div>
           <p className="eyebrow">Stock</p>
