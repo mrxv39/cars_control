@@ -226,8 +226,7 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       <main className="shell">
         <aside className="sidebar">
           <div>
-            <p className="eyebrow"><Car size={14} className="icon-inline" />Cars Control</p>
-            <div className="skeleton-line skeleton-lg" style={{ marginTop: "0.5rem" }} />
+            <div className="skeleton-line skeleton-lg" />
             <div className="skeleton-line skeleton-sm" style={{ marginTop: "0.5rem" }} />
           </div>
         </aside>
@@ -251,7 +250,6 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       {mobileMenuOpen && <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)} />}
       <aside className={`sidebar ${mobileMenuOpen ? "sidebar-open" : ""}`}>
         <div>
-          <p className="eyebrow"><Car size={14} className="icon-inline" />Cars Control</p>
           <button
             type="button"
             className="sidebar-link"

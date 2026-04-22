@@ -82,8 +82,23 @@ describe('LinkPurchaseModal', () => {
     vi.mocked(api.suggestPurchasesForTransaction).mockResolvedValue([])
     render(<LinkPurchaseModal {...defaultProps} />)
     await waitFor(() => {
-      expect(screen.getByText(/No se encontraron compras existentes/)).toBeInTheDocument()
+      expect(screen.getByText(/No hay compras parecidas/)).toBeInTheDocument()
     })
+  })
+
+  // Audit 2026-04-19 B2: empty state con CTA para crear desde el movimiento
+  // cuando el padre pasa onCreatePurchase.
+  it('renders create-purchase CTA in empty state when callback provided', async () => {
+    const onCreatePurchase = vi.fn()
+    const onClose = vi.fn()
+    vi.mocked(api.suggestPurchasesForTransaction).mockResolvedValue([])
+    render(
+      <LinkPurchaseModal {...defaultProps} onClose={onClose} onCreatePurchase={onCreatePurchase} />
+    )
+    const cta = await screen.findByRole('button', { name: /Crear compra desde este movimiento/ })
+    fireEvent.click(cta)
+    expect(onCreatePurchase).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('renders purchase suggestions', async () => {

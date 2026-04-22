@@ -415,6 +415,36 @@ describe('BankList', () => {
     })
   })
 
+  // Audit B5: la cuenta POLIZA es una línea de crédito y necesita aviso diferencial.
+  it('shows credit-line warning when credit_line account is selected', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([
+      makeAccount({ id: 1, alias: 'POLIZA CODINACARS', account_type: 'credit_line' }),
+    ])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([])
+
+    render(<BankList companyId={1} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/póliza de crédito/i)).toBeInTheDocument()
+    })
+  })
+
+  // Audit B1: botón manual para recargar los movimientos.
+  it('shows "Sincronizar ahora" button and triggers a reload', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([])
+
+    render(<BankList companyId={1} />)
+
+    const btn = await screen.findByRole('button', { name: /Recargar movimientos desde el servidor/ })
+    vi.mocked(api.listBankTransactions).mockClear()
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      expect(api.listBankTransactions).toHaveBeenCalled()
+    })
+  })
+
   it('does not propose propagation when category set to IGNORAR', async () => {
     vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
     vi.mocked(api.listBankTransactions).mockResolvedValue([
