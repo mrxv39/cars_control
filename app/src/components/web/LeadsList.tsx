@@ -333,7 +333,7 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
       </div>
 
       {!hasLeads ? (
-        <EmptyState icon="📞" title="Sin leads todavía" description="Los leads aparecerán aquí cuando lleguen consultas desde coches.net, WhatsApp o llamadas. También puedes importarlos manualmente." />
+        <EmptyState icon="📞" title="Sin leads todavía" description="Aquí aparecerán las consultas que llegan desde coches.net. Los contactos por WhatsApp o llamada los gestionas directamente desde tu móvil." />
       ) : (
         <div className="leads-inbox">
           {/* Columna izquierda: filtros + búsqueda + lista */}
@@ -431,14 +431,6 @@ export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: {
                     <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" />
                     <select value={editForm.estado} onChange={(e) => setEditForm({ ...editForm, estado: e.target.value })}>
                       <option value="nuevo">Nuevo</option><option value="contactado">Contactado</option><option value="negociando">Negociando</option><option value="cerrado">Cerrado</option><option value="perdido">Perdido</option>
-                    </select>
-                    <select value={editForm.canal} onChange={(e) => setEditForm({ ...editForm, canal: e.target.value })}>
-                      <option value="">-- Canal --</option>
-                      <option value="coches.net">coches.net</option>
-                      <option value="whatsapp">WhatsApp</option>
-                      <option value="llamada">Llamada</option>
-                      <option value="walk-in">Visita presencial</option>
-                      <option value="otro">Otro</option>
                     </select>
                     <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notas" rows={2} />
                     <div style={{ display: "flex", gap: "0.5rem" }}>
