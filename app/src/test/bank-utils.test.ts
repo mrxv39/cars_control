@@ -9,6 +9,8 @@ import {
   formatDate,
   monthOf,
   monthLabel,
+  periodRange,
+  suggestPatternFromTx,
 } from '../components/bank-utils'
 
 describe('categoryLabel', () => {
@@ -107,5 +109,50 @@ describe('monthLabel', () => {
     expect(monthLabel('2026-01')).toBe('enero 2026')
     expect(monthLabel('2026-04')).toBe('abril 2026')
     expect(monthLabel('2026-12')).toBe('diciembre 2026')
+  })
+})
+
+describe('periodRange', () => {
+  const pinned = new Date('2026-05-17T12:00:00Z')
+
+  it('returns null for "all" (no date filtering)', () => {
+    expect(periodRange('all', pinned)).toBeNull()
+  })
+
+  it('returns the current month range for "this_month"', () => {
+    expect(periodRange('this_month', pinned)).toEqual({ from: '2026-05-01', to: '2026-05-31' })
+  })
+
+  it('returns the current quarter for "this_quarter" (Q2: abr-jun)', () => {
+    expect(periodRange('this_quarter', pinned)).toEqual({ from: '2026-04-01', to: '2026-06-30' })
+  })
+
+  it('returns the current year for "this_year"', () => {
+    expect(periodRange('this_year', pinned)).toEqual({ from: '2026-01-01', to: '2026-12-31' })
+  })
+
+  it('handles quarter boundaries (Q1 starts in enero)', () => {
+    expect(periodRange('this_quarter', new Date('2026-02-15T12:00:00Z')))
+      .toEqual({ from: '2026-01-01', to: '2026-03-31' })
+  })
+})
+
+describe('suggestPatternFromTx', () => {
+  it('prefers counterparty name when available', () => {
+    expect(suggestPatternFromTx('AUTO1 SL', 'Transferencia')).toBe('AUTO1 SL')
+  })
+
+  it('falls back to literal description head when counterparty is empty', () => {
+    // "EESS MOLINS DE RE" es el segmento antes del primer separador " |"
+    expect(suggestPatternFromTx('', 'EESS MOLINS DE RE | 09736 / Fecha')).toBe('EESS MOLINS DE RE')
+  })
+
+  it('returns empty string when both fields are empty', () => {
+    expect(suggestPatternFromTx('', '')).toBe('')
+  })
+
+  it('cuts at the first strong separator (3+ digits)', () => {
+    expect(suggestPatternFromTx('', 'AGENCIA TRIBUTARIA 12345 referencia'))
+      .toBe('AGENCIA TRIBUTARIA')
   })
 })

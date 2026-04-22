@@ -21,6 +21,10 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
   const initialPattern = useMemo(() => suggestPatternFromTx(tx.counterparty_name, tx.description), [tx]);
   const [pattern, setPattern] = useState(initialPattern);
   const [priority, setPriority] = useState(100);
+  // Audit 2026-04-19 M2: el campo Prioridad expone implementación que a un
+  // usuario no técnico sólo le genera dudas. Por defecto oculto; sigue visible
+  // para quien quiera ajustar (reglas más específicas deben ganar a las genéricas).
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // Preview retroactivo: cuántos SIN_CATEGORIZAR coinciden con el patrón actual.
   // null = aún no calculado (o patrón inválido). Debounced para no disparar queries
@@ -202,21 +206,41 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
             </div>
           )}
 
-          <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.9rem" }}>
-            <span style={{ fontWeight: 600 }}>Prioridad</span>
-            <input
-              type="number"
-              value={priority}
-              onChange={(e) => setPriority(Number(e.target.value) || 100)}
-              disabled={submitting}
-              min={1}
-              max={999}
-              style={{ padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1", maxWidth: 120 }}
-            />
-            <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-              Menor número = mayor prioridad (por defecto 100).
-            </span>
-          </label>
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              aria-expanded={showAdvanced}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: "#64748b",
+                fontSize: "0.8rem",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              {showAdvanced ? "Ocultar opciones avanzadas" : "Opciones avanzadas"}
+            </button>
+            {showAdvanced && (
+              <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.9rem", marginTop: "0.5rem" }}>
+                <span style={{ fontWeight: 600 }}>Prioridad</span>
+                <input
+                  type="number"
+                  value={priority}
+                  onChange={(e) => setPriority(Number(e.target.value) || 100)}
+                  disabled={submitting}
+                  min={1}
+                  max={999}
+                  style={{ padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1", maxWidth: 120 }}
+                />
+                <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                  Menor número = mayor prioridad (por defecto 100). Útil si tienes varias reglas que podrían coincidir con el mismo movimiento.
+                </span>
+              </label>
+            )}
+          </div>
 
           <div
             style={{
