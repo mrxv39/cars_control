@@ -196,7 +196,10 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
       ]);
       setVehicles(v);
       setAllVehicles(allV);
-      setLeads(l);
+      // Sólo los leads que llegan desde coches.net se gestionan como "interesados"
+      // en la app. WhatsApp / llamadas / walk-in son conversaciones directas
+      // que Ricard gestiona fuera del CRM (audit 2026-04-22).
+      setLeads(l.filter((lead) => lead.canal === "coches.net"));
       setClients(c);
       setSalesRecords(s);
       setPurchaseRecords(p);

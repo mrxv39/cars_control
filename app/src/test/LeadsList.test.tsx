@@ -222,6 +222,17 @@ describe('LeadsList — edit mode', () => {
       expect(onReload).toHaveBeenCalled()
     })
   })
+
+  // Audit 2026-04-22: canal ya no es editable desde el form. coches.net viene
+  // automático del sync; WhatsApp/llamadas/walk-in no son leads en este CRM.
+  it('does not expose a canal selector in edit mode', () => {
+    render(<LeadsList {...defaultProps} leads={[lead]} />)
+    fireEvent.click(screen.getByText('Juan García'))
+    fireEvent.click(screen.getByText('Editar'))
+    expect(screen.queryByRole('option', { name: 'WhatsApp' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Llamada' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Visita presencial' })).not.toBeInTheDocument()
+  })
 })
 
 // ── Sugerir y Enviar (AI + Gmail) ───────────────────────────────────────
