@@ -140,9 +140,25 @@ const NAV_ITEMS: Array<{ key: ViewKey; label: string; icon: React.ComponentType<
   { key: "revision", label: "Revisión", icon: ClipboardCheck },
 ];
 
+// Vistas que se recuerdan entre sesiones — evita que F5 te devuelva a Stock
+// cuando estabas revisando Banco/Leads. stock_detail queda fuera porque
+// depende de un vehículo seleccionado que no se rehidrata.
+const PERSISTABLE_VIEWS: ViewKey[] = ["dashboard", "stock", "leads", "clients", "sales", "purchases", "suppliers", "bank", "revision", "profile", "company"];
+
 function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: api.LoginResult; onLogout: () => void; onOpenPlatform?: () => void }) {
   const companyId = session.company.id;
-  const [currentView, setCurrentView] = useState<ViewKey>("stock");
+  const [currentView, setCurrentView] = useState<ViewKey>(() => {
+    try {
+      const saved = localStorage.getItem("cc_last_view");
+      if (saved && (PERSISTABLE_VIEWS as string[]).includes(saved)) return saved as ViewKey;
+    } catch { /* ignore */ }
+    return "stock";
+  });
+  useEffect(() => {
+    if ((PERSISTABLE_VIEWS as string[]).includes(currentView)) {
+      try { localStorage.setItem("cc_last_view", currentView); } catch { /* ignore */ }
+    }
+  }, [currentView]);
   const [vehicles, setVehicles] = useState<api.Vehicle[]>([]);
   const [allVehicles, setAllVehicles] = useState<api.Vehicle[]>([]);
   const [leads, setLeads] = useState<api.Lead[]>([]);

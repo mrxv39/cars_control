@@ -204,4 +204,45 @@ describe('WebApp', () => {
     await importAndRender()
     await waitFor(() => expect(screen.getByText(/Cerrar sesión/)).toBeInTheDocument())
   })
+
+  it('restores last active view from localStorage (cc_last_view)', async () => {
+    const session = {
+      user: { id: 1, full_name: 'Ricard', username: 'ricard', email: 'ricard@test.com', role: 'admin' },
+      company: { id: 1, trade_name: 'CodinaCars', legal_name: 'CodinaCars SL', cif: '', address: '', phone: '', email: '', website: '' },
+    }
+    localStorage.setItem('cc_session', JSON.stringify(session))
+    localStorage.setItem('cc_last_view', 'bank')
+    await importAndRender()
+    await waitFor(() => {
+      const bankNav = screen.getAllByRole('button', { name: /Banco/ }).find((el) => el.classList.contains('active'))
+      expect(bankNav).toBeTruthy()
+    })
+  })
+
+  it('ignores invalid cc_last_view and falls back to stock', async () => {
+    const session = {
+      user: { id: 1, full_name: 'Ricard', username: 'ricard', email: 'ricard@test.com', role: 'admin' },
+      company: { id: 1, trade_name: 'CodinaCars', legal_name: 'CodinaCars SL', cif: '', address: '', phone: '', email: '', website: '' },
+    }
+    localStorage.setItem('cc_session', JSON.stringify(session))
+    localStorage.setItem('cc_last_view', '<malicious>')
+    await importAndRender()
+    await waitFor(() => {
+      const stockNav = screen.getAllByRole('button', { name: /Stock/ }).find((el) => el.classList.contains('active'))
+      expect(stockNav).toBeTruthy()
+    })
+  })
+
+  it('persists view change to localStorage when clicking a nav item', async () => {
+    const session = {
+      user: { id: 1, full_name: 'Ricard', username: 'ricard', email: 'ricard@test.com', role: 'admin' },
+      company: { id: 1, trade_name: 'CodinaCars', legal_name: 'CodinaCars SL', cif: '', address: '', phone: '', email: '', website: '' },
+    }
+    localStorage.setItem('cc_session', JSON.stringify(session))
+    await importAndRender()
+    await waitFor(() => expect(screen.getByText('Banco')).toBeInTheDocument())
+    const bankBtn = screen.getAllByRole('button', { name: /Banco/ })[0]
+    fireEvent.click(bankBtn)
+    await waitFor(() => expect(localStorage.getItem('cc_last_view')).toBe('bank'))
+  })
 })
