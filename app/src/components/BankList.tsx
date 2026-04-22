@@ -3,6 +3,7 @@ import * as api from "../lib/api";
 import { showToast } from "../lib/toast";
 import { translateError } from "../lib/translateError";
 import { LinkPurchaseModal } from "./LinkPurchaseModal";
+import { LinkSaleModal } from "./LinkSaleModal";
 import { CreatePurchaseModal } from "./CreatePurchaseModal";
 import { CreateRuleModal } from "./CreateRuleModal";
 import { CATEGORY_LABELS, CATEGORY_GROUPS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel } from "./bank-utils";
@@ -36,6 +37,7 @@ export function BankList({ companyId }: Props) {
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [linkingTx, setLinkingTx] = useState<api.BankTransaction | null>(null);
+  const [linkingSaleTx, setLinkingSaleTx] = useState<api.BankTransaction | null>(null);
   const [creatingPurchaseTx, setCreatingPurchaseTx] = useState<api.BankTransaction | null>(null);
   const [ruleCandidate, setRuleCandidate] = useState<{ tx: api.BankTransaction; category: string } | null>(null);
   // ID de la última fila categorizada manualmente — habilita CTA inline "+ regla"
@@ -194,6 +196,14 @@ export function BankList({ companyId }: Props) {
           tx={linkingTx}
           companyId={companyId}
           onClose={() => setLinkingTx(null)}
+          onLinked={() => void reloadTransactions()}
+        />
+      )}
+      {linkingSaleTx && (
+        <LinkSaleModal
+          tx={linkingSaleTx}
+          companyId={companyId}
+          onClose={() => setLinkingSaleTx(null)}
           onLinked={() => void reloadTransactions()}
         />
       )}
@@ -607,7 +617,25 @@ export function BankList({ companyId }: Props) {
                                 </button>
                               </div>
                             ) : (
-                              <span className="muted" style={{ fontSize: "var(--text-xs)" }}>—</span>
+                              <button
+                                type="button"
+                                onClick={() => setLinkingSaleTx(t)}
+                                aria-label={`Vincular ingreso ${formatEur(v)} a venta`}
+                                className="bank-link-button"
+                                style={{
+                                  padding: "0.2rem 0.5rem",
+                                  fontSize: "var(--text-xs)",
+                                  borderRadius: "var(--radius-sm)",
+                                  border: "1px solid var(--color-success)",
+                                  background: "var(--color-bg)",
+                                  color: "var(--color-success)",
+                                  cursor: "pointer",
+                                  fontWeight: 600,
+                                  transition: "background var(--transition-fast), color var(--transition-fast)",
+                                }}
+                              >
+                                Vincular venta →
+                              </button>
                             )}
                           </td>
                         </tr>

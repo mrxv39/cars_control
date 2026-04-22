@@ -8,7 +8,9 @@ vi.mock('../lib/api', () => ({
   listBankTransactions: vi.fn(),
   updateBankTransactionCategory: vi.fn(),
   suggestPurchasesForTransaction: vi.fn(),
+  suggestSalesForTransaction: vi.fn(),
   linkTransactionToPurchase: vi.fn(),
+  linkTransactionToSale: vi.fn(),
   createBankCategoryRule: vi.fn(),
   createPurchaseFromTransaction: vi.fn(),
 }))
@@ -256,5 +258,50 @@ describe('BankList', () => {
     await waitFor(() => {
       expect(screen.getByText('Crear compra desde movimiento')).toBeInTheDocument()
     })
+  })
+
+  // Audit 2026-04-22: ingresos no tenían CTA de vinculación manual.
+  it('shows "Vincular venta" button for income (positive amount) transactions', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, amount: 9500, counterparty_name: 'Comprador', category: 'VENTA_VEHICULO' }),
+    ])
+
+    render(<BankList companyId={1} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Vincular ingreso.*a venta/ })).toBeInTheDocument()
+    })
+  })
+
+  it('opens link-sale modal when "Vincular venta" is clicked', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, amount: 9500, counterparty_name: 'Comprador', category: 'VENTA_VEHICULO' }),
+    ])
+    vi.mocked(api.suggestSalesForTransaction).mockResolvedValue([])
+
+    render(<BankList companyId={1} />)
+
+    const btn = await screen.findByRole('button', { name: /Vincular ingreso.*a venta/ })
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      expect(screen.getByText('Vincular a venta existente')).toBeInTheDocument()
+    })
+  })
+
+  it('does not show link-sale button when income is already linked', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, amount: 9500, linked_sale_id: 42, category: 'VENTA_VEHICULO' }),
+    ])
+
+    render(<BankList companyId={1} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('vinculado')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: /Vincular ingreso/ })).not.toBeInTheDocument()
   })
 })
