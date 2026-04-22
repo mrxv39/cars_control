@@ -26,6 +26,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   COMISION_BANCO: "Comisión banco",
   TRASPASO_INTERNO: "Traspaso interno",
   RETIRO_PERSONAL: "Retiro personal",
+  IGNORAR: "Ignorar",
   OTRO: "Otro",
 };
 
@@ -55,6 +56,7 @@ export const CATEGORY_COLOR: Record<string, string> = {
   COMISION_BANCO: "#475569",
   TRASPASO_INTERNO: "#64748b",
   SIN_CATEGORIZAR: "#fbbf24",
+  IGNORAR: "#cbd5e1",
   OTRO: "#94a3b8",
 };
 
@@ -70,8 +72,44 @@ export const CATEGORY_GROUPS: Array<{ label: string; keys: string[] }> = [
   { label: "Operativo", keys: ["PUBLICIDAD", "SOFTWARE", "FORMACION", "LIMPIEZA"] },
   { label: "Fiscal", keys: ["IMPUESTO_303", "IMPUESTO_130", "IMPUESTO_OTRO", "AUTONOMO_CUOTA"] },
   { label: "Banco", keys: ["POLIZA_CAIXA", "COMISION_BANCO"] },
-  { label: "Otros", keys: ["TRASPASO_INTERNO", "RETIRO_PERSONAL", "OTRO"] },
+  { label: "Otros", keys: ["TRASPASO_INTERNO", "RETIRO_PERSONAL", "IGNORAR", "OTRO"] },
 ];
+
+// Categorías que NO deberían aparecer como "pendientes de revisar" en los
+// contadores del dashboard bancario. IGNORAR es opt-in: el usuario marca
+// manualmente movimientos triviales (comisiones, redondeos, ...) para sacarlos
+// del contador de "sin categorizar" sin tener que inventar una categoría fiscal.
+export const REVIEW_DONE_CATEGORIES = new Set(["IGNORAR"]);
+
+// Patrón sugerido para reglas automáticas y propagación inline.
+// Prioriza counterparty_name (si lo hay) sobre la primera palabra ≥3 chars
+// de la descripción, cortando por el primer separador fuerte (| / o ≥3 dígitos).
+// Audit 2026-04-20: evita patrones como "eess molins fecha" que no existían
+// literalmente en la descripción.
+const STOP_WORDS = new Set([
+  "de", "del", "la", "las", "el", "los", "y", "en", "por", "para", "a", "al",
+  "com", "sl", "sa", "slu", "cb", "sas", "s.l.", "s.a.",
+  "transferencia", "recibo", "bizum", "traspaso", "pago",
+]);
+
+export function suggestPatternFromTx(counterpartyName: string | null | undefined, description: string | null | undefined): string {
+  const counterparty = (counterpartyName || "").trim();
+  if (counterparty.length >= 3) return counterparty;
+
+  const desc = (description || "").trim();
+  if (!desc) return "";
+
+  const cutMatch = desc.match(/^(.+?)(?=\s*(?:[|/]|\d{3,}))/);
+  const head = (cutMatch ? cutMatch[1] : desc).trim();
+  if (head.length >= 3) return head;
+
+  const words = desc
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !STOP_WORDS.has(w) && !/^\d+$/.test(w));
+  return words.slice(0, 3).join(" ") || "";
+}
 
 export function categoryLabel(c: string): string {
   return CATEGORY_LABELS[c] ?? c;
