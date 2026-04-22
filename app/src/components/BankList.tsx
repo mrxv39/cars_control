@@ -38,9 +38,10 @@ export function BankList({ companyId }: Props) {
   const [linkingTx, setLinkingTx] = useState<api.BankTransaction | null>(null);
   const [creatingPurchaseTx, setCreatingPurchaseTx] = useState<api.BankTransaction | null>(null);
   const [ruleCandidate, setRuleCandidate] = useState<{ tx: api.BankTransaction; category: string } | null>(null);
-  // ID de la última fila categorizada manualmente — habilita CTA inline "+ regla"
-  // sin abrir un modal intrusivo en cada cambio (audit 2026-04-19, top friction Banco Fase 2).
-  const [lastChangedTxId, setLastChangedTxId] = useState<number | null>(null);
+  // IDs categorizados manualmente en esta sesión — mantiene el CTA "+ regla"
+  // visible en cada fila tocada hasta recargar, en vez de sólo en la última
+  // (audit 2026-04-22: Ricard prefiere revisar en bloque y crear reglas al final).
+  const [recentlyChangedIds, setRecentlyChangedIds] = useState<Set<number>>(new Set());
 
   // Cargar cuentas al montar
   useEffect(() => {
@@ -147,7 +148,12 @@ export function BankList({ companyId }: Props) {
       setTransactions((prev) =>
         prev.map((t) => (t.id === txId ? { ...t, category, reviewed_by_user: true } : t)),
       );
-      setLastChangedTxId(category === "SIN_CATEGORIZAR" ? null : txId);
+      setRecentlyChangedIds((prev) => {
+        const next = new Set(prev);
+        if (category === "SIN_CATEGORIZAR") next.delete(txId);
+        else next.add(txId);
+        return next;
+      });
     } catch (e) {
       console.error("Error al cambiar categoría:", e);
       showToast(translateError(e), "error");
@@ -211,7 +217,15 @@ export function BankList({ companyId }: Props) {
           category={ruleCandidate.category}
           companyId={companyId}
           onClose={() => setRuleCandidate(null)}
-          onCreated={() => void reloadTransactions()}
+          onCreated={() => {
+            const txId = ruleCandidate.tx.id;
+            setRecentlyChangedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(txId);
+              return next;
+            });
+            void reloadTransactions();
+          }}
         />
       )}
 
@@ -525,7 +539,7 @@ export function BankList({ companyId }: Props) {
                                   </optgroup>
                                 ))}
                               </select>
-                              {t.id === lastChangedTxId && t.category !== "SIN_CATEGORIZAR" && (
+                              {recentlyChangedIds.has(t.id) && t.category !== "SIN_CATEGORIZAR" && (
                                 <button
                                   type="button"
                                   onClick={() => setRuleCandidate({ tx: t, category: t.category })}

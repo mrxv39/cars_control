@@ -257,4 +257,55 @@ describe('BankList', () => {
       expect(screen.getByText('Crear compra desde movimiento')).toBeInTheDocument()
     })
   })
+
+  // Audit 2026-04-22 fix: antes el CTA "+ regla" sólo aparecía en la última
+  // fila cambiada. Ahora persiste en TODAS las filas categorizadas durante
+  // la sesión, hasta recargar. Permite revisar en bloque y crear reglas al final.
+  it('keeps + regla button visible on all recently categorized rows', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, category: 'SIN_CATEGORIZAR', description: 'CEPSA gasolina' }),
+      makeTx({ id: 2, category: 'SIN_CATEGORIZAR', description: 'Taller Mecánico' }),
+    ])
+    vi.mocked(api.updateBankTransactionCategory).mockResolvedValue(undefined)
+
+    render(<BankList companyId={1} />)
+
+    const selects = await screen.findAllByLabelText(/Categoría para/)
+    expect(selects.length).toBe(2)
+
+    fireEvent.change(selects[0], { target: { value: 'COMBUSTIBLE' } })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Crear regla.*Combustible/i })).toBeInTheDocument()
+    })
+
+    fireEvent.change(selects[1], { target: { value: 'REPARACION' } })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Crear regla.*Reparación/i })).toBeInTheDocument()
+    })
+
+    // El primer botón sigue presente
+    expect(screen.getByRole('button', { name: /Crear regla.*Combustible/i })).toBeInTheDocument()
+  })
+
+  it('removes + regla button when row is re-set to SIN_CATEGORIZAR', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, category: 'SIN_CATEGORIZAR', description: 'CEPSA' }),
+    ])
+    vi.mocked(api.updateBankTransactionCategory).mockResolvedValue(undefined)
+
+    render(<BankList companyId={1} />)
+
+    const select = await screen.findByLabelText(/Categoría para/)
+    fireEvent.change(select, { target: { value: 'COMBUSTIBLE' } })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Crear regla.*Combustible/i })).toBeInTheDocument()
+    })
+
+    fireEvent.change(select, { target: { value: 'SIN_CATEGORIZAR' } })
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /Crear regla/i })).not.toBeInTheDocument()
+    })
+  })
 })
