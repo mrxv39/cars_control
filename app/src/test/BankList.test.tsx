@@ -13,6 +13,8 @@ vi.mock('../lib/api', () => ({
   linkTransactionToSale: vi.fn(),
   createBankCategoryRule: vi.fn(),
   createPurchaseFromTransaction: vi.fn(),
+  countUncategorizedMatching: vi.fn(),
+  applyCategoryToUncategorizedMatching: vi.fn(),
 }))
 
 const api = await import('../lib/api')
@@ -321,7 +323,7 @@ describe('BankList', () => {
     render(<BankList companyId={1} />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Vincular ingreso.*a venta/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Asociar ingreso.*venta/ })).toBeInTheDocument()
     })
   })
 
@@ -334,7 +336,7 @@ describe('BankList', () => {
 
     render(<BankList companyId={1} />)
 
-    const btn = await screen.findByRole('button', { name: /Vincular ingreso.*a venta/ })
+    const btn = await screen.findByRole('button', { name: /Asociar ingreso.*venta/ })
     fireEvent.click(btn)
 
     await waitFor(() => {
@@ -353,6 +355,83 @@ describe('BankList', () => {
     await waitFor(() => {
       expect(screen.getByText('vinculado')).toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: /Vincular ingreso/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Asociar ingreso/ })).not.toBeInTheDocument()
+  })
+
+  // Audit 2026-04-19 M6: categoría IGNORAR opt-in para movimientos triviales
+  // que no deben contar como "sin categorizar".
+  it('offers IGNORAR as a selectable category', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, category: 'SIN_CATEGORIZAR', description: 'Comisión 0.50€' }),
+    ])
+
+    render(<BankList companyId={1} />)
+
+    const select = await screen.findByLabelText(/Categoría para/)
+    const options = Array.from((select as HTMLSelectElement).options).map((o) => o.value)
+    expect(options).toContain('IGNORAR')
+  })
+
+  // Audit 2026-04-20b M7: al categorizar SIN_CATEGORIZAR → categoría concreta,
+  // se propone aplicar el mismo cambio a otros con la misma contraparte sin abrir modal.
+  it('shows propagate banner after categorizing SIN_CATEGORIZAR when similars exist', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, category: 'SIN_CATEGORIZAR', counterparty_name: 'CEPSA', description: 'Combustible' }),
+    ])
+    vi.mocked(api.updateBankTransactionCategory).mockResolvedValue(undefined)
+    vi.mocked(api.countUncategorizedMatching).mockResolvedValue(4)
+
+    render(<BankList companyId={1} />)
+
+    const catSelect = await screen.findByLabelText(/Categoría para/)
+    fireEvent.change(catSelect, { target: { value: 'COMBUSTIBLE' } })
+
+    expect(await screen.findByText(/4 movimientos sin categorizar/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Aplicar a todos/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Solo este/ })).toBeInTheDocument()
+  })
+
+  it('applies category to similars when clicking "Aplicar a todos"', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, category: 'SIN_CATEGORIZAR', counterparty_name: 'CEPSA', description: 'Combustible' }),
+    ])
+    vi.mocked(api.updateBankTransactionCategory).mockResolvedValue(undefined)
+    vi.mocked(api.countUncategorizedMatching).mockResolvedValue(3)
+    vi.mocked(api.applyCategoryToUncategorizedMatching).mockResolvedValue(3)
+
+    render(<BankList companyId={1} />)
+
+    const catSelect = await screen.findByLabelText(/Categoría para/)
+    fireEvent.change(catSelect, { target: { value: 'COMBUSTIBLE' } })
+
+    const applyBtn = await screen.findByRole('button', { name: /Aplicar a todos/ })
+    fireEvent.click(applyBtn)
+
+    await waitFor(() => {
+      expect(api.applyCategoryToUncategorizedMatching).toHaveBeenCalledWith(1, 'CEPSA', 'COMBUSTIBLE')
+    })
+  })
+
+  it('does not propose propagation when category set to IGNORAR', async () => {
+    vi.mocked(api.listBankAccounts).mockResolvedValue([makeAccount()])
+    vi.mocked(api.listBankTransactions).mockResolvedValue([
+      makeTx({ id: 1, category: 'SIN_CATEGORIZAR', counterparty_name: 'CEPSA', description: 'Combustible' }),
+    ])
+    vi.mocked(api.updateBankTransactionCategory).mockResolvedValue(undefined)
+    vi.mocked(api.countUncategorizedMatching).mockResolvedValue(4)
+
+    render(<BankList companyId={1} />)
+
+    const catSelect = await screen.findByLabelText(/Categoría para/)
+    fireEvent.change(catSelect, { target: { value: 'IGNORAR' } })
+
+    await waitFor(() => {
+      expect(api.updateBankTransactionCategory).toHaveBeenCalledWith(1, 'IGNORAR', true)
+    })
+    expect(api.countUncategorizedMatching).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: /Aplicar a todos/ })).not.toBeInTheDocument()
   })
 })

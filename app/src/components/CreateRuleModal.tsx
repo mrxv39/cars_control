@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import * as api from "../lib/api";
 import { showToast } from "../lib/toast";
 import { translateError } from "../lib/translateError";
-import { categoryLabel } from "./bank-utils";
+import { categoryLabel, suggestPatternFromTx } from "./bank-utils";
 
 interface Props {
   tx: api.BankTransaction;
@@ -12,44 +12,13 @@ interface Props {
   onCreated: () => void;
 }
 
-const STOP_WORDS = new Set([
-  "de", "del", "la", "las", "el", "los", "y", "en", "por", "para", "a", "al",
-  "com", "sl", "sa", "slu", "cb", "sas", "s.l.", "s.a.",
-  "transferencia", "recibo", "bizum", "traspaso", "pago",
-]);
-
-function suggestPattern(tx: api.BankTransaction): string {
-  const counterparty = (tx.counterparty_name || "").trim();
-  if (counterparty.length >= 3) return counterparty;
-
-  // Audit 2026-04-20: el approach anterior filtraba stopwords y las unía con espacio,
-  // lo que producía patrones que NO existen como substring consecutivo en la descripción
-  // real (ej: "EESS MOLINS DE RE | 09736 / Fecha ..." → "eess molins fecha", que no
-  // matchea con ILIKE). El nuevo approach toma el segmento literal inicial cortando
-  // por el primer separador fuerte (pipe, slash, o 3+ dígitos), preservando adyacencia.
-  const desc = (tx.description || "").trim();
-  if (!desc) return "";
-
-  const cutMatch = desc.match(/^(.+?)(?=\s*(?:[|/]|\d{3,}))/);
-  const head = (cutMatch ? cutMatch[1] : desc).trim();
-  if (head.length >= 3) return head;
-
-  // Fallback: primeras 3 palabras significativas (solo si el head sale demasiado corto).
-  const words = desc
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 3 && !STOP_WORDS.has(w) && !/^\d+$/.test(w));
-  return words.slice(0, 3).join(" ") || "";
-}
-
 // Patrones por debajo de este umbral son demasiado genéricos y pueden recategorizar
 // movimientos no relacionados (ej: "ricard" coincidiría con cualquier descripción
 // que contenga el nombre del titular). Mostrar advertencia en la UI.
 const GENERIC_PATTERN_MIN_LEN = 6;
 
 export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }: Props) {
-  const initialPattern = useMemo(() => suggestPattern(tx), [tx]);
+  const initialPattern = useMemo(() => suggestPatternFromTx(tx.counterparty_name, tx.description), [tx]);
   const [pattern, setPattern] = useState(initialPattern);
   const [priority, setPriority] = useState(100);
   const [submitting, setSubmitting] = useState(false);

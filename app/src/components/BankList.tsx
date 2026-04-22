@@ -6,7 +6,7 @@ import { LinkPurchaseModal } from "./LinkPurchaseModal";
 import { LinkSaleModal } from "./LinkSaleModal";
 import { CreatePurchaseModal } from "./CreatePurchaseModal";
 import { CreateRuleModal } from "./CreateRuleModal";
-import { CATEGORY_LABELS, CATEGORY_GROUPS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel } from "./bank-utils";
+import { CATEGORY_LABELS, CATEGORY_GROUPS, categoryLabel, categoryColor, formatEur, formatDate, monthOf, monthLabel, suggestPatternFromTx } from "./bank-utils";
 
 // ============================================================
 // BankList — vista del extracto bancario
@@ -44,6 +44,23 @@ export function BankList({ companyId }: Props) {
   // visible en cada fila tocada hasta recargar, en vez de sólo en la última
   // (audit 2026-04-22: Ricard prefiere revisar en bloque y crear reglas al final).
   const [recentlyChangedIds, setRecentlyChangedIds] = useState<Set<number>>(new Set());
+
+  // Audit 2026-04-20b M7: al categorizar manualmente un SIN_CATEGORIZAR, si hay
+  // otros movimientos parecidos, ofrecemos aplicar el mismo cambio en bloque
+  // sin tener que abrir el modal "+ regla" explícitamente. El modal sigue ahí
+  // para quienes quieran además crear la regla persistente.
+  const [propagateHint, setPropagateHint] = useState<{
+    pattern: string;
+    category: string;
+    count: number;
+    applying: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!propagateHint || propagateHint.applying) return;
+    const t = setTimeout(() => setPropagateHint(null), 15000);
+    return () => clearTimeout(t);
+  }, [propagateHint]);
 
   // Cargar cuentas al montar
   useEffect(() => {
@@ -113,8 +130,11 @@ export function BankList({ companyId }: Props) {
       .sort((a, b) => b.total - a.total);
   }, [transactions]);
 
+  // Excluye SIN_CATEGORIZAR del denominador — si no, como suele sumar 10× lo de
+  // cualquier otra categoría, aplastaba el resto a barras invisibles (audit M5).
+  // La barra de SIN_CATEGORIZAR queda capada al 100% al renderizar.
   const maxCatTotal = useMemo(
-    () => Math.max(1, ...byCategory.map((c) => c.total)),
+    () => Math.max(1, ...byCategory.filter((c) => c.category !== "SIN_CATEGORIZAR").map((c) => c.total)),
     [byCategory],
   );
 
@@ -145,6 +165,7 @@ export function BankList({ companyId }: Props) {
   async function changeCategory(txId: number, category: string) {
     const tx = transactions.find((t) => t.id === txId);
     if (!tx || tx.category === category) return;
+    const wasUncategorized = tx.category === "SIN_CATEGORIZAR";
     try {
       await api.updateBankTransactionCategory(txId, category, true);
       setTransactions((prev) =>
@@ -156,9 +177,39 @@ export function BankList({ companyId }: Props) {
         else next.add(txId);
         return next;
       });
+      // Al sacar un movimiento de SIN_CATEGORIZAR, proponer aplicar el mismo
+      // cambio a otros parecidos (sin abrir el modal "+ regla"). Fire-and-forget:
+      // si el count falla o es 0, simplemente no aparece el banner.
+      if (wasUncategorized && category !== "SIN_CATEGORIZAR" && category !== "IGNORAR") {
+        const pattern = suggestPatternFromTx(tx.counterparty_name, tx.description);
+        if (pattern.length >= 3) {
+          void (async () => {
+            try {
+              const count = await api.countUncategorizedMatching(companyId, pattern);
+              if (count > 0) setPropagateHint({ pattern, category, count, applying: false });
+            } catch {
+              /* silencioso — si falla, solo nos quedamos sin el atajo */
+            }
+          })();
+        }
+      }
     } catch (e) {
       console.error("Error al cambiar categoría:", e);
       showToast(translateError(e), "error");
+    }
+  }
+
+  async function applyPropagateHint() {
+    if (!propagateHint || propagateHint.applying) return;
+    setPropagateHint({ ...propagateHint, applying: true });
+    try {
+      const n = await api.applyCategoryToUncategorizedMatching(companyId, propagateHint.pattern, propagateHint.category);
+      showToast(`${n} movimiento${n !== 1 ? "s" : ""} categorizado${n !== 1 ? "s" : ""} como "${categoryLabel(propagateHint.category)}"`, "success");
+      setPropagateHint(null);
+      await reloadTransactions();
+    } catch (e) {
+      showToast(translateError(e), "error");
+      setPropagateHint(propagateHint ? { ...propagateHint, applying: false } : null);
     }
   }
 
@@ -334,7 +385,7 @@ export function BankList({ companyId }: Props) {
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {byCategory.map((c) => {
-              const pct = (c.total / maxCatTotal) * 100;
+              const pct = Math.min(100, (c.total / maxCatTotal) * 100);
               const isActive = filterCategory === c.category;
               return (
                 <button
@@ -433,6 +484,51 @@ export function BankList({ companyId }: Props) {
           </label>
         </div>
       </section>
+
+      {/* Propuesta de propagación tras categorizar (audit M7) */}
+      {propagateHint && (
+        <section
+          className="panel"
+          role="status"
+          aria-live="polite"
+          style={{
+            marginBottom: "1rem",
+            borderLeft: "4px solid var(--color-primary)",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "var(--space-sm)",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 600 }}>
+              Hay {propagateHint.count} movimiento{propagateHint.count !== 1 ? "s" : ""} sin categorizar con <b>"{propagateHint.pattern}"</b>
+            </p>
+            <p className="muted" style={{ margin: "0.2rem 0 0", fontSize: "var(--text-xs)" }}>
+              ¿Los marcamos también como <b>{categoryLabel(propagateHint.category)}</b>?
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: "var(--space-xs)", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="button primary"
+              onClick={() => void applyPropagateHint()}
+              disabled={propagateHint.applying}
+            >
+              {propagateHint.applying ? "Aplicando…" : "Aplicar a todos"}
+            </button>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => setPropagateHint(null)}
+              disabled={propagateHint.applying}
+            >
+              Solo este
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Tabla agrupada por mes */}
       {transactions.length === 0 ? (
@@ -577,7 +673,8 @@ export function BankList({ companyId }: Props) {
                                 <button
                                   type="button"
                                   onClick={() => setLinkingTx(t)}
-                                  aria-label={`Vincular movimiento ${formatEur(v)} a compra`}
+                                  aria-label={`Asociar movimiento ${formatEur(v)} a una compra ya registrada`}
+                                  title="Asociar este movimiento a una compra que ya tienes creada"
                                   className="bank-link-button"
                                   style={{
                                     padding: "0.2rem 0.5rem",
@@ -591,7 +688,7 @@ export function BankList({ companyId }: Props) {
                                     transition: "background var(--transition-fast), color var(--transition-fast)",
                                   }}
                                 >
-                                  Vincular →
+                                  Asociar a compra
                                 </button>
                                 <button
                                   type="button"
@@ -617,7 +714,8 @@ export function BankList({ companyId }: Props) {
                               <button
                                 type="button"
                                 onClick={() => setLinkingSaleTx(t)}
-                                aria-label={`Vincular ingreso ${formatEur(v)} a venta`}
+                                aria-label={`Asociar ingreso ${formatEur(v)} a una venta ya registrada`}
+                                title="Asociar este ingreso a una venta que ya tienes creada"
                                 className="bank-link-button"
                                 style={{
                                   padding: "0.2rem 0.5rem",
@@ -631,7 +729,7 @@ export function BankList({ companyId }: Props) {
                                   transition: "background var(--transition-fast), color var(--transition-fast)",
                                 }}
                               >
-                                Vincular venta →
+                                Asociar a venta
                               </button>
                             )}
                           </td>
