@@ -304,4 +304,41 @@ describe('StockList — add vehicle form', () => {
       'stock',
     )
   })
+
+  // Audit 2026-04-22: Stock usaba window.confirm; Leads usaba ConfirmDialog.
+  // Ahora ambos comparten el mismo dialogo estilizado.
+  it('opens ConfirmDialog (not window.confirm) when cancelling a dirty add form', () => {
+    render(<StockList {...defaultProps} />)
+    fireEvent.click(screen.getByText('Añadir vehículo'))
+    fireEvent.change(screen.getByPlaceholderText('Escribe para buscar coincidencias...'), { target: { value: 'Seat' } })
+    fireEvent.click(screen.getByText('Cancelar'))
+    // El dialog estilizado aparece con el mensaje
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText(/Cambios sin guardar/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Salir sin guardar' })).toBeInTheDocument()
+  })
+
+  it('resets the add form when confirming "Salir sin guardar"', () => {
+    render(<StockList {...defaultProps} />)
+    fireEvent.click(screen.getByText('Añadir vehículo'))
+    const input = screen.getByPlaceholderText('Escribe para buscar coincidencias...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'Seat' } })
+    fireEvent.click(screen.getByText('Cancelar'))
+    fireEvent.click(screen.getByRole('button', { name: 'Salir sin guardar' }))
+    expect(screen.queryByPlaceholderText('Escribe para buscar coincidencias...')).not.toBeInTheDocument()
+  })
+
+  it('keeps form open when dismissing the ConfirmDialog', () => {
+    render(<StockList {...defaultProps} />)
+    fireEvent.click(screen.getByText('Añadir vehículo'))
+    const input = screen.getByPlaceholderText('Escribe para buscar coincidencias...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'Seat' } })
+    fireEvent.click(screen.getByText('Cancelar'))
+    // Dialogo visible con Cancelar dentro → 2 "Cancelar" en pantalla; usamos el que está en role=dialog
+    const dialog = screen.getByRole('dialog')
+    const cancelInDialog = dialog.querySelector('button.secondary') as HTMLButtonElement
+    fireEvent.click(cancelInDialog)
+    // El form sigue abierto con el valor intacto
+    expect(screen.getByPlaceholderText('Escribe para buscar coincidencias...')).toHaveValue('Seat')
+  })
 })
