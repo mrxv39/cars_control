@@ -78,6 +78,8 @@ beforeEach(() => {
   vi.mocked(api.getStockPhotoSummary).mockResolvedValue(new Map())
   vi.mocked(api.getStockDocSummary).mockResolvedValue(new Map())
   vi.mocked(api.createVehicle).mockResolvedValue(makeVehicle())
+  // StockList persiste filtros en localStorage (audit 2026-04-22) — aislamiento entre tests
+  localStorage.clear()
 })
 
 describe('StockList — empty state', () => {
@@ -217,6 +219,30 @@ describe('StockList — filter buttons', () => {
     fireEvent.click(screen.getByRole('button', { name: /Sin precio/ }))
     // Click again to deactivate
     fireEvent.click(screen.getByRole('button', { name: /Sin precio/ }))
+    expect(screen.getByText('Con precio')).toBeInTheDocument()
+    expect(screen.getByText('Sin precio venta')).toBeInTheDocument()
+  })
+
+  // Audit 2026-04-22: al abrir un coche y volver, los filtros se reseteaban.
+  // Ahora filterKey/sortBy/fuel/price/year se guardan en localStorage.
+  it('persists active filter to localStorage when clicked', () => {
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    fireEvent.click(screen.getByRole('button', { name: /Sin precio/ }))
+    expect(localStorage.getItem('cc_stock_filterKey')).toBe('sin_precio')
+  })
+
+  it('restores active filter from localStorage on mount', () => {
+    localStorage.setItem('cc_stock_filterKey', 'sin_precio')
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    // Filtro aplicado: solo queda el vehículo "Sin precio venta"
+    expect(screen.getByText('Sin precio venta')).toBeInTheDocument()
+    expect(screen.queryByText('Con precio')).not.toBeInTheDocument()
+  })
+
+  it('ignores an invalid filterKey stored in localStorage', () => {
+    localStorage.setItem('cc_stock_filterKey', '<malicious>')
+    render(<StockList {...defaultProps} vehicles={vehicles} allVehicles={vehicles} />)
+    // Fallback a "todos" → ambos vehículos visibles
     expect(screen.getByText('Con precio')).toBeInTheDocument()
     expect(screen.getByText('Sin precio venta')).toBeInTheDocument()
   })

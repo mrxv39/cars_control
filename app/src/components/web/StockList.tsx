@@ -17,6 +17,27 @@ const REQUIRED_DOC_TYPES = ["ficha_tecnica", "permiso_circulacion", "itv", "fact
 type StockSortKey = "dias" | "leads_pendientes" | "margen" | "recientes";
 type StockFilterKey = "todos" | "pendientes" | "leads_pendientes" | "listos" | "sin_precio";
 
+const VALID_SORT_KEYS: StockSortKey[] = ["dias", "leads_pendientes", "margen", "recientes"];
+const VALID_FILTER_KEYS: StockFilterKey[] = ["todos", "pendientes", "leads_pendientes", "listos", "sin_precio"];
+
+function loadStoredSortBy(): StockSortKey {
+  try {
+    const v = localStorage.getItem("cc_stock_sortBy");
+    if (v && (VALID_SORT_KEYS as string[]).includes(v)) return v as StockSortKey;
+  } catch { /* ignore */ }
+  return "dias";
+}
+function loadStoredFilterKey(): StockFilterKey {
+  try {
+    const v = localStorage.getItem("cc_stock_filterKey");
+    if (v && (VALID_FILTER_KEYS as string[]).includes(v)) return v as StockFilterKey;
+  } catch { /* ignore */ }
+  return "todos";
+}
+function loadStoredString(key: string): string {
+  try { return localStorage.getItem(key) ?? ""; } catch { return ""; }
+}
+
 function StockRow({ vehicle, days, leadsPendientes, photoCount, thumbUrl, docTypes, onSelect }: {
   vehicle: api.Vehicle;
   days: number | null;
@@ -145,11 +166,19 @@ export function StockList({ vehicles, allVehicles, leads, purchaseRecords, compa
 
   const [search, setSearch] = useState(externalSearch || "");
   React.useEffect(() => { if (externalSearch) setSearch(externalSearch); }, [externalSearch]);
-  const [sortBy, setSortBy] = useState<StockSortKey>("dias");
-  const [filterKey, setFilterKey] = useState<StockFilterKey>("todos");
-  const [fuelFilter, setFuelFilter] = useState("");
-  const [priceMaxFilter, setPriceMaxFilter] = useState("");
-  const [yearMinFilter, setYearMinFilter] = useState("");
+  // Filtros/orden persistidos entre aperturas de ficha y recargas
+  // (audit 2026-04-22: Ricard perdía el filtro "Con leads" cada vez que
+  // abría un coche y volvía). search se deja efímero a propósito.
+  const [sortBy, setSortBy] = useState<StockSortKey>(() => loadStoredSortBy());
+  const [filterKey, setFilterKey] = useState<StockFilterKey>(() => loadStoredFilterKey());
+  const [fuelFilter, setFuelFilter] = useState(() => loadStoredString("cc_stock_fuel"));
+  const [priceMaxFilter, setPriceMaxFilter] = useState(() => loadStoredString("cc_stock_priceMax"));
+  const [yearMinFilter, setYearMinFilter] = useState(() => loadStoredString("cc_stock_yearMin"));
+  React.useEffect(() => { try { localStorage.setItem("cc_stock_sortBy", sortBy); } catch { /* ignore */ } }, [sortBy]);
+  React.useEffect(() => { try { localStorage.setItem("cc_stock_filterKey", filterKey); } catch { /* ignore */ } }, [filterKey]);
+  React.useEffect(() => { try { localStorage.setItem("cc_stock_fuel", fuelFilter); } catch { /* ignore */ } }, [fuelFilter]);
+  React.useEffect(() => { try { localStorage.setItem("cc_stock_priceMax", priceMaxFilter); } catch { /* ignore */ } }, [priceMaxFilter]);
+  React.useEffect(() => { try { localStorage.setItem("cc_stock_yearMin", yearMinFilter); } catch { /* ignore */ } }, [yearMinFilter]);
   // Mapas precargados para poder filtrar/ordenar a nivel de lista por
   // contadores de fotos y documentos (no se puede esperar al fetch
   // perezoso de cada StockRow para filtrar a este nivel).
