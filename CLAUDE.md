@@ -21,7 +21,7 @@ Dos proyectos Vercel, mismo build, comportamiento distinto por hostname:
 - **Team:** `mrxv39s-projects` (team_rWo8ZPj5KmzqksM9hEKV0H6X)
 - **Detección de modo:** `WebApp.tsx:getAppMode()` lee hostname:
   `codinacars` → store | `carscontrol` → admin | localhost → both
-- **Deploy:** `vercel link --project=<nombre> --scope mrxv39s-projects && vercel deploy --prod --yes`
+- **Deploy:** ejecutar **desde la raíz del repo** (no desde `app/`) — Vercel tiene `rootDirectory=app` y si corres desde `app/` busca `app/app/` y falla. Comando: `vercel deploy --prod --yes --force` (ya hay `.vercel/project.json` linkeado a `carscontrol`).
 - **Ricard solo usa la web** (no Tauri). Verificar features en producción.
 
 ## Estructura principal
@@ -98,7 +98,11 @@ Detalle completo de reglas bancarias, cuentas, y pendientes en `supabase/CLAUDE.
 - Viabilidad automatizar provisional circulación → Gestoría Ruppmann
 - Descargar fotos coches.net a Storage propio
 - Banco Fase 3: GoCardless `sync-bank-caixa` (ver `supabase/CLAUDE.md`). MOV_INTERNO hecho 2026-04-21 (96 pares)
-- Sync-leads: **hecho 2026-04-22**. pg_cron cada 5min, vault auth, live `newer_than:1d` (no marca leído), enrich-on-dedupe. Task Windows `\SyncLeadsCoches` deshabilitada.
+- Seguridad Supabase pendiente (2026-04-23, ver advisors): `search_path` mutable en 2 funciones, bucket `vehicle-photos` permite listing, 33 FK sin índice, 42 policies RLS permisivas duplicadas, Leaked Password Protection deshabilitado.
+
+## Hecho recientemente (no pendiente)
+
+- Sync-leads: **hecho 2026-04-22**. pg_cron cada 5min, vault auth, live `newer_than:1d` (no marca leído), enrich-on-dedupe. Task Windows `\SyncLeadsCoches` **borrada 2026-04-23**.
 
 ## Sesiones de validación
 
