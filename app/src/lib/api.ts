@@ -36,7 +36,7 @@ export type { SuggestReplyResult, SendReplyResult } from "./api-records";
 export {
   listBankAccounts, listBankTransactions,
   updateBankTransactionCategory, linkTransactionToPurchase, linkTransactionToSale,
-  listBankCategoryRules, createBankCategoryRule, suggestPurchasesForTransaction,
+  listBankCategoryRules, createBankCategoryRule, suggestPurchasesForTransaction, suggestSalesForTransaction,
   listPurchaseIdsWithBankLink, createPurchaseFromTransaction,
   countUncategorizedMatching, applyCategoryToUncategorizedMatching,
 } from "./api-bank";

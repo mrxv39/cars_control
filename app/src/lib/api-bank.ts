@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { BankAccount, BankTransaction, BankCategoryRule, BankTransactionFilters, PurchaseRecord } from "./api-types";
+import type { BankAccount, BankTransaction, BankCategoryRule, BankTransactionFilters, PurchaseRecord, SalesRecord } from "./api-types";
 
 function throwIfError(error: { message: string } | null): asserts error is null {
   if (error) throw new Error(error.message);
@@ -116,6 +116,20 @@ export async function applyCategoryToUncategorizedMatching(
     .select("id");
   throwIfError(error);
   return (data || []).length;
+}
+
+export async function suggestSalesForTransaction(companyId: number, amount: number, bookingDate: string): Promise<SalesRecord[]> {
+  const target = Math.abs(amount);
+  const lo = target - 5;
+  const hi = target + 5;
+  const dateObj = new Date(bookingDate);
+  const fromDate = new Date(dateObj.getTime() - 21 * 86400000).toISOString().slice(0, 10);
+  const toDate = new Date(dateObj.getTime() + 21 * 86400000).toISOString().slice(0, 10);
+  const { data, error } = await supabase.from("sales_records").select("*").eq("company_id", companyId)
+    .gte("price_final", lo).lte("price_final", hi).gte("date", fromDate).lte("date", toDate)
+    .order("date", { ascending: false }).limit(10);
+  throwIfError(error);
+  return data || [];
 }
 
 export async function suggestPurchasesForTransaction(companyId: number, amount: number, bookingDate: string): Promise<PurchaseRecord[]> {
