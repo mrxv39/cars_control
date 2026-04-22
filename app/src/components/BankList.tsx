@@ -32,6 +32,7 @@ export function BankList({ companyId }: Props) {
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<api.BankTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [onlyUnlinked, setOnlyUnlinked] = useState(false);
   const [search, setSearch] = useState("");
@@ -260,6 +261,11 @@ export function BankList({ companyId }: Props) {
           companyId={companyId}
           onClose={() => setLinkingTx(null)}
           onLinked={() => void reloadTransactions()}
+          onCreatePurchase={() => {
+            const tx = linkingTx;
+            setLinkingTx(null);
+            setCreatingPurchaseTx(tx);
+          }}
         />
       )}
       {linkingSaleTx && (
@@ -296,7 +302,7 @@ export function BankList({ companyId }: Props) {
         />
       )}
 
-      <header className="hero">
+      <header className="hero" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-md)", flexWrap: "wrap" }}>
         <div>
           <p className="eyebrow">Banco</p>
           <h2>Movimientos bancarios</h2>
@@ -308,6 +314,19 @@ export function BankList({ companyId }: Props) {
               ` · sincronizado ${new Date(selectedAccount.last_synced_at).toLocaleDateString("es-ES")}`}
           </p>
         </div>
+        <button
+          type="button"
+          className="button secondary"
+          onClick={async () => {
+            setRefreshing(true);
+            try { await reloadTransactions(); } finally { setRefreshing(false); }
+          }}
+          disabled={refreshing || selectedAccountId == null}
+          aria-label="Recargar movimientos desde el servidor"
+          title="Refresca los movimientos con los últimos datos de Supabase"
+        >
+          {refreshing ? "Sincronizando…" : "Sincronizar ahora"}
+        </button>
       </header>
 
       {/* Selector de cuenta */}
@@ -347,6 +366,18 @@ export function BankList({ companyId }: Props) {
             cuentan en los modelos fiscales (303/130) ni en el dashboard de
             beneficio. Hacienda no permite mezclar gastos personales con la
             actividad de autónomo.
+          </p>
+        )}
+        {selectedAccount?.account_type === "credit_line" && (
+          <p
+            className="muted"
+            style={{ marginTop: "var(--space-md)", color: "var(--color-warning)", fontSize: "var(--text-sm)" }}
+          >
+            <span aria-hidden="true">ℹ️ </span>Esta es una <b>póliza de crédito</b>. Los movimientos aquí
+            (disposiciones, devoluciones, intereses) no son ingresos o gastos
+            del negocio en sí — son flujos de la línea de crédito. El gasto
+            fiscal real son los <b>intereses</b> cobrados por el banco, no el
+            principal dispuesto.
           </p>
         )}
       </section>

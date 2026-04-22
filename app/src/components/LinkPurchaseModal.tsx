@@ -7,9 +7,10 @@ interface Props {
   companyId: number;
   onClose: () => void;
   onLinked: () => void;
+  onCreatePurchase?: () => void;
 }
 
-export function LinkPurchaseModal({ tx, companyId, onClose, onLinked }: Props) {
+export function LinkPurchaseModal({ tx, companyId, onClose, onLinked, onCreatePurchase }: Props) {
   const [suggestions, setSuggestions] = useState<api.PurchaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [linking, setLinking] = useState<number | null>(null);
@@ -120,16 +121,34 @@ export function LinkPurchaseModal({ tx, companyId, onClose, onLinked }: Props) {
         ) : suggestions.length === 0 ? (
           <div
             style={{
-              background: "#fef3c7",
-              padding: "1rem",
-              borderRadius: 8,
-              color: "#92400e",
-              fontSize: "0.9rem",
+              padding: "1.5rem 1rem",
+              border: "2px dashed #e2e8f0",
+              borderRadius: 12,
+              textAlign: "center",
+              color: "#475569",
             }}
           >
-            No se encontraron compras existentes con importe y fecha cercanos. Puedes
-            cerrar este diálogo y usar <b>Crear compra</b> en el menú de acciones del
-            movimiento.
+            <div aria-hidden="true" style={{ fontSize: "2.25rem", marginBottom: "0.25rem", lineHeight: 1 }}>🔍</div>
+            <p style={{ margin: "0 0 0.25rem", fontWeight: 600, color: "#1e293b" }}>
+              No hay compras parecidas
+            </p>
+            <p style={{ margin: "0 0 1rem", fontSize: "0.85rem" }}>
+              No encontramos compras con importe <b>{formatEur(Math.abs(Number(tx.amount)))}</b> en los últimos 15 días.
+              Puede que aún no la hayas creado.
+            </p>
+            {onCreatePurchase ? (
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => { onCreatePurchase(); onClose(); }}
+              >
+                Crear compra desde este movimiento
+              </button>
+            ) : (
+              <button type="button" className="button secondary" onClick={onClose}>
+                Cerrar
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
