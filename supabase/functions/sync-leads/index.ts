@@ -409,28 +409,34 @@ function parseCochesNetLead(subject: string, body: string, fromHeader = ""): Par
   const NAME_STOPWORDS = [
     "desde", "responde", "contesta", "herramienta", "profesional",
     "anuncio", "mensaje", "enviar", "gracias", "saludos", "hola",
-    "responder", "contactar", "contestar", "email",
+    "responder", "contactar", "contestar", "contacto", "email",
   ];
   const sanitizeName = (raw: string): string => {
     const cleaned = raw.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
     if (cleaned.length === 0 || cleaned.length > 60) return "";
     const lower = cleaned.toLowerCase();
     if (NAME_STOPWORDS.some((w) => lower.includes(w))) return "";
-    return cleaned;
+    // Coches.net manda nombres en minúscula ("cristian"); aplicamos Title Case.
+    return cleaned
+      .split(" ")
+      .map((w) => (w.length > 0 ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w))
+      .join(" ");
   };
 
   // Extract name. Primero patrón específico de coches.net (estructura fija):
   //   "Tienes un nuevo contacto\ncontacto\n<NAME>\n\n<email> <phone>"
   // Si no matchea, caer en el patrón genérico por keyword.
+  // Aceptamos minúscula al inicio porque coches.net suele enviar el nombre tal cual lo
+  // tecleó el usuario (frecuentemente todo en minúsculas, ej: "cristian").
   const cochesNetMatch = body.match(
-    /Tienes un nuevo(?:\s+contacto)+\s+([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/
+    /Tienes un nuevo(?:\s+contacto)+\s+([A-Za-záéíóúñÁÉÍÓÚÑÀ-Üà-ü][a-záéíóúñà-ü]+(?:[ \t]+[A-Za-záéíóúñÁÉÍÓÚÑÀ-Üà-ü][a-záéíóúñà-ü]+)*)/
   );
   if (cochesNetMatch) {
     lead.name = sanitizeName(cochesNetMatch[1]);
   }
   if (!lead.name) {
     const nameMatch = body.match(
-      /(?:[Nn]ombre|[Nn]ame|[Dd]e parte de|[Cc]ontacto)\s*:?\s*([A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑÀ-Ü][a-záéíóúñ]+)*)/
+      /(?:[Nn]ombre|[Nn]ame|[Dd]e parte de|[Cc]ontacto)\s*:?\s*([A-Za-záéíóúñÁÉÍÓÚÑÀ-Üà-ü][a-záéíóúñà-ü]+(?:[ \t]+[A-Za-záéíóúñÁÉÍÓÚÑÀ-Üà-ü][a-záéíóúñà-ü]+)*)/
     );
     if (nameMatch) {
       lead.name = sanitizeName(nameMatch[1]);
