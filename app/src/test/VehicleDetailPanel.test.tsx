@@ -47,6 +47,7 @@ const defaultProps = {
   clients: [],
   onBack: vi.fn(),
   onReload: vi.fn(),
+  onOpenLead: vi.fn(),
 };
 
 beforeEach(() => {
@@ -160,25 +161,6 @@ describe('VehicleDetail', () => {
     const backButton = await screen.findByText('← Volver');
     fireEvent.click(backButton);
     expect(onBack).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows "Disponible" estado badge when estado is disponible', async () => {
-    render(<VehicleDetail {...defaultProps} />);
-    await waitFor(() => {
-      const badges = screen.getAllByText('Disponible');
-      const badge = badges.find((el) => el.classList.contains('vd-estado-badge'));
-      expect(badge).toBeInTheDocument();
-    });
-  });
-
-  it('shows "Vendido" badge when estado is vendido', async () => {
-    const vehicle = { ...mockVehicle, estado: 'vendido' };
-    render(<VehicleDetail {...defaultProps} vehicle={vehicle} />);
-    await waitFor(() => {
-      const badges = screen.getAllByText('Vendido');
-      const badge = badges.find((el) => el.classList.contains('vd-estado-badge'));
-      expect(badge).toBeInTheDocument();
-    });
   });
 
   it('shows margin warning when precio_venta is less than precio_compra', async () => {

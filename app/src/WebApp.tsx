@@ -167,6 +167,9 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
   const [purchaseRecords, setPurchaseRecords] = useState<api.PurchaseRecord[]>([]);
   const [suppliers, setSuppliers] = useState<api.Supplier[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<api.Vehicle | null>(null);
+  // Deep-link a /interesados: al abrir un lead desde la ficha del vehículo,
+  // LeadsList recibe este id vía prop y selecciona la conversación al montar.
+  const [pendingLeadId, setPendingLeadId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [globalSearch, setGlobalSearch] = useState("");
@@ -357,9 +360,19 @@ function AuthenticatedWebApp({ session, onLogout, onOpenPlatform }: { session: a
           <StockList vehicles={vehicles} allVehicles={allVehicles} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} dealerWebsite={session.company.website || ""} onSelect={setSelectedVehicle} onReload={loadAll} externalSearch={globalSearch} onOpenCompany={() => setCurrentView("company")} />
         )}
         {currentView === "stock" && selectedVehicle && (
-          <VehicleDetail vehicle={selectedVehicle} suppliers={suppliers} leads={leads} purchaseRecords={purchaseRecords} companyId={companyId} clients={clients} onBack={() => { setSelectedVehicle(null); void loadAll(); }} onReload={loadAll} />
+          <VehicleDetail
+            vehicle={selectedVehicle}
+            suppliers={suppliers}
+            leads={leads}
+            purchaseRecords={purchaseRecords}
+            companyId={companyId}
+            clients={clients}
+            onBack={() => { setSelectedVehicle(null); void loadAll(); }}
+            onReload={loadAll}
+            onOpenLead={(leadId) => { setPendingLeadId(leadId ?? null); setSelectedVehicle(null); setCurrentView("leads"); }}
+          />
         )}
-        {currentView === "leads" && <LeadsList leads={leads} vehicles={vehicles} companyId={companyId} onReload={loadAll} />}
+        {currentView === "leads" && <LeadsList leads={leads} vehicles={vehicles} companyId={companyId} onReload={loadAll} initialLeadId={pendingLeadId} />}
         {currentView === "clients" && <ClientsList clients={clients} companyId={companyId} onReload={loadAll} />}
         {currentView === "sales" && <SalesList records={salesRecords} vehicles={vehicles} clients={clients} companyId={companyId} company={session.company} onReload={loadAll} />}
         {currentView === "purchases" && <PurchasesList records={purchaseRecords} companyId={companyId} onReload={loadAll} />}

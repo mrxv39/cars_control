@@ -4,13 +4,14 @@ import { useConfirmDialog } from "../../hooks/useConfirmDialog";
 import { showToast } from "../../lib/toast";
 import ConfirmDialog from "./ConfirmDialog";
 import { translateError } from "../../lib/translateError";
-import { VDLeads } from "./vehicle-detail/VDLeads";
+import { VDLeadsSummary } from "./vehicle-detail/VDLeadsSummary";
 import { VDVehicleDocs } from "./vehicle-detail/VDVehicleDocs";
 import { VDPurchaseInfo } from "./vehicle-detail/VDPurchaseInfo";
+import { VDVehicleStatus } from "./vehicle-detail/VDVehicleStatus";
 
 export { translateError };
 
-export type VDProps = { vehicle: api.Vehicle; suppliers: api.Supplier[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; clients: api.Client[]; onBack: () => void; onReload: () => void };
+export type VDProps = { vehicle: api.Vehicle; suppliers: api.Supplier[]; leads: api.Lead[]; purchaseRecords: api.PurchaseRecord[]; companyId: number; clients: api.Client[]; onBack: () => void; onReload: () => void; onOpenLead: (leadId?: number) => void };
 
 export function VehicleDetail(props: VDProps) {
   return <VehicleDetailA {...props} />;
@@ -120,7 +121,7 @@ function useVehicleDetail(vehicle: api.Vehicle, onReload?: () => void) {
 }
 
 // ── PROPOSAL A: Sidebar layout (redesigned) ──
-function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId, clients, onBack, onReload }: VDProps) {
+function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId, clients, onBack, onReload, onOpenLead }: VDProps) {
   const h = useVehicleDetail(vehicle, onReload);
   const vehicleLeads = leads.filter((l) => l.vehicle_id === vehicle.id);
   const handleDeleteVehicle = () => h.dialog.requestConfirm("Eliminar vehículo", `¿Eliminar "${vehicle.name}" y todos sus datos? Esta acción no se puede deshacer.`, async () => { try { await api.deleteVehicle(vehicle.id); onBack(); } catch (err) { showToast(translateError(err), "error"); } });
@@ -134,6 +135,20 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
   const [salePrice, setSalePrice] = useState(h.form.precio_venta ? String(h.form.precio_venta) : "");
   const [saleClient, setSaleClient] = useState("");
   const [savingSale, setSavingSale] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  function handleStatusUpdate(updates: Partial<api.Vehicle>) {
+    h.setForm((prev) => ({ ...prev, ...updates }));
+  }
+  React.useEffect(() => {
+    if (lightboxIdx === null) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") setLightboxIdx((i) => (i !== null && i > 0 ? i - 1 : i));
+      if (e.key === "ArrowRight") setLightboxIdx((i) => (i !== null && i < h.photos.length - 1 ? i + 1 : i));
+      if (e.key === "Escape") setLightboxIdx(null);
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [lightboxIdx, h.photos.length]);
   async function handleQuickSale() {
     if (!salePrice || parseFloat(salePrice) <= 0) return;
     setSavingSale(true);
@@ -148,9 +163,6 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
       showToast(translateError(err), "error");
     } finally { setSavingSale(false); }
   }
-
-  const estadoColor = h.form.estado === "vendido" ? "var(--color-success)" : h.form.estado === "reservado" ? "var(--color-amber)" : "var(--color-sidebar-accent)";
-  const estadoLabel = h.form.estado === "vendido" ? "Vendido" : h.form.estado === "reservado" ? "Reservado" : "Disponible";
 
   return (
     <>
@@ -169,56 +181,35 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
         </div>
         <div className="vd-hero-right">
           <p className="breadcrumb"><button type="button" className="breadcrumb-link" onClick={onBack}>Stock</button> &rsaquo; Ficha</p>
-          <h2 className="vd-vehicle-name">{vehicle.name}</h2>
-          <div className="vd-meta-row">
-            <span className="vd-estado-badge" style={{ background: estadoColor }}>{estadoLabel}</span>
-          </div>
-          <div className="vd-hero-actions">
-            <button type="button" className="button secondary sm" onClick={onBack}>← Volver</button>
-            {h.form.estado !== "vendido" && <button type="button" className="button primary sm" onClick={() => setShowQuickSale(true)}>Registrar venta</button>}
-            <span style={{ flex: 1 }} />
-            <button type="button" className="button danger sm" onClick={handleDeleteVehicle}>Eliminar</button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Contenido principal: Formulario (estrecho) + Sidebar (ancho) ── */}
-      <div className="vd-content-grid vd-content-grid--narrow-form" id="vd-datos">
-        {/* Columna izquierda: Formulario + Documentos */}
-        <section className="panel vd-form-panel">
-          <div className="vd-section-header">
-            <p className="eyebrow">Datos del vehículo</p>
-          </div>
-          <form onSubmit={(e) => void h.handleSave(e)} className="form-stack">
-            <div>
-              <label className="field-label required">Marca y modelo</label>
-              <input value={h.form.name} onChange={(e) => { h.setForm({ ...h.form, name: e.target.value }); if (h.error) h.setError(null); }} placeholder="Ej: SEAT Ibiza 1.0 MPI Style" className={h.error && !h.form.name.trim() ? "input-error" : ""} />
-            </div>
-            <div className="form-grid-2">
+          <form onSubmit={(e) => void h.handleSave(e)} className="vd-hero-form">
+            <h2 className="vd-vehicle-name">{h.form.name || vehicle.name}</h2>
+            <div className="vd-hero-fields">
               <div><label className="field-label">Año</label><input type="number" value={h.form.anio || ""} onChange={(e) => h.setForm({ ...h.form, anio: e.target.value ? parseInt(e.target.value) : null })} placeholder="2020" min="1990" max="2030" /></div>
               <div><label className="field-label">Kilómetros</label><input type="number" value={h.form.km || ""} onChange={(e) => h.setForm({ ...h.form, km: e.target.value ? parseInt(e.target.value) : null })} placeholder="125000" min="0" /></div>
-            </div>
-            <div className="form-grid-2">
               <div><label className="field-label">Estado</label><select value={h.form.estado} onChange={(e) => h.setForm({ ...h.form, estado: e.target.value })}><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
               <div><label className="field-label">Matrícula</label><input value={h.form.plate || ""} onChange={(e) => h.setForm({ ...h.form, plate: e.target.value })} placeholder="1234 ABC" style={{ textTransform: "uppercase" }} /></div>
-            </div>
-            <div className="form-grid-2">
               <div><label className="field-label">Combustible</label><select value={h.form.fuel || ""} onChange={(e) => h.setForm({ ...h.form, fuel: e.target.value })}><option value="">—</option><option value="Gasolina">Gasolina</option><option value="Diésel">Diésel</option><option value="Híbrido">Híbrido</option><option value="Eléctrico">Eléctrico</option><option value="GLP">GLP</option></select></div>
               <div><label className="field-label">Color</label><input value={h.form.color || ""} onChange={(e) => h.setForm({ ...h.form, color: e.target.value })} placeholder="Blanco" /></div>
-            </div>
-            <div className="vd-divider" />
-            <div className="form-grid-2">
               <div><label className="field-label">Precio compra</label><input type="number" step="1" min="0" value={h.form.precio_compra || ""} onChange={(e) => h.setForm({ ...h.form, precio_compra: e.target.value ? parseFloat(e.target.value) : null })} placeholder="8500" /></div>
               <div><label className="field-label">Precio venta</label><input type="number" step="1" min="0" value={h.form.precio_venta || ""} onChange={(e) => h.setForm({ ...h.form, precio_venta: e.target.value ? parseFloat(e.target.value) : null })} placeholder="10500" /></div>
             </div>
             {h.marginWarning && <p className="vd-margin-warning">⚠ {h.marginWarning}</p>}
             {h.error && <p className="error-banner" role="alert">{h.error} <button type="button" onClick={() => h.setError(null)} className="error-banner-close" aria-label="Cerrar error">✕</button></p>}
             {h.success && <p className="success-banner" role="status">✓ Guardado correctamente</p>}
-            <button type="submit" className="button primary" disabled={h.saving} style={{ alignSelf: "flex-start" }}>{h.saving ? "Guardando..." : "Guardar cambios"}</button>
+            <div className="vd-hero-bottom-row">
+              <button type="submit" className="button primary sm" disabled={h.saving}>{h.saving ? "Guardando..." : "Guardar cambios"}</button>
+              <button type="button" className="button secondary sm" onClick={onBack}>← Volver</button>
+              {h.form.estado !== "vendido" && <button type="button" className="button secondary sm" onClick={() => setShowQuickSale(true)}>Registrar venta</button>}
+              <span style={{ flex: 1 }} />
+              <button type="button" className="button danger sm" onClick={handleDeleteVehicle}>Eliminar</button>
+            </div>
           </form>
-        </section>
+        </div>
+      </header>
 
-        {/* Columna central: Documentación vehículo + Info compra */}
+      {/* ── Contenido: Documentación + Leads ── */}
+      <div className="vd-content-grid vd-content-grid--three-col" id="vd-datos">
+        {/* Columna izquierda: Documentación vehículo + Info compra */}
         <div className="vd-middle-col">
           <VDVehicleDocs docs={h.docs} vehicleId={vehicle.id} onReload={() => { void h.loadDocs(); }} />
           <VDPurchaseInfo
@@ -234,18 +225,18 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
           />
         </div>
 
-        {/* Columna derecha: Sidebar */}
+        {/* Columna central: Estado vehículo */}
+        <div className="vd-middle-col">
+          <VDVehicleStatus vehicle={h.form} suppliers={suppliers} onUpdate={handleStatusUpdate} />
+        </div>
+
+        {/* Columna derecha: Leads (resumen + deep-link a /interesados) */}
         <div className="vd-sidebar">
-          <section className="panel vd-sidebar-panel" id="vd-leads">
-            <div className="vd-section-header">
-              <p className="eyebrow">Leads ({vehicleLeads.length})</p>
-            </div>
-            <VDLeads vehicleLeads={vehicleLeads} />
-          </section>
+          <VDLeadsSummary vehicleLeads={vehicleLeads} onOpenLead={onOpenLead} />
         </div>
       </div>
 
-      {/* ── Thumbnails strip (debajo del formulario) ── */}
+      {/* ── Galería de fotos ── */}
       {h.photos.length > 0 && (
         <section className="panel" style={{ padding: "1rem 1.25rem", marginTop: "1rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
@@ -255,25 +246,21 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
               <button type="button" className="button primary sm" onClick={() => h.fileRef.current?.click()} disabled={h.uploading}>{h.uploading ? `Subiendo ${h.uploadProgress}...` : "Subir fotos"}</button>
             </div>
           </div>
-          <div className="vd-thumbs-strip" role="listbox" aria-label="Miniaturas de fotos">
-            {h.photos.map((p, idx) => {
-              const isActive = h.selectedPhoto === p.id || (!h.selectedPhoto && p === h.photos[0]);
-              return (
-                <img
-                  key={p.id}
-                  src={p.url}
-                  loading="lazy"
-                  onClick={() => h.setSelectedPhoto(p.id)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); h.setSelectedPhoto(p.id); } }}
-                  className={`vd-thumb ${isActive ? "active" : ""} ${p.is_primary ? "primary" : ""}`}
-                  role="option"
-                  tabIndex={0}
-                  aria-selected={isActive}
-                  aria-label={`Foto ${idx + 1}${p.is_primary ? " (principal)" : ""}`}
-                  alt=""
-                />
-              );
-            })}
+          <div className="vd-photo-grid-new">
+            {h.photos.map((p, idx) => (
+              <div
+                key={p.id}
+                className={`vd-photo-grid-item ${p.is_primary ? "primary" : ""}`}
+                onClick={() => { h.setSelectedPhoto(p.id); setLightboxIdx(idx); }}
+              >
+                {p.is_primary && <span className="vd-photo-grid-primary-badge">Principal</span>}
+                <img src={p.url} loading="lazy" alt={`Foto ${idx + 1}`} />
+                <div className="vd-photo-grid-actions" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" className="vd-photo-grid-action-btn" onClick={() => void h.handleSetPrimary(p)} title="Marcar como principal">★</button>
+                  <button type="button" className="vd-photo-grid-action-btn" style={{ color: "var(--color-danger)" }} onClick={() => h.handleDeletePhoto(p)} title="Eliminar">✕</button>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}
@@ -306,6 +293,21 @@ function VehicleDetailA({ vehicle, suppliers, leads, purchaseRecords, companyId,
       {/* ── Anuncios externos + Documentos completos ── */}
       <VehicleListingsLink vehicle={vehicle} />
       <VehicleDocsList vehicle={vehicle} />
+
+      {/* ── Lightbox ── */}
+      {lightboxIdx !== null && h.photos[lightboxIdx] && (
+        <div className="vd-lightbox" role="dialog" aria-modal="true" aria-label="Visor de fotos" onClick={() => setLightboxIdx(null)}>
+          <button className="vd-lightbox-close" onClick={() => setLightboxIdx(null)} aria-label="Cerrar visor">✕</button>
+          {lightboxIdx > 0 && (
+            <button className="vd-lightbox-nav vd-lightbox-prev" onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1); }} aria-label="Foto anterior">‹</button>
+          )}
+          <img src={h.photos[lightboxIdx].url} className="vd-lightbox-img" alt={`Foto ${lightboxIdx + 1}`} onClick={(e) => e.stopPropagation()} />
+          {lightboxIdx < h.photos.length - 1 && (
+            <button className="vd-lightbox-nav vd-lightbox-next" onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1); }} aria-label="Siguiente foto">›</button>
+          )}
+          <span className="vd-lightbox-counter">{lightboxIdx + 1} / {h.photos.length}</span>
+        </div>
+      )}
 
       {/* ── Quick sale modal ── */}
       {showQuickSale && (

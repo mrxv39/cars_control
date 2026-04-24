@@ -3,6 +3,7 @@ import * as api from "../../lib/api";
 import { SkeletonGrid } from "./Skeleton";
 import EmptyState from "./EmptyState";
 import X from "lucide-react/dist/esm/icons/x";
+import Phone from "lucide-react/dist/esm/icons/phone";
 
 // Detect app mode based on hostname
 function getAppMode(): "store" | "admin" | "both" {
@@ -118,17 +119,21 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
     void api.listVehiclePhotos(vehicle.id).then(setPhotos).catch(() => setPhotos([]));
   }, [vehicle.id]);
 
-  React.useEffect(() => {
-    if (!lightboxOpen) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setLightboxOpen(false); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [lightboxOpen]);
-
   const mainPhotoIdx = selectedPhoto != null ? photos.findIndex((p) => p.id === selectedPhoto) : 0;
   const mainPhoto = photos[mainPhotoIdx >= 0 ? mainPhotoIdx : 0]?.url;
   function prevPhoto() { if (mainPhotoIdx > 0) setSelectedPhoto(photos[mainPhotoIdx - 1].id); }
   function nextPhoto() { if (mainPhotoIdx < photos.length - 1) setSelectedPhoto(photos[mainPhotoIdx + 1].id); }
+
+  React.useEffect(() => {
+    if (!lightboxOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+      if (e.key === "ArrowLeft") prevPhoto();
+      if (e.key === "ArrowRight") nextPhoto();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [lightboxOpen, mainPhotoIdx]);
 
   return (
     <main className="catalog-main">
@@ -160,7 +165,16 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
           <button type="button" className="lightbox-close" onClick={() => setLightboxOpen(false)} aria-label="Cerrar">
             <X size={28} />
           </button>
+          {mainPhotoIdx > 0 && (
+            <button type="button" className="lightbox-arrow lightbox-arrow-left" onClick={(e) => { e.stopPropagation(); prevPhoto(); }} aria-label="Foto anterior">‹</button>
+          )}
+          {mainPhotoIdx < photos.length - 1 && (
+            <button type="button" className="lightbox-arrow lightbox-arrow-right" onClick={(e) => { e.stopPropagation(); nextPhoto(); }} aria-label="Foto siguiente">›</button>
+          )}
           <img src={mainPhoto} alt={vehicle.name} className="lightbox-img" />
+          {photos.length > 1 && (
+            <span className="lightbox-counter">{mainPhotoIdx + 1} / {photos.length}</span>
+          )}
         </div>
       )}
 
@@ -193,26 +207,31 @@ function PublicVehicleDetail({ vehicle, onBack }: { vehicle: api.Vehicle; onBack
         <div className="catalog-detail-info">
           <h1>{vehicle.name}</h1>
           {vehicle.precio_venta && <p className="catalog-detail-price">{vehicle.precio_venta.toLocaleString("es-ES")} €</p>}
-          <table className="catalog-detail-specs">
-            <tbody>
-              {vehicle.anio && <tr><td>Año</td><td>{vehicle.anio}</td></tr>}
-              {vehicle.km && <tr><td>Kilometraje</td><td>{vehicle.km.toLocaleString()} km</td></tr>}
-              {vehicle.fuel && <tr><td>Combustible</td><td>{vehicle.fuel}</td></tr>}
-              {vehicle.cv && <tr><td>Potencia</td><td>{vehicle.cv}</td></tr>}
-              {vehicle.transmission && <tr><td>Cambio</td><td>{vehicle.transmission}</td></tr>}
-              {vehicle.color && <tr><td>Color</td><td>{vehicle.color}</td></tr>}
-              <tr><td>Estado</td><td>{ESTADO_LABELS[vehicle.estado] || vehicle.estado}</td></tr>
-            </tbody>
-          </table>
+          <div className="specs-grid">
+            {vehicle.anio && <div className="spec-cell"><span className="spec-label">Año</span><span className="spec-value">{vehicle.anio}</span></div>}
+            {vehicle.km != null && <div className="spec-cell"><span className="spec-label">Kilómetros</span><span className="spec-value">{vehicle.km.toLocaleString()} km</span></div>}
+            {vehicle.fuel && <div className="spec-cell"><span className="spec-label">Combustible</span><span className="spec-value">{vehicle.fuel}</span></div>}
+            {vehicle.cv && <div className="spec-cell"><span className="spec-label">Potencia</span><span className="spec-value">{vehicle.cv} CV</span></div>}
+            {vehicle.transmission && <div className="spec-cell"><span className="spec-label">Cambio</span><span className="spec-value">{vehicle.transmission}</span></div>}
+            {vehicle.color && <div className="spec-cell"><span className="spec-label">Color</span><span className="spec-value">{vehicle.color}</span></div>}
+            <div className="spec-cell"><span className="spec-label">Estado</span><span className="spec-value">{ESTADO_LABELS[vehicle.estado] || vehicle.estado}</span></div>
+          </div>
           {vehicle.notes && vehicle.notes.startsWith(FINANCING_NOTE_PREFIX) && (
             <div className="catalog-detail-financing">
               <p className="eyebrow" style={{ marginBottom: "0.4rem" }}>Financiación</p>
               <p className="catalog-detail-financing-text">{vehicle.notes}</p>
             </div>
           )}
-          <div className="catalog-detail-contact">
-            <a href="tel:+34646131565" className="button primary" style={{ textDecoration: "none", textAlign: "center" }}>Llamar: 646 13 15 65</a>
-            <a href="https://wa.me/34646131565" className="button secondary" style={{ textDecoration: "none", textAlign: "center" }} target="_blank" rel="noopener">WhatsApp</a>
+          <div className="catalog-detail-cta">
+            <a href="tel:+34646131565" className="catalog-cta-phone">
+              <Phone size={18} />
+              Llamar: 646 13 15 65
+            </a>
+            <a href="https://wa.me/34646131565" className="catalog-cta-whatsapp" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              Escribir por WhatsApp
+            </a>
+            <div className="catalog-cta-divider"><span>o deja tus datos</span></div>
           </div>
           <ContactForm vehicleName={vehicle.name} />
         </div>
@@ -312,6 +331,12 @@ export function PublicCatalog({ onLogin }: { onLogin: () => void }) {
           )}
         </div>
       </section>
+
+      <div className="catalog-trust-strip">
+        <span className="catalog-trust-item">+15 años de experiencia</span>
+        <span className="catalog-trust-item">Financiación disponible</span>
+        <span className="catalog-trust-item">Vehículos revisados</span>
+      </div>
 
       <main className="catalog-main">
         <div className="catalog-result-bar">

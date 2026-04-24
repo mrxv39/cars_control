@@ -398,3 +398,28 @@ describe('LeadsList — notas', () => {
     })
   })
 })
+
+// ── Deep-link vía initialLeadId ─────────────────────────────────────────
+
+describe('LeadsList — initialLeadId (deep-link desde ficha vehículo)', () => {
+  const leads = [
+    makeLead({ id: 1, name: 'Ana Martínez', canal: 'coches.net' }),
+    makeLead({ id: 2, name: 'Carlos Ruiz', canal: 'coches.net' }),
+  ]
+
+  it('abre la conversación del lead indicado al montar', async () => {
+    render(<LeadsList {...defaultProps} leads={leads} initialLeadId={2} />)
+    // Al seleccionar el lead 2, su item de lista recibe aria-selected="true"
+    // y desaparece el placeholder "Selecciona un contacto...".
+    await waitFor(() => {
+      const selectedOption = screen.getByRole('option', { selected: true })
+      expect(selectedOption).toHaveTextContent('Carlos Ruiz')
+    })
+    expect(screen.queryByText(/Selecciona un contacto/)).not.toBeInTheDocument()
+  })
+
+  it('mantiene el placeholder de detalle cuando initialLeadId es null', () => {
+    render(<LeadsList {...defaultProps} leads={leads} initialLeadId={null} />)
+    expect(screen.getByText(/Selecciona un contacto/)).toBeInTheDocument()
+  })
+})

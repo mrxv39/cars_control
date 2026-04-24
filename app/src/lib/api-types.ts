@@ -33,6 +33,26 @@ export interface Vehicle extends VehicleBase {
   needs_review?: boolean | null;
   plate?: string | null;
   vin?: string | null;
+  motor_ok?: boolean | null;
+  motor_ok_at?: string | null;
+  motor_supplier_id?: number | null;
+  motor_notes?: string | null;
+  carroceria_ok?: boolean | null;
+  carroceria_ok_at?: string | null;
+  carroceria_supplier_id?: number | null;
+  carroceria_notes?: string | null;
+  neumaticos_ok?: boolean | null;
+  neumaticos_ok_at?: string | null;
+  neumaticos_supplier_id?: number | null;
+  neumaticos_notes?: string | null;
+  itv_ok?: boolean | null;
+  itv_ok_at?: string | null;
+  itv_supplier_id?: number | null;
+  itv_notes?: string | null;
+  limpieza_ok?: boolean | null;
+  limpieza_ok_at?: string | null;
+  limpieza_supplier_id?: number | null;
+  limpieza_notes?: string | null;
 }
 
 export interface VehicleDocument {

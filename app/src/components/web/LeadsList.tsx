@@ -108,12 +108,17 @@ const FILTER_LABELS: Record<LeadFilter, string> = {
   cerrados: "Cerrados",
 };
 
-export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void }) {
+export function LeadsList({ leads, vehicles: _vehicles, companyId, onReload, initialLeadId }: { leads: api.Lead[]; vehicles: api.Vehicle[]; companyId: number; onReload: () => void; initialLeadId?: number | null }) {
   const dialog = useConfirmDialog();
   const [tab, setTab] = useState<Tab>("mensajes");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<LeadFilter>("todos");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(initialLeadId ?? null);
+  // Re-aplica el deep-link si el padre cambia el id pedido (p.ej. usuario
+  // sale a Stock, abre otra ficha, y vuelve a /interesados con otro lead).
+  useEffect(() => {
+    if (initialLeadId != null) setSelectedId(initialLeadId);
+  }, [initialLeadId]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "", estado: "", canal: "" });
   const [notesOpen, setNotesOpen] = useState(false);
