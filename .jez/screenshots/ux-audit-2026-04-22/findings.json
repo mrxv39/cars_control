@@ -1,0 +1,13 @@
+{
+  "findings": [
+    {
+      "area": "auth",
+      "severity": "blocker",
+      "title": "Sesión expirada en perfil",
+      "detail": "El probe no puede auditar: re-login manual requerido con `node login-once.mjs https://carscontrol.vercel.app`",
+      "evidence": null
+    }
+  ],
+  "consoleErrors": [],
+  "networkErrors": []
+}
