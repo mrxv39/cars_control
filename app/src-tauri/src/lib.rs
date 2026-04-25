@@ -7,24 +7,24 @@ use std::{
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use rusqlite::Connection;
 
 mod db;
 mod importer;
+mod paths;
 mod photos;
 mod platform;
 
 pub use db::{Company, LeadNote, LoginResult, PurchaseRecord, SalesRecord, User};
 pub use importer::ImportReport;
 
-const DATA_DIR: &str = "data";
-const STOCK_DIR: &str = "stock";
-const BACKUPS_DIR: &str = "backups";
-const DB_FILE: &str = "app.db";
-const LEADS_FILE: &str = "leads.json";
-const CLIENTS_FILE: &str = "clients.json";
-const VEHICLE_ADS_FILE: &str = "vehicle_ads.json";
+use paths::{
+    app_data_root_dir, app_stock_dir, backups_dir, canonical_stock_dir, clients_file_path,
+    db_path, docs_legacy_dir, get_db_connection, leads_file_path, vehicle_ads_file_path,
+    CLIENTS_FILE, LEADS_FILE, VEHICLE_ADS_FILE,
+};
+
 const LEGACY_SALES_PARENT_FOLDERS: [&str; 2] = ["CODINACARS PC", "varios codinacars"];
 const LEGACY_FISCAL_DIR_NAMES: [&str; 1] = ["FISCAL"];
 const LEGACY_GASTOS_DIR_NAMES: [&str; 1] = ["GASTOS"];
@@ -238,90 +238,6 @@ fn ensure_database_migrated(app: &AppHandle) -> Result<(), String> {
     }
 
     Ok(())
-}
-
-fn app_data_root_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| format!("No se pudo obtener el directorio de datos: {error}"))?;
-
-    let data_dir = app_data_dir.join(DATA_DIR);
-    fs::create_dir_all(&data_dir).map_err(|error| {
-        format!(
-            "No se pudo crear la carpeta de datos {}: {error}",
-            data_dir.display()
-        )
-    })?;
-
-    Ok(data_dir)
-}
-
-fn project_root_dir() -> Result<PathBuf, String> {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .parent()
-        .and_then(Path::parent)
-        .map(Path::to_path_buf)
-        .ok_or_else(|| "No se pudo resolver la raíz del proyecto.".to_string())
-}
-
-fn docs_legacy_dir() -> Result<PathBuf, String> {
-    Ok(project_root_dir()?.join("docs_legacy"))
-}
-
-fn app_stock_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let stock_dir = app_data_root_dir(app)?.join(STOCK_DIR);
-    fs::create_dir_all(&stock_dir)
-        .map_err(|error| format!("No se pudo crear la carpeta de stock: {error}"))?;
-
-    Ok(stock_dir)
-}
-
-fn canonical_stock_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let stock_dir = app_stock_dir(app)?;
-    stock_dir.canonicalize().map_err(|error| {
-        format!(
-            "No se pudo resolver la carpeta de stock {}: {error}",
-            stock_dir.display()
-        )
-    })
-}
-
-fn db_path(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app_data_root_dir(app)?.join(DB_FILE))
-}
-
-fn get_db_connection(app: &AppHandle) -> Result<Connection, String> {
-    let db_file = db_path(app)?;
-    let conn = Connection::open(&db_file)
-        .map_err(|error| format!("No se pudo abrir la base de datos: {error}"))?;
-    db::init_db(&conn)
-        .map_err(|error| format!("No se pudo inicializar la base de datos: {error}"))?;
-    Ok(conn)
-}
-
-fn leads_file_path(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app_data_root_dir(app)?.join(LEADS_FILE))
-}
-
-fn clients_file_path(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app_data_root_dir(app)?.join(CLIENTS_FILE))
-}
-
-fn vehicle_ads_file_path(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app_data_root_dir(app)?.join(VEHICLE_ADS_FILE))
-}
-
-fn backups_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let backups_dir = app_data_root_dir(app)?.join(BACKUPS_DIR);
-    fs::create_dir_all(&backups_dir).map_err(|error| {
-        format!(
-            "No se pudo crear la carpeta de copias {}: {error}",
-            backups_dir.display()
-        )
-    })?;
-    Ok(backups_dir)
 }
 
 pub(crate) fn sanitize_vehicle_name(name: &str) -> Result<String, String> {
