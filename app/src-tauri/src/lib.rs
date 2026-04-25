@@ -12,17 +12,23 @@ use rusqlite::Connection;
 
 mod db;
 mod importer;
+mod leads;
 mod paths;
 mod photos;
 mod platform;
 
 pub use db::{Company, LeadNote, LoginResult, PurchaseRecord, SalesRecord, User};
 pub use importer::ImportReport;
+pub use leads::{Lead, LeadInput};
 
 use paths::{
     app_data_root_dir, app_stock_dir, backups_dir, canonical_stock_dir, clients_file_path,
     db_path, docs_legacy_dir, get_db_connection, leads_file_path, vehicle_ads_file_path,
     CLIENTS_FILE, LEADS_FILE, VEHICLE_ADS_FILE,
+};
+use leads::{
+    add_lead_note, create_lead, delete_lead, delete_lead_note, get_lead_notes, list_leads,
+    list_leads_internal, save_leads, update_lead,
 };
 
 const LEGACY_SALES_PARENT_FOLDERS: [&str; 2] = ["CODINACARS PC", "varios codinacars"];
@@ -51,24 +57,6 @@ struct VehicleAdInfo {
     url: String,
     status: String,
     date: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct Lead {
-    id: u64,
-    name: String,
-    phone: String,
-    email: String,
-    notes: String,
-    vehicle_interest: String,
-    vehicle_folder_path: Option<String>,
-    converted_client_id: Option<u64>,
-    #[serde(default)]
-    estado: String, // "nuevo", "contactado", "negociando", "cerrado", "perdido"
-    #[serde(default)]
-    fecha_contacto: Option<String>,
-    #[serde(default)]
-    canal: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -130,22 +118,6 @@ struct ExportDataPayload {
 }
 
 #[derive(Debug, Deserialize)]
-struct LeadInput {
-    name: String,
-    phone: String,
-    email: String,
-    notes: String,
-    vehicle_interest: String,
-    vehicle_folder_path: Option<String>,
-    #[serde(default)]
-    estado: Option<String>,
-    #[serde(default)]
-    fecha_contacto: Option<String>,
-    #[serde(default)]
-    canal: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
 struct ClientInput {
     name: String,
     phone: String,
@@ -187,7 +159,7 @@ pub(crate) fn stock_vehicle_from_path(path: &Path) -> Result<StockVehicle, Strin
     })
 }
 
-fn ensure_database_migrated(app: &AppHandle) -> Result<(), String> {
+pub(crate) fn ensure_database_migrated(app: &AppHandle) -> Result<(), String> {
     let db_path = db_path(app)?;
     let data_dir = app_data_root_dir(app)?;
 
@@ -321,7 +293,7 @@ pub(crate) fn sanitize_contact_name(name: &str) -> Result<String, String> {
     Ok(sanitized)
 }
 
-fn sanitize_text_field(value: &str) -> String {
+pub(crate) fn sanitize_text_field(value: &str) -> String {
     value
         .lines()
         .map(str::trim)
@@ -331,33 +303,17 @@ fn sanitize_text_field(value: &str) -> String {
         .to_string()
 }
 
-fn sanitize_optional_path(value: Option<String>) -> Option<String> {
+pub(crate) fn sanitize_optional_path(value: Option<String>) -> Option<String> {
     value
         .map(|current| sanitize_text_field(&current))
         .filter(|current| !current.is_empty())
 }
 
-fn next_record_id<T, F>(items: &[T], id_for: F) -> u64
+pub(crate) fn next_record_id<T, F>(items: &[T], id_for: F) -> u64
 where
     F: Fn(&T) -> u64,
 {
     items.iter().map(id_for).max().unwrap_or(0) + 1
-}
-
-fn build_lead(id: u64, input: LeadInput, converted_client_id: Option<u64>) -> Result<Lead, String> {
-    Ok(Lead {
-        id,
-        name: sanitize_contact_name(&input.name)?,
-        phone: sanitize_text_field(&input.phone),
-        email: sanitize_text_field(&input.email),
-        notes: sanitize_text_field(&input.notes),
-        vehicle_interest: sanitize_text_field(&input.vehicle_interest),
-        vehicle_folder_path: sanitize_optional_path(input.vehicle_folder_path),
-        converted_client_id,
-        estado: input.estado.unwrap_or_else(|| "nuevo".to_string()),
-        fecha_contacto: input.fecha_contacto,
-        canal: input.canal,
-    })
 }
 
 fn build_client(
@@ -377,7 +333,7 @@ fn build_client(
     })
 }
 
-fn read_collection<T>(path: &Path) -> Result<Vec<T>, String>
+pub(crate) fn read_collection<T>(path: &Path) -> Result<Vec<T>, String>
 where
     T: DeserializeOwned,
 {
@@ -396,7 +352,7 @@ where
         .map_err(|error| format!("No se pudo interpretar {}: {error}", path.display()))
 }
 
-fn write_collection<T>(path: &Path, items: &[T]) -> Result<(), String>
+pub(crate) fn write_collection<T>(path: &Path, items: &[T]) -> Result<(), String>
 where
     T: Serialize,
 {
@@ -472,18 +428,6 @@ fn write_backup_bundle(
     })
 }
 
-fn list_leads_internal(app: &AppHandle) -> Result<Vec<Lead>, String> {
-    // Asegurar que la base de datos está migrada
-    ensure_database_migrated(app)?;
-
-    // Leer de SQLite
-    let conn = get_db_connection(app)?;
-    let mut leads = db::load_leads(&conn)
-        .map_err(|e| format!("Error al cargar leads: {}", e))?;
-    leads.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
-    Ok(leads)
-}
-
 fn list_clients_internal(app: &AppHandle) -> Result<Vec<Client>, String> {
     // Asegurar que la base de datos está migrada
     ensure_database_migrated(app)?;
@@ -494,16 +438,6 @@ fn list_clients_internal(app: &AppHandle) -> Result<Vec<Client>, String> {
         .map_err(|e| format!("Error al cargar clients: {}", e))?;
     clients.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
     Ok(clients)
-}
-
-fn save_leads(app: &AppHandle, leads: &[Lead]) -> Result<(), String> {
-    // Guardar en SQLite
-    let conn = get_db_connection(app)?;
-    for lead in leads {
-        db::save_lead(&conn, lead)
-            .map_err(|e| format!("Error al guardar lead: {}", e))?;
-    }
-    Ok(())
 }
 
 fn save_clients(app: &AppHandle, clients: &[Client]) -> Result<(), String> {
@@ -534,7 +468,7 @@ fn save_vehicle_ads_map(
     write_collection(&vehicle_ads_file_path(app)?, &items)
 }
 
-fn validate_optional_vehicle_folder_path(
+pub(crate) fn validate_optional_vehicle_folder_path(
     app: &AppHandle,
     vehicle_folder_path: Option<String>,
 ) -> Result<Option<String>, String> {
@@ -963,11 +897,6 @@ fn list_gastos_entries() -> Result<Vec<LegacyEntryNode>, String> {
 }
 
 #[tauri::command]
-fn list_leads(app: AppHandle) -> Result<Vec<Lead>, String> {
-    list_leads_internal(&app)
-}
-
-#[tauri::command]
 fn list_clients(app: AppHandle) -> Result<Vec<Client>, String> {
     list_clients_internal(&app)
 }
@@ -1064,68 +993,6 @@ fn delete_vehicle(app: AppHandle, folder_path: String) -> Result<(), String> {
         save_vehicle_ads_map(&app, &ads)?;
     }
     rewrite_vehicle_reference_in_contacts(&app, &current_folder_string, None)
-}
-
-#[tauri::command]
-fn create_lead(app: AppHandle, input: LeadInput) -> Result<Lead, String> {
-    let mut leads = read_collection::<Lead>(&leads_file_path(&app)?)?;
-    let next_id = next_record_id(&leads, |lead| lead.id);
-    let vehicle_folder_path =
-        validate_optional_vehicle_folder_path(&app, input.vehicle_folder_path.clone())?;
-    let lead = build_lead(
-        next_id,
-        LeadInput {
-            vehicle_folder_path,
-            ..input
-        },
-        None,
-    )?;
-    leads.push(lead.clone());
-    save_leads(&app, &leads)?;
-    Ok(lead)
-}
-
-#[tauri::command]
-fn update_lead(app: AppHandle, id: u64, input: LeadInput) -> Result<Lead, String> {
-    let mut leads = read_collection::<Lead>(&leads_file_path(&app)?)?;
-    let index = leads
-        .iter()
-        .position(|lead| lead.id == id)
-        .ok_or_else(|| format!("No existe el lead con id {id}."))?;
-    let converted_client_id = leads[index].converted_client_id;
-    let vehicle_folder_path =
-        validate_optional_vehicle_folder_path(&app, input.vehicle_folder_path.clone())?;
-    let updated = build_lead(
-        id,
-        LeadInput {
-            vehicle_folder_path,
-            ..input
-        },
-        converted_client_id,
-    )?;
-    leads[index] = updated.clone();
-    save_leads(&app, &leads)?;
-    Ok(updated)
-}
-
-#[tauri::command]
-fn delete_lead(app: AppHandle, id: u64) -> Result<(), String> {
-    let mut leads = read_collection::<Lead>(&leads_file_path(&app)?)?;
-    let previous_len = leads.len();
-    leads.retain(|lead| lead.id != id);
-    if leads.len() == previous_len {
-        return Err(format!("No existe el lead con id {id}."));
-    }
-
-    let mut clients = read_collection::<Client>(&clients_file_path(&app)?)?;
-    for client in &mut clients {
-        if client.source_lead_id == Some(id) {
-            client.source_lead_id = None;
-        }
-    }
-
-    save_leads(&app, &leads)?;
-    save_clients(&app, &clients)
 }
 
 #[tauri::command]
@@ -1321,27 +1188,6 @@ fn export_app_data(app: AppHandle) -> Result<ExportDataPayload, String> {
         &app.package_info().version.to_string(),
         &exported_at,
     )
-}
-
-#[tauri::command]
-fn get_lead_notes(app: AppHandle, lead_id: u64) -> Result<Vec<LeadNote>, String> {
-    let conn = get_db_connection(&app)?;
-    db::get_lead_notes(&conn, lead_id)
-        .map_err(|error| format!("No se pudo cargar las notas del lead: {error}"))
-}
-
-#[tauri::command]
-fn add_lead_note(app: AppHandle, lead_id: u64, content: String) -> Result<LeadNote, String> {
-    let conn = get_db_connection(&app)?;
-    db::add_lead_note(&conn, lead_id, &content)
-        .map_err(|error| format!("No se pudo añadir la nota: {error}"))
-}
-
-#[tauri::command]
-fn delete_lead_note(app: AppHandle, note_id: u64) -> Result<(), String> {
-    let conn = get_db_connection(&app)?;
-    db::delete_lead_note(&conn, note_id)
-        .map_err(|error| format!("No se pudo eliminar la nota: {error}"))
 }
 
 #[tauri::command]
