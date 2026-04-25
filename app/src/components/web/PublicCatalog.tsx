@@ -23,6 +23,15 @@ const ESTADO_LABELS: Record<string, string> = {
 
 const FINANCING_NOTE_PREFIX = "Desde";
 
+const DEFAULT_TITLE = "CodinaCars - Vehículos de ocasión en Barcelona";
+
+export function parseVehicleIdFromPath(pathname: string): number | null {
+  const match = pathname.match(/^\/v\/(\d+)\/?$/);
+  if (!match) return null;
+  const id = Number(match[1]);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
 export function CatalogHeader({ onLogin, onCatalog }: { onLogin: () => void; onCatalog: () => void }) {
   return (
     <header className="catalog-topbar">
@@ -257,8 +266,50 @@ export function PublicCatalog({ onLogin }: { onLogin: () => void }) {
       const photos = await api.listPrimaryPhotos(v.map((x) => x.id));
       setThumbs(photos);
       setLoading(false);
+      const wantedId = parseVehicleIdFromPath(window.location.pathname);
+      if (wantedId == null) return;
+      const found = v.find((x) => x.id === wantedId);
+      if (found) {
+        setSelectedVehicle(found);
+        document.title = `${found.name} | CodinaCars`;
+      } else {
+        // ID en URL no existe en stock público: limpiar URL silenciosamente
+        window.history.replaceState(null, "", "/");
+      }
     }).catch(() => { setLoading(false); });
   }, []);
+
+  React.useEffect(() => {
+    function onPop() {
+      const wantedId = parseVehicleIdFromPath(window.location.pathname);
+      if (wantedId == null) {
+        setSelectedVehicle(null);
+        document.title = DEFAULT_TITLE;
+        return;
+      }
+      const found = vehicles.find((x) => x.id === wantedId);
+      setSelectedVehicle(found ?? null);
+      document.title = found ? `${found.name} | CodinaCars` : DEFAULT_TITLE;
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [vehicles]);
+
+  function openVehicle(v: api.Vehicle) {
+    if (parseVehicleIdFromPath(window.location.pathname) !== v.id) {
+      window.history.pushState({ vehicleId: v.id }, "", `/v/${v.id}`);
+    }
+    setSelectedVehicle(v);
+    document.title = `${v.name} | CodinaCars`;
+  }
+
+  function closeVehicle() {
+    if (parseVehicleIdFromPath(window.location.pathname) != null) {
+      window.history.pushState(null, "", "/");
+    }
+    setSelectedVehicle(null);
+    document.title = DEFAULT_TITLE;
+  }
 
   const fuelOptions = useMemo(() => [...new Set(vehicles.map((v) => v.fuel).filter(Boolean))].sort(), [vehicles]);
 
@@ -288,15 +339,15 @@ export function PublicCatalog({ onLogin }: { onLogin: () => void }) {
   if (selectedVehicle) {
     return (
       <div className="catalog-page">
-        <CatalogHeader onLogin={onLogin} onCatalog={() => setSelectedVehicle(null)} />
-        <PublicVehicleDetail vehicle={selectedVehicle} onBack={() => setSelectedVehicle(null)} />
+        <CatalogHeader onLogin={onLogin} onCatalog={closeVehicle} />
+        <PublicVehicleDetail vehicle={selectedVehicle} onBack={closeVehicle} />
       </div>
     );
   }
 
   return (
     <div className="catalog-page">
-      <CatalogHeader onLogin={onLogin} onCatalog={() => setSelectedVehicle(null)} />
+      <CatalogHeader onLogin={onLogin} onCatalog={closeVehicle} />
       <section className="catalog-hero-banner">
         <h1>Vehículos de ocasión</h1>
         <p>Compraventa de coches en Molins de Rei, Barcelona</p>
@@ -352,7 +403,7 @@ export function PublicCatalog({ onLogin }: { onLogin: () => void }) {
               const thumb = thumbs.get(v.id);
               const imgUrl = thumb?.thumbUrl || thumb?.url || null;
               return (
-                <article key={v.id} className="catalog-card" tabIndex={0} role="button" onClick={() => setSelectedVehicle(v)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedVehicle(v); } }}>
+                <article key={v.id} className="catalog-card" tabIndex={0} role="button" onClick={() => openVehicle(v)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openVehicle(v); } }}>
                   <div className="catalog-card-img">
                     {imgUrl ? <img src={imgUrl} alt={v.name || ""} loading="lazy" /> : (
                       <div className="catalog-card-noimg">

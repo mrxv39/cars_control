@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { PublicCatalog, CatalogHeader } from '../components/web/PublicCatalog'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { PublicCatalog, CatalogHeader, parseVehicleIdFromPath } from '../components/web/PublicCatalog'
 import type { Vehicle } from '../lib/api'
 
 vi.mock('../lib/supabase', () => ({
@@ -180,5 +180,111 @@ describe('PublicCatalog', () => {
       expect(screen.getAllByText('3 vehículos').length).toBeGreaterThanOrEqual(1)
     })
     expect(screen.getByLabelText('Contactar por WhatsApp')).toBeInTheDocument()
+  })
+})
+
+describe('parseVehicleIdFromPath', () => {
+  it('returns null for the catalog root', () => {
+    expect(parseVehicleIdFromPath('/')).toBeNull()
+    expect(parseVehicleIdFromPath('')).toBeNull()
+  })
+
+  it('parses /v/:id with a numeric id', () => {
+    expect(parseVehicleIdFromPath('/v/42')).toBe(42)
+    expect(parseVehicleIdFromPath('/v/42/')).toBe(42)
+  })
+
+  it('rejects non-numeric ids and zero', () => {
+    expect(parseVehicleIdFromPath('/v/abc')).toBeNull()
+    expect(parseVehicleIdFromPath('/v/0')).toBeNull()
+    expect(parseVehicleIdFromPath('/v/')).toBeNull()
+  })
+
+  it('rejects sub-paths', () => {
+    expect(parseVehicleIdFromPath('/v/42/edit')).toBeNull()
+    expect(parseVehicleIdFromPath('/vehicle/42')).toBeNull()
+  })
+})
+
+describe('PublicCatalog routing (URL ↔ state)', () => {
+  const vehicles = [
+    { id: 1, company_id: 1, name: 'Seat Ibiza 2019', precio_compra: 8000, precio_venta: 10500, km: 50000, anio: 2019, estado: 'disponible', ad_url: '', ad_status: '', fuel: 'Gasolina', cv: '90cv', transmission: 'Manual', color: 'Blanco', notes: '', supplier_id: null } satisfies Vehicle,
+    { id: 7, company_id: 1, name: 'Ford Focus 2020', precio_compra: 11000, precio_venta: 15000, km: 30000, anio: 2020, estado: 'disponible', ad_url: '', ad_status: '', fuel: 'Diésel', cv: '110cv', transmission: 'Manual', color: 'Negro', notes: '', supplier_id: null } satisfies Vehicle,
+  ]
+
+  beforeEach(() => {
+    vi.mocked(api.listPublicVehicles).mockResolvedValue(vehicles)
+    vi.mocked(api.listPrimaryPhotos).mockResolvedValue(new Map())
+    vi.mocked(api.listVehiclePhotos).mockResolvedValue([])
+    window.history.replaceState(null, '', '/')
+    document.title = 'CodinaCars - Vehículos de ocasión en Barcelona'
+  })
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '/')
+  })
+
+  it('opens the vehicle detail when the URL is /v/:id at mount', async () => {
+    window.history.replaceState(null, '', '/v/7')
+    render(<PublicCatalog onLogin={vi.fn()} />)
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Ford Focus 2020' })).toBeInTheDocument()
+    })
+    expect(document.title).toContain('Ford Focus 2020')
+  })
+
+  it('redirects silently to / when /v/:id refers to a vehicle that does not exist', async () => {
+    window.history.replaceState(null, '', '/v/999')
+    render(<PublicCatalog onLogin={vi.fn()} />)
+    await waitFor(() => {
+      expect(screen.getAllByText('2 vehículos').length).toBeGreaterThanOrEqual(1)
+    })
+    expect(window.location.pathname).toBe('/')
+    expect(screen.queryByRole('heading', { level: 1, name: 'Seat Ibiza 2019' })).not.toBeInTheDocument()
+  })
+
+  it('pushes /v/:id to history when a card is clicked', async () => {
+    render(<PublicCatalog onLogin={vi.fn()} />)
+    await waitFor(() => {
+      expect(screen.getByText('Ford Focus 2020')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByText('Ford Focus 2020'))
+    expect(window.location.pathname).toBe('/v/7')
+    expect(document.title).toContain('Ford Focus 2020')
+    expect(screen.getByRole('heading', { level: 1, name: 'Ford Focus 2020' })).toBeInTheDocument()
+  })
+
+  it('returns to the listing on browser back (popstate)', async () => {
+    render(<PublicCatalog onLogin={vi.fn()} />)
+    await waitFor(() => {
+      expect(screen.getByText('Ford Focus 2020')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByText('Ford Focus 2020'))
+    expect(window.location.pathname).toBe('/v/7')
+
+    await act(async () => {
+      window.history.back()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    await waitFor(() => {
+      expect(screen.getAllByText('2 vehículos').length).toBeGreaterThanOrEqual(1)
+    })
+    expect(window.location.pathname).toBe('/')
+    expect(document.title).not.toContain('Ford Focus')
+  })
+
+  it('returns to the listing when "Volver al listado" is clicked', async () => {
+    render(<PublicCatalog onLogin={vi.fn()} />)
+    await waitFor(() => {
+      expect(screen.getByText('Ford Focus 2020')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByText('Ford Focus 2020'))
+    expect(window.location.pathname).toBe('/v/7')
+    fireEvent.click(screen.getByText('← Volver al listado'))
+    expect(window.location.pathname).toBe('/')
+    await waitFor(() => {
+      expect(screen.getAllByText('2 vehículos').length).toBeGreaterThanOrEqual(1)
+    })
   })
 })
