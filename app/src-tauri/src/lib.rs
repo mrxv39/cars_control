@@ -10,6 +10,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tauri::AppHandle;
 use rusqlite::Connection;
 
+mod clients;
 mod db;
 mod importer;
 mod leads;
@@ -17,6 +18,7 @@ mod paths;
 mod photos;
 mod platform;
 
+pub use clients::{Client, ClientInput};
 pub use db::{Company, LeadNote, LoginResult, PurchaseRecord, SalesRecord, User};
 pub use importer::ImportReport;
 pub use leads::{Lead, LeadInput};
@@ -29,6 +31,10 @@ use paths::{
 use leads::{
     add_lead_note, create_lead, delete_lead, delete_lead_note, get_lead_notes, list_leads,
     list_leads_internal, save_leads, update_lead,
+};
+use clients::{
+    convert_lead_to_client, create_client, delete_client, list_clients, list_clients_internal,
+    save_clients, update_client,
 };
 
 const LEGACY_SALES_PARENT_FOLDERS: [&str; 2] = ["CODINACARS PC", "varios codinacars"];
@@ -57,18 +63,6 @@ struct VehicleAdInfo {
     url: String,
     status: String,
     date: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct Client {
-    id: u64,
-    name: String,
-    phone: String,
-    email: String,
-    dni: String,
-    notes: String,
-    vehicle_folder_path: Option<String>,
-    source_lead_id: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -115,16 +109,6 @@ struct ExportManifest {
 struct ExportDataPayload {
     export_path: String,
     included_files: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ClientInput {
-    name: String,
-    phone: String,
-    email: String,
-    dni: String,
-    notes: String,
-    vehicle_folder_path: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -316,23 +300,6 @@ where
     items.iter().map(id_for).max().unwrap_or(0) + 1
 }
 
-fn build_client(
-    id: u64,
-    input: ClientInput,
-    source_lead_id: Option<u64>,
-) -> Result<Client, String> {
-    Ok(Client {
-        id,
-        name: sanitize_contact_name(&input.name)?,
-        phone: sanitize_text_field(&input.phone),
-        email: sanitize_text_field(&input.email),
-        dni: sanitize_text_field(&input.dni),
-        notes: sanitize_text_field(&input.notes),
-        vehicle_folder_path: sanitize_optional_path(input.vehicle_folder_path),
-        source_lead_id,
-    })
-}
-
 pub(crate) fn read_collection<T>(path: &Path) -> Result<Vec<T>, String>
 where
     T: DeserializeOwned,
@@ -426,28 +393,6 @@ fn write_backup_bundle(
         export_path: export_dir.to_string_lossy().to_string(),
         included_files,
     })
-}
-
-fn list_clients_internal(app: &AppHandle) -> Result<Vec<Client>, String> {
-    // Asegurar que la base de datos está migrada
-    ensure_database_migrated(app)?;
-
-    // Leer de SQLite
-    let conn = get_db_connection(app)?;
-    let mut clients = db::load_clients(&conn)
-        .map_err(|e| format!("Error al cargar clients: {}", e))?;
-    clients.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
-    Ok(clients)
-}
-
-fn save_clients(app: &AppHandle, clients: &[Client]) -> Result<(), String> {
-    // Guardar en SQLite
-    let conn = get_db_connection(app)?;
-    for client in clients {
-        db::save_client(&conn, client)
-            .map_err(|e| format!("Error al guardar client: {}", e))?;
-    }
-    Ok(())
 }
 
 fn read_vehicle_ads_map(
@@ -897,11 +842,6 @@ fn list_gastos_entries() -> Result<Vec<LegacyEntryNode>, String> {
 }
 
 #[tauri::command]
-fn list_clients(app: AppHandle) -> Result<Vec<Client>, String> {
-    list_clients_internal(&app)
-}
-
-#[tauri::command]
 fn get_vehicle_ad(app: AppHandle, folder_path: String) -> Result<Option<VehicleAdInfo>, String> {
     get_vehicle_ad_for_path(&app, &folder_path)
 }
@@ -993,102 +933,6 @@ fn delete_vehicle(app: AppHandle, folder_path: String) -> Result<(), String> {
         save_vehicle_ads_map(&app, &ads)?;
     }
     rewrite_vehicle_reference_in_contacts(&app, &current_folder_string, None)
-}
-
-#[tauri::command]
-fn create_client(app: AppHandle, input: ClientInput) -> Result<Client, String> {
-    let mut clients = read_collection::<Client>(&clients_file_path(&app)?)?;
-    let next_id = next_record_id(&clients, |client| client.id);
-    let vehicle_folder_path =
-        validate_optional_vehicle_folder_path(&app, input.vehicle_folder_path.clone())?;
-    let client = build_client(
-        next_id,
-        ClientInput {
-            vehicle_folder_path,
-            ..input
-        },
-        None,
-    )?;
-    clients.push(client.clone());
-    save_clients(&app, &clients)?;
-    Ok(client)
-}
-
-#[tauri::command]
-fn update_client(app: AppHandle, id: u64, input: ClientInput) -> Result<Client, String> {
-    let mut clients = read_collection::<Client>(&clients_file_path(&app)?)?;
-    let index = clients
-        .iter()
-        .position(|client| client.id == id)
-        .ok_or_else(|| format!("No existe el cliente con id {id}."))?;
-    let source_lead_id = clients[index].source_lead_id;
-    let vehicle_folder_path =
-        validate_optional_vehicle_folder_path(&app, input.vehicle_folder_path.clone())?;
-    let updated = build_client(
-        id,
-        ClientInput {
-            vehicle_folder_path,
-            ..input
-        },
-        source_lead_id,
-    )?;
-    clients[index] = updated.clone();
-    save_clients(&app, &clients)?;
-    Ok(updated)
-}
-
-#[tauri::command]
-fn delete_client(app: AppHandle, id: u64) -> Result<(), String> {
-    let mut clients = read_collection::<Client>(&clients_file_path(&app)?)?;
-    let previous_len = clients.len();
-    clients.retain(|client| client.id != id);
-    if clients.len() == previous_len {
-        return Err(format!("No existe el cliente con id {id}."));
-    }
-
-    let mut leads = read_collection::<Lead>(&leads_file_path(&app)?)?;
-    for lead in &mut leads {
-        if lead.converted_client_id == Some(id) {
-            lead.converted_client_id = None;
-        }
-    }
-
-    save_clients(&app, &clients)?;
-    save_leads(&app, &leads)
-}
-
-#[tauri::command]
-fn convert_lead_to_client(
-    app: AppHandle,
-    lead_id: u64,
-    input: ClientInput,
-) -> Result<Client, String> {
-    let mut leads = read_collection::<Lead>(&leads_file_path(&app)?)?;
-    let lead_index = leads
-        .iter()
-        .position(|lead| lead.id == lead_id)
-        .ok_or_else(|| format!("No existe el lead con id {lead_id}."))?;
-
-    let mut clients = read_collection::<Client>(&clients_file_path(&app)?)?;
-    let next_id = next_record_id(&clients, |client| client.id);
-    let vehicle_folder_path =
-        validate_optional_vehicle_folder_path(&app, input.vehicle_folder_path.clone())?;
-    let client = build_client(
-        next_id,
-        ClientInput {
-            vehicle_folder_path,
-            ..input
-        },
-        Some(lead_id),
-    )?;
-
-    clients.push(client.clone());
-    leads[lead_index].converted_client_id = Some(client.id);
-
-    save_clients(&app, &clients)?;
-    save_leads(&app, &leads)?;
-
-    Ok(client)
 }
 
 #[tauri::command]
