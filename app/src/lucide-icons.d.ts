@@ -17,3 +17,4 @@ declare module "lucide-react/dist/esm/icons/menu" { const Menu: React.FC<LucideI
 declare module "lucide-react/dist/esm/icons/x" { const X: React.FC<LucideIconProps>; export default X; }
 declare module "lucide-react/dist/esm/icons/trending-up" { const TrendingUp: React.FC<LucideIconProps>; export default TrendingUp; }
 declare module "lucide-react/dist/esm/icons/alert-triangle" { const AlertTriangle: React.FC<LucideIconProps>; export default AlertTriangle; }
+declare module "lucide-react/dist/esm/icons/phone" { const Phone: React.FC<LucideIconProps>; export default Phone; }
