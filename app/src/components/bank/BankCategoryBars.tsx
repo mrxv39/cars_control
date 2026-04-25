@@ -65,9 +65,10 @@ export function BankCategoryBars({ rows, maxTotal, activeCategory, onToggle }: P
                 <div
                   className="bank-cat-bar"
                   style={{
-                    width: `${pct}%`,
+                    width: "100%",
                     height: "100%",
                     background: categoryColor(c.category),
+                    transform: `scaleX(${pct / 100})`,
                   }}
                 />
               </div>

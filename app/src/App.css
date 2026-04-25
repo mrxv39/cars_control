@@ -3487,7 +3487,9 @@ select:focus-visible {
   outline-offset: 2px;
 }
 .bank-cat-bar {
-  transition: width var(--transition-slow);
+  transform-origin: left center;
+  transition: transform var(--transition-slow);
+  will-change: transform;
 }
 .bank-link-button {
   transition: background var(--transition-fast), color var(--transition-fast);

@@ -592,7 +592,7 @@ export function BankList({ companyId }: Props) {
                                   aria-label={`Crear regla para que movimientos similares se categoricen como ${categoryLabel(t.category)}`}
                                   className="bank-link-button"
                                   style={{
-                                    padding: "0.15rem 0.45rem",
+                                    padding: "0.2rem 0.5rem",
                                     fontSize: "var(--text-xs)",
                                     borderRadius: "var(--radius-sm)",
                                     border: "1px solid var(--color-primary)",

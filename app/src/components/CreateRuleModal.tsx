@@ -138,7 +138,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
         style={{
-          background: "#fff",
+          background: "var(--color-bg)",
           borderRadius: 12,
           padding: "1.5rem",
           maxWidth: 520,
@@ -162,7 +162,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
             type="button"
             onClick={onClose}
             aria-label="Cerrar diálogo"
-            style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#475569" }}
+            style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--color-text-secondary)" }}
           >
             ×
           </button>
@@ -180,7 +180,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
               style={{
                 padding: "0.5rem",
                 borderRadius: 6,
-                border: pattern.trim().length > 0 && pattern.trim().length < GENERIC_PATTERN_MIN_LEN ? "1px solid #f59e0b" : "1px solid #cbd5e1",
+                border: pattern.trim().length > 0 && pattern.trim().length < GENERIC_PATTERN_MIN_LEN ? "1px solid var(--color-amber)" : "1px solid #cbd5e1",
               }}
               autoFocus
             />
@@ -189,7 +189,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
                 ⚠ Patrón muy corto ({pattern.trim().length} caracteres). Puede coincidir con muchos movimientos no relacionados.
               </span>
             ) : (
-              <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+              <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
                 La búsqueda es insensible a mayúsculas.
               </span>
             )}
@@ -198,7 +198,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
           {pattern.trim().length >= 3 && (
             <div
               style={{
-                background: matchCount && matchCount > 0 ? "#ecfdf5" : "#f1f5f9",
+                background: matchCount && matchCount > 0 ? "#ecfdf5" : "var(--color-bg-secondary)",
                 border: matchCount && matchCount > 0 ? "1px solid #6ee7b7" : "1px solid #e2e8f0",
                 padding: "0.6rem 0.75rem",
                 borderRadius: 8,
@@ -207,7 +207,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
               }}
             >
               {countLoading || matchCount === null ? (
-                <span style={{ color: "#64748b" }}>Buscando coincidencias…</span>
+                <span style={{ color: "var(--color-text-muted)" }}>Buscando coincidencias…</span>
               ) : matchCount === 0 ? (
                 <span>Ningún movimiento existente coincide con este patrón.</span>
               ) : (
@@ -223,7 +223,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
                     Aplicar también a <b>{matchCount} movimiento{matchCount !== 1 ? "s" : ""} sin categorizar</b>
                     {" "}que ya coinciden.
                     <br />
-                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                    <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
                       Solo se tocan los "Sin categorizar". Los ya categorizados manualmente no se modifican.
                     </span>
                   </span>
@@ -242,7 +242,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
                 background: "none",
                 border: "none",
                 padding: 0,
-                color: "#475569",
+                color: "var(--color-text-secondary)",
                 fontSize: "0.8rem",
                 cursor: "pointer",
                 textDecoration: "underline",
@@ -262,7 +262,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
                   max={999}
                   style={{ padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1", maxWidth: 120 }}
                 />
-                <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
                   Menor número = mayor prioridad (por defecto 100). Útil si tienes varias reglas que podrían coincidir con el mismo movimiento.
                 </span>
               </label>
@@ -271,11 +271,11 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
 
           <div
             style={{
-              background: "#f1f5f9",
+              background: "var(--color-bg-secondary)",
               padding: "0.75rem",
               borderRadius: 8,
               fontSize: "0.8rem",
-              color: "#475569",
+              color: "var(--color-text-secondary)",
             }}
           >
             Movimiento actual:<br />
