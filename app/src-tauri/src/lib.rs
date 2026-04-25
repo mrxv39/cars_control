@@ -12,6 +12,7 @@ use rusqlite::Connection;
 
 mod db;
 mod importer;
+mod photos;
 mod platform;
 
 pub use db::{Company, LeadNote, LoginResult, PurchaseRecord, SalesRecord, User};
@@ -652,7 +653,7 @@ fn rewrite_vehicle_reference_in_contacts(
     save_clients(app, &clients)
 }
 
-fn validate_vehicle_folder(app: &AppHandle, folder_path: &str) -> Result<PathBuf, String> {
+pub(crate) fn validate_vehicle_folder(app: &AppHandle, folder_path: &str) -> Result<PathBuf, String> {
     let stock_dir = canonical_stock_dir(app)?;
     let vehicle_path = PathBuf::from(folder_path);
     let canonical_vehicle = vehicle_path.canonicalize().map_err(|error| {
@@ -1505,103 +1506,7 @@ fn delete_purchase_record(app: AppHandle, record_id: u64) -> Result<(), String> 
         .map_err(|error| format!("No se pudo eliminar el registro de compra: {error}"))
 }
 
-#[derive(Debug, Serialize)]
-struct VehiclePhoto {
-    file_name: String,
-    data_url: String,
-}
-
-#[tauri::command]
-fn list_vehicle_photos(app: AppHandle, folder_path: String) -> Result<Vec<VehiclePhoto>, String> {
-    let folder = validate_vehicle_folder(&app, &folder_path)?;
-
-    let mut photos = Vec::new();
-    let entries = fs::read_dir(&folder)
-        .map_err(|e| format!("No se pudo leer la carpeta: {e}"))?;
-
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let ext = path.extension().and_then(|v| v.to_str()).unwrap_or("").to_lowercase();
-        if matches!(ext.as_str(), "jpg" | "jpeg" | "png" | "webp") {
-            let bytes = fs::read(&path)
-                .map_err(|e| format!("No se pudo leer la imagen: {e}"))?;
-            let mime = match ext.as_str() {
-                "png" => "image/png",
-                "webp" => "image/webp",
-                _ => "image/jpeg",
-            };
-            let file_name = path.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-                .to_string();
-            photos.push(VehiclePhoto {
-                file_name,
-                data_url: format!("data:{};base64,{}", mime, STANDARD.encode(&bytes)),
-            });
-        }
-    }
-
-    photos.sort_by(|a, b| a.file_name.to_lowercase().cmp(&b.file_name.to_lowercase()));
-    Ok(photos)
-}
-
-#[tauri::command]
-fn save_vehicle_photo(app: AppHandle, folder_path: String, photo_data: String, file_name: String) -> Result<(), String> {
-    let folder = validate_vehicle_folder(&app, &folder_path)?;
-
-    // Validate file_name to prevent path traversal
-    if file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
-        return Err("Nombre de archivo no válido.".to_string());
-    }
-
-    // Validate file extension
-    let allowed_extensions = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
-    let has_valid_ext = file_name.rsplit('.').next()
-        .map(|ext| allowed_extensions.contains(&ext.to_lowercase().as_str()))
-        .unwrap_or(false);
-    if !has_valid_ext {
-        return Err("Extensión de archivo no permitida. Use: jpg, jpeg, png, webp, gif, bmp.".to_string());
-    }
-
-    // photo_data is base64 with data URI prefix
-    let base64_data = photo_data
-        .split(',')
-        .nth(1)
-        .unwrap_or(&photo_data);
-
-    let bytes = STANDARD.decode(base64_data)
-        .map_err(|e| format!("No se pudo decodificar la imagen: {e}"))?;
-
-    // Limit file size to 10MB
-    if bytes.len() > 10 * 1024 * 1024 {
-        return Err("La imagen excede el tamaño máximo de 10MB.".to_string());
-    }
-
-    let dest = folder.join(&file_name);
-    fs::write(&dest, &bytes)
-        .map_err(|e| format!("No se pudo guardar la imagen: {e}"))?;
-
-    Ok(())
-}
-
-#[tauri::command]
-fn delete_vehicle_photo(app: AppHandle, folder_path: String, file_name: String) -> Result<(), String> {
-    // Validate file_name to prevent path traversal
-    if file_name.contains('/') || file_name.contains('\\') || file_name.contains("..") {
-        return Err("Nombre de archivo no válido.".to_string());
-    }
-
-    let folder = validate_vehicle_folder(&app, &folder_path)?;
-    let path = folder.join(&file_name);
-    if path.exists() {
-        fs::remove_file(&path)
-            .map_err(|e| format!("No se pudo eliminar la foto: {e}"))?;
-    }
-    Ok(())
-}
+use photos::{delete_vehicle_photo, list_vehicle_photos, save_vehicle_photo};
 
 #[tauri::command]
 fn login(app: AppHandle, username: String, password: String) -> Result<LoginResult, String> {
