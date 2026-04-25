@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import * as api from "../lib/api";
 import { showToast } from "../lib/toast";
 import { translateError } from "../lib/translateError";
@@ -32,11 +32,36 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
   const [matchCount, setMatchCount] = useState<number | null>(null);
   const [countLoading, setCountLoading] = useState(false);
   const [applyRetro, setApplyRetro] = useState(true);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !formRef.current) return;
+      const focusables = formRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      previouslyFocused?.focus?.();
+    };
   }, [onClose]);
 
   useEffect(() => {
@@ -109,6 +134,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
       onClick={onClose}
     >
       <form
+        ref={formRef}
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
         style={{
@@ -136,7 +162,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
             type="button"
             onClick={onClose}
             aria-label="Cerrar diálogo"
-            style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#64748b" }}
+            style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#475569" }}
           >
             ×
           </button>
@@ -211,11 +237,12 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
               type="button"
               onClick={() => setShowAdvanced((v) => !v)}
               aria-expanded={showAdvanced}
+              aria-controls="rule-advanced-panel"
               style={{
                 background: "none",
                 border: "none",
                 padding: 0,
-                color: "#64748b",
+                color: "#475569",
                 fontSize: "0.8rem",
                 cursor: "pointer",
                 textDecoration: "underline",
@@ -224,7 +251,7 @@ export function CreateRuleModal({ tx, category, companyId, onClose, onCreated }:
               {showAdvanced ? "Ocultar opciones avanzadas" : "Opciones avanzadas"}
             </button>
             {showAdvanced && (
-              <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.9rem", marginTop: "0.5rem" }}>
+              <label id="rule-advanced-panel" style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.9rem", marginTop: "0.5rem" }}>
                 <span style={{ fontWeight: 600 }}>Prioridad</span>
                 <input
                   type="number"

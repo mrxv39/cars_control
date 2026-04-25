@@ -506,7 +506,7 @@ export function BankList({ companyId }: Props) {
           return (
             <section key={yyyymm} className="panel sales-records-panel" style={{ marginBottom: "1rem" }}>
               <div className="bank-month-header">
-                <h3 style={{ margin: 0, fontSize: "1.05rem", textTransform: "capitalize", color: "var(--color-text)" }}>
+                <h3 id={`bank-month-${yyyymm}`} style={{ margin: 0, fontSize: "1.05rem", textTransform: "capitalize", color: "var(--color-text)" }}>
                   {monthLabel(yyyymm)}
                 </h3>
                 <div className="bank-month-totals">
@@ -527,7 +527,7 @@ export function BankList({ companyId }: Props) {
                 </div>
               </div>
               <div className="sales-table-scroll">
-                <table className="sales-table">
+                <table className="sales-table" aria-labelledby={`bank-month-${yyyymm}`}>
                   <thead>
                     <tr>
                       <th className="sales-th" style={{ width: "5rem" }}>Fecha</th>
@@ -642,7 +642,6 @@ export function BankList({ companyId }: Props) {
                                     color: "var(--color-primary)",
                                     cursor: "pointer",
                                     fontWeight: 600,
-                                    transition: "background var(--transition-fast), color var(--transition-fast)",
                                   }}
                                 >
                                   Asociar a compra
@@ -661,7 +660,6 @@ export function BankList({ companyId }: Props) {
                                     color: "var(--color-text-secondary)",
                                     cursor: "pointer",
                                     fontWeight: 600,
-                                    transition: "background var(--transition-fast), color var(--transition-fast)",
                                   }}
                                 >
                                   + Compra
@@ -683,7 +681,6 @@ export function BankList({ companyId }: Props) {
                                   color: "var(--color-success)",
                                   cursor: "pointer",
                                   fontWeight: 600,
-                                  transition: "background var(--transition-fast), color var(--transition-fast)",
                                 }}
                               >
                                 Asociar a venta

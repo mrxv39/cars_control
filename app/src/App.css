@@ -3489,6 +3489,9 @@ select:focus-visible {
 .bank-cat-bar {
   transition: width var(--transition-slow);
 }
+.bank-link-button {
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
 .bank-link-button:hover {
   background: var(--color-primary) !important;
   color: var(--color-bg) !important;
