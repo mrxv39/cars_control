@@ -5,7 +5,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tauri::AppHandle;
 use rusqlite::Connection;
@@ -18,16 +17,17 @@ mod paths;
 mod photos;
 mod platform;
 mod records;
+mod vehicles;
 
 pub use clients::{Client, ClientInput};
 pub use db::{Company, LeadNote, LoginResult, PurchaseRecord, SalesRecord, User};
 pub use importer::ImportReport;
 pub use leads::{Lead, LeadInput};
+pub use vehicles::{StockVehicle, VehicleAdInfo, VehicleAdInput};
 
 use paths::{
-    app_data_root_dir, app_stock_dir, backups_dir, canonical_stock_dir, clients_file_path,
-    db_path, docs_legacy_dir, get_db_connection, leads_file_path, vehicle_ads_file_path,
-    CLIENTS_FILE, LEADS_FILE, VEHICLE_ADS_FILE,
+    app_data_root_dir, app_stock_dir, backups_dir, canonical_stock_dir, db_path, docs_legacy_dir,
+    get_db_connection, CLIENTS_FILE, LEADS_FILE, VEHICLE_ADS_FILE,
 };
 use leads::{
     add_lead_note, create_lead, delete_lead, delete_lead_note, get_lead_notes, list_leads,
@@ -41,34 +41,14 @@ use records::{
     add_purchase_record, add_sales_record, delete_purchase_record, delete_sales_record,
     get_purchase_records, get_sales_records,
 };
+use vehicles::{
+    create_vehicle, delete_vehicle, get_stock_folder_path, get_vehicle_ad, get_vehicle_thumbnail,
+    list_stock, rename_vehicle, set_vehicle_ad,
+};
 
 const LEGACY_SALES_PARENT_FOLDERS: [&str; 2] = ["CODINACARS PC", "varios codinacars"];
 const LEGACY_FISCAL_DIR_NAMES: [&str; 1] = ["FISCAL"];
 const LEGACY_GASTOS_DIR_NAMES: [&str; 1] = ["GASTOS"];
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct StockVehicle {
-    name: String,
-    folder_path: String,
-    ad_info: Option<VehicleAdInfo>,
-    #[serde(default)]
-    precio_compra: Option<f64>,
-    #[serde(default)]
-    precio_venta: Option<f64>,
-    #[serde(default)]
-    km: Option<u32>,
-    #[serde(default)]
-    anio: Option<u16>,
-    #[serde(default)]
-    estado: String, // "disponible", "reservado", "vendido"
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-struct VehicleAdInfo {
-    url: String,
-    status: String,
-    date: String,
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SalesFolderNode {
@@ -114,38 +94,6 @@ struct ExportManifest {
 struct ExportDataPayload {
     export_path: String,
     included_files: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct VehicleAdInput {
-    url: String,
-    status: String,
-    date: String,
-}
-
-pub(crate) fn stock_vehicle_from_path(path: &Path) -> Result<StockVehicle, String> {
-    let name = path
-        .file_name()
-        .and_then(|value| value.to_str())
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| {
-            format!(
-                "No se pudo obtener el nombre de la carpeta {}",
-                path.display()
-            )
-        })?;
-
-    Ok(StockVehicle {
-        name,
-        folder_path: path.to_string_lossy().to_string(),
-        ad_info: None,
-        precio_compra: None,
-        precio_venta: None,
-        km: None,
-        anio: None,
-        estado: "disponible".to_string(),
-    })
 }
 
 pub(crate) fn ensure_database_migrated(app: &AppHandle) -> Result<(), String> {
@@ -400,24 +348,6 @@ fn write_backup_bundle(
     })
 }
 
-fn read_vehicle_ads_map(
-    app: &AppHandle,
-) -> Result<std::collections::BTreeMap<String, VehicleAdInfo>, String> {
-    let items = read_collection::<(String, VehicleAdInfo)>(&vehicle_ads_file_path(app)?)?;
-    Ok(items.into_iter().collect())
-}
-
-fn save_vehicle_ads_map(
-    app: &AppHandle,
-    map: &std::collections::BTreeMap<String, VehicleAdInfo>,
-) -> Result<(), String> {
-    let items = map
-        .iter()
-        .map(|(key, value)| (key.clone(), value.clone()))
-        .collect::<Vec<_>>();
-    write_collection(&vehicle_ads_file_path(app)?, &items)
-}
-
 pub(crate) fn validate_optional_vehicle_folder_path(
     app: &AppHandle,
     vehicle_folder_path: Option<String>,
@@ -427,30 +357,6 @@ pub(crate) fn validate_optional_vehicle_folder_path(
     };
     let validated = validate_vehicle_folder(app, &vehicle_folder_path)?;
     Ok(Some(validated.to_string_lossy().to_string()))
-}
-
-fn rewrite_vehicle_reference_in_contacts(
-    app: &AppHandle,
-    old_path: &str,
-    new_path: Option<&str>,
-) -> Result<(), String> {
-    let mut leads = read_collection::<Lead>(&leads_file_path(app)?)?;
-    let mut clients = read_collection::<Client>(&clients_file_path(app)?)?;
-
-    for lead in &mut leads {
-        if lead.vehicle_folder_path.as_deref() == Some(old_path) {
-            lead.vehicle_folder_path = new_path.map(ToOwned::to_owned);
-        }
-    }
-
-    for client in &mut clients {
-        if client.vehicle_folder_path.as_deref() == Some(old_path) {
-            client.vehicle_folder_path = new_path.map(ToOwned::to_owned);
-        }
-    }
-
-    save_leads(app, &leads)?;
-    save_clients(app, &clients)
 }
 
 pub(crate) fn validate_vehicle_folder(app: &AppHandle, folder_path: &str) -> Result<PathBuf, String> {
@@ -705,92 +611,6 @@ fn list_legacy_area_nodes(
     ))
 }
 
-fn list_stock(app: &AppHandle) -> Result<(String, Vec<StockVehicle>), String> {
-    let stock_dir = app_stock_dir(app)?;
-    let vehicle_ads = read_vehicle_ads_map(app)?;
-
-    // Load DB data to merge with filesystem
-    let conn = get_db_connection(app)?;
-    let db_vehicles = db::load_vehicles(&conn)
-        .map_err(|e| format!("Error al cargar vehiculos de BD: {}", e))?;
-    let db_map: std::collections::HashMap<String, StockVehicle> = db_vehicles
-        .into_iter()
-        .map(|v| (v.folder_path.clone(), v))
-        .collect();
-
-    let mut vehicles = Vec::new();
-
-    if let Ok(entries) = fs::read_dir(&stock_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                let folder_path = path.to_string_lossy().to_string();
-                if let Some(db_vehicle) = db_map.get(&folder_path) {
-                    // Use DB data (has precio, km, anio, estado) merged with ad info
-                    let mut vehicle = db_vehicle.clone();
-                    if vehicle.ad_info.is_none() {
-                        vehicle.ad_info = vehicle_ads.get(&folder_path).cloned();
-                    }
-                    // Only show if not vendido
-                    if vehicle.estado != "vendido" {
-                        vehicles.push(vehicle);
-                    }
-                } else {
-                    // Folder exists but not in DB — create from path
-                    let mut vehicle = stock_vehicle_from_path(&path)?;
-                    vehicle.ad_info = vehicle_ads.get(&vehicle.folder_path).cloned();
-                    vehicles.push(vehicle);
-                }
-            }
-        }
-    }
-
-    vehicles.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
-
-    Ok((stock_dir.to_string_lossy().to_string(), vehicles))
-}
-
-fn first_jpeg_in_dir(dir: &Path) -> Result<Option<PathBuf>, String> {
-    let mut dirs = vec![dir.to_path_buf()];
-
-    while let Some(current_dir) = dirs.pop() {
-        let mut child_dirs = Vec::new();
-        let mut image_files = Vec::new();
-        let entries = fs::read_dir(&current_dir).map_err(|error| {
-            format!(
-                "No se pudo leer la carpeta {}: {error}",
-                current_dir.display()
-            )
-        })?;
-
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                child_dirs.push(path);
-                continue;
-            }
-
-            let extension = path.extension().and_then(|value| value.to_str());
-            if matches!(
-                extension,
-                Some("jpg") | Some("jpeg") | Some("JPG") | Some("JPEG")
-            ) {
-                image_files.push(path);
-            }
-        }
-
-        child_dirs.sort();
-        dirs.extend(child_dirs.into_iter().rev());
-
-        image_files.sort();
-        if let Some(first_image) = image_files.into_iter().next() {
-            return Ok(Some(first_image));
-        }
-    }
-
-    Ok(None)
-}
-
 #[tauri::command]
 fn load_app_state(app: AppHandle) -> Result<AppStatePayload, String> {
     let (stock_folder, stock) = list_stock(&app)?;
@@ -847,127 +667,6 @@ fn list_gastos_entries() -> Result<Vec<LegacyEntryNode>, String> {
 }
 
 #[tauri::command]
-fn get_vehicle_ad(app: AppHandle, folder_path: String) -> Result<Option<VehicleAdInfo>, String> {
-    get_vehicle_ad_for_path(&app, &folder_path)
-}
-
-fn get_vehicle_ad_for_path(
-    app: &AppHandle,
-    folder_path: &str,
-) -> Result<Option<VehicleAdInfo>, String> {
-    let vehicle_folder = validate_vehicle_folder(app, folder_path)?;
-    let ads = read_vehicle_ads_map(app)?;
-    Ok(ads
-        .get(&vehicle_folder.to_string_lossy().to_string())
-        .cloned())
-}
-
-#[tauri::command]
-fn get_stock_folder_path(app: AppHandle) -> Result<String, String> {
-    app_stock_dir(&app).map(|path| path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-fn create_vehicle(app: AppHandle, name: String) -> Result<StockVehicle, String> {
-    let stock_dir = app_stock_dir(&app)?;
-    let sanitized_name = sanitize_vehicle_name(&name)?;
-    let vehicle_path = ensure_unique_vehicle_path(&stock_dir, &sanitized_name, None)?;
-
-    fs::create_dir_all(&vehicle_path).map_err(|error| {
-        format!(
-            "No se pudo crear la carpeta {}: {error}",
-            vehicle_path.display()
-        )
-    })?;
-
-    stock_vehicle_from_path(&vehicle_path)
-}
-
-#[tauri::command]
-fn rename_vehicle(
-    app: AppHandle,
-    folder_path: String,
-    new_name: String,
-) -> Result<StockVehicle, String> {
-    let stock_dir = canonical_stock_dir(&app)?;
-    let current_folder = validate_vehicle_folder(&app, &folder_path)?;
-    let current_folder_string = current_folder.to_string_lossy().to_string();
-    let sanitized_name = sanitize_vehicle_name(&new_name)?;
-    let target_path =
-        ensure_unique_vehicle_path(&stock_dir, &sanitized_name, Some(&current_folder))?;
-
-    if target_path != current_folder {
-        fs::rename(&current_folder, &target_path).map_err(|error| {
-            format!(
-                "No se pudo renombrar la carpeta {} a {}: {error}",
-                current_folder.display(),
-                target_path.display()
-            )
-        })?;
-
-        let mut ads = read_vehicle_ads_map(&app)?;
-        if let Some(ad_info) = ads.remove(&current_folder_string) {
-            ads.insert(target_path.to_string_lossy().to_string(), ad_info);
-            save_vehicle_ads_map(&app, &ads)?;
-        }
-        rewrite_vehicle_reference_in_contacts(
-            &app,
-            &current_folder_string,
-            Some(&target_path.to_string_lossy()),
-        )?;
-    }
-
-    let mut vehicle = stock_vehicle_from_path(&target_path)?;
-    vehicle.ad_info = get_vehicle_ad_for_path(&app, &vehicle.folder_path)?;
-    Ok(vehicle)
-}
-
-#[tauri::command]
-fn delete_vehicle(app: AppHandle, folder_path: String) -> Result<(), String> {
-    let current_folder = validate_vehicle_folder(&app, &folder_path)?;
-    let current_folder_string = current_folder.to_string_lossy().to_string();
-    fs::remove_dir_all(&current_folder).map_err(|error| {
-        format!(
-            "No se pudo eliminar la carpeta {}: {error}",
-            current_folder.display()
-        )
-    })?;
-
-    let mut ads = read_vehicle_ads_map(&app)?;
-    if ads.remove(&current_folder_string).is_some() {
-        save_vehicle_ads_map(&app, &ads)?;
-    }
-    rewrite_vehicle_reference_in_contacts(&app, &current_folder_string, None)
-}
-
-#[tauri::command]
-fn set_vehicle_ad(
-    app: AppHandle,
-    folder_path: String,
-    input: VehicleAdInput,
-) -> Result<Option<VehicleAdInfo>, String> {
-    let vehicle_folder = validate_vehicle_folder(&app, &folder_path)?;
-    let vehicle_folder = vehicle_folder.to_string_lossy().to_string();
-    let mut ads = read_vehicle_ads_map(&app)?;
-
-    let ad_info = VehicleAdInfo {
-        url: sanitize_text_field(&input.url),
-        status: sanitize_text_field(&input.status),
-        date: sanitize_text_field(&input.date),
-    };
-
-    if ad_info.url.is_empty() && ad_info.status.is_empty() && ad_info.date.is_empty() {
-        ads.remove(&vehicle_folder);
-        save_vehicle_ads_map(&app, &ads)?;
-        return Ok(None);
-    }
-
-    ads.insert(vehicle_folder, ad_info.clone());
-    save_vehicle_ads_map(&app, &ads)?;
-    Ok(Some(ad_info))
-}
-
-#[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
     let folder = PathBuf::from(&path);
     if !folder.exists() || !folder.is_dir() {
@@ -1007,23 +706,6 @@ fn open_external(target: String) -> Result<(), String> {
     result
         .map(|_| ())
         .map_err(|error| format!("No se pudo abrir el enlace: {error}"))
-}
-
-#[tauri::command]
-fn get_vehicle_thumbnail(app: AppHandle, folder_path: String) -> Result<Option<String>, String> {
-    let folder = validate_vehicle_folder(&app, &folder_path)?;
-
-    let Some(image_path) = first_jpeg_in_dir(&folder)? else {
-        return Ok(None);
-    };
-
-    let image_bytes =
-        fs::read(&image_path).map_err(|error| format!("No se pudo leer la imagen: {error}"))?;
-
-    Ok(Some(format!(
-        "data:image/jpeg;base64,{}",
-        STANDARD.encode(image_bytes)
-    )))
 }
 
 #[tauri::command]
