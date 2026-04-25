@@ -100,3 +100,6 @@ _import_*/
 
 # Análisis de leads (emails con datos personales RGPD — teléfonos, emails de clientes)
 _leads_*/
+
+# Backups locales pre-refactor (usar al hacer split de archivos grandes)
+*.before
