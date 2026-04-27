@@ -190,6 +190,35 @@ export async function getStockPhotoSummary(vehicleIds: number[]): Promise<Map<nu
   return result;
 }
 
+// Batch: para una lista de vehicle_ids, devuelve la signed URL de la primera
+// factura adjunta de cada vehículo (doc_type='factura'). Usado por el listado
+// de compras para mostrar un botón "Ver" sin hacer N+1.
+export async function getPurchaseInvoicesByVehicleIds(vehicleIds: number[]): Promise<Map<number, { fileName: string; url: string }>> {
+  const result = new Map<number, { fileName: string; url: string }>();
+  if (vehicleIds.length === 0) return result;
+  const { data, error } = await supabase.from("vehicle_documents")
+    .select("vehicle_id, file_name, storage_path")
+    .in("vehicle_id", vehicleIds)
+    .eq("doc_type", "factura")
+    .order("created_at");
+  throwIfError(error);
+  const rows = data || [];
+  if (rows.length === 0) return result;
+  const firstByVehicle = new Map<number, { vehicle_id: number; file_name: string; storage_path: string }>();
+  for (const row of rows) { if (!firstByVehicle.has(row.vehicle_id)) firstByVehicle.set(row.vehicle_id, row); }
+  const paths = Array.from(firstByVehicle.values()).map((r) => r.storage_path).filter(Boolean);
+  if (paths.length === 0) return result;
+  const { data: signedList, error: signErr } = await supabase.storage.from("vehicle-docs").createSignedUrls(paths, 3600);
+  if (signErr) console.warn("[getPurchaseInvoicesByVehicleIds] createSignedUrls error:", signErr.message);
+  const urlMap = new Map<string, string>();
+  for (const s of signedList || []) { if (s?.path && s?.signedUrl && !s.error) urlMap.set(s.path, s.signedUrl); }
+  for (const [vehicleId, row] of firstByVehicle) {
+    const url = urlMap.get(row.storage_path);
+    if (url) result.set(vehicleId, { fileName: row.file_name, url });
+  }
+  return result;
+}
+
 export async function getStockDocSummary(vehicleIds: number[]): Promise<Map<number, Set<string>>> {
   const result = new Map<number, Set<string>>();
   if (vehicleIds.length === 0) return result;

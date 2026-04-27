@@ -17,7 +17,7 @@ export {
   setPrimaryPhoto, listPrimaryPhotos, listVehiclePhotos, uploadVehiclePhoto, deleteVehiclePhoto,
   listVehicleDocuments, uploadVehicleDocument, deleteVehicleDocument,
   listVehicleInspections, deleteVehicleInspection,
-  getStockPhotoSummary, getStockDocSummary,
+  getStockPhotoSummary, getStockDocSummary, getPurchaseInvoicesByVehicleIds,
   listVehicleListings, mergeVehicles,
   listKnownExternalIds, fetchCochesNetPreview, importCochesNetVehicles, markVehiclesNeedsReview,
 } from "./api-vehicles";

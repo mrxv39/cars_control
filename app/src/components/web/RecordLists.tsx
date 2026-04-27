@@ -242,8 +242,34 @@ export function SalesList({ records, vehicles, clients, companyId: _companyId, c
 // ============================================================
 export function PurchasesList({ records, companyId, onReload }: { records: api.PurchaseRecord[]; companyId: number; onReload: () => void }) {
   const dialog = useConfirmDialog();
-  const total = useMemo(() => records.reduce((s, r) => s + r.purchase_price, 0), [records]);
-  const { paged: pagedPurchases, page: purchasesPage, totalPages: purchasesTotalPages, setPage: setPurchasesPage } = usePagination(records);
+  const [search, setSearch] = useState("");
+  const [filterSupplier, setFilterSupplier] = useState("");
+  const [filterType, setFilterType] = useState("");
+
+  const supplierOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of records) { if (r.supplier_name) set.add(r.supplier_name); }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
+  }, [records]);
+  const typeOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of records) { if (r.expense_type) set.add(r.expense_type); }
+    return Array.from(set).sort();
+  }, [records]);
+
+  const filteredRecords = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return records.filter((r) => {
+      if (filterSupplier && r.supplier_name !== filterSupplier) return false;
+      if (filterType && r.expense_type !== filterType) return false;
+      if (!q) return true;
+      return [r.plate, r.vehicle_name, r.supplier_name, r.invoice_number].some((v) => v?.toLowerCase().includes(q));
+    });
+  }, [records, search, filterSupplier, filterType]);
+
+  const total = useMemo(() => filteredRecords.reduce((s, r) => s + r.purchase_price, 0), [filteredRecords]);
+  const { paged: pagedPurchases, page: purchasesPage, totalPages: purchasesTotalPages, setPage: setPurchasesPage } = usePagination(filteredRecords);
+
   // Marca qué purchase_records ya tienen movimiento bancario vinculado
   // (chip "✓ Banco" → indica que la compra está conciliada con el extracto).
   const [bankLinked, setBankLinked] = useState<Set<number>>(new Set());
@@ -254,6 +280,32 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [companyId, records]);
+
+  // Carga batch de signed URLs para facturas adjuntas a vehicle_documents
+  // (doc_type='factura'). Solo se piden las de los vehicle_id presentes en el listado.
+  const [invoiceMap, setInvoiceMap] = useState<Map<number, { fileName: string; url: string }>>(new Map());
+  React.useEffect(() => {
+    let cancelled = false;
+    const vehicleIds = Array.from(new Set(records.map((r) => r.vehicle_id).filter((id): id is number => id != null)));
+    if (vehicleIds.length === 0) { setInvoiceMap(new Map()); return; }
+    void api.getPurchaseInvoicesByVehicleIds(vehicleIds).then((m) => {
+      if (!cancelled) setInvoiceMap(m);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [records]);
+
+  // Preview de factura a la derecha de la tabla. Click en "Ver" → setea esto.
+  const [selectedInvoice, setSelectedInvoice] = useState<{ recordId: number; fileName: string; url: string; label: string } | null>(null);
+  // Reset si la factura seleccionada deja de existir tras un cambio en records
+  React.useEffect(() => {
+    if (!selectedInvoice) return;
+    const stillThere = records.some((r) => r.id === selectedInvoice.recordId);
+    if (!stillThere) setSelectedInvoice(null);
+  }, [records, selectedInvoice]);
+  const isImage = selectedInvoice ? /\.(jpe?g|png|webp|gif|bmp)$/i.test(selectedInvoice.fileName) : false;
+
+  function clearFilters() { setSearch(""); setFilterSupplier(""); setFilterType(""); }
+  const hasActiveFilters = !!(search || filterSupplier || filterType);
 
   function handleDeletePurchase(id: number, supplierName: string) {
     dialog.requestConfirm("Eliminar compra", `¿Eliminar registro de compra de "${supplierName}"? Esta acción no se puede deshacer.`, async () => {
@@ -272,55 +324,152 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
         <div>
           <p className="eyebrow">Compras y Gastos</p>
           <h2>Registro de compras</h2>
-          <p className="muted">{records.length} registro{records.length !== 1 ? "s" : ""} · {total.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
+          <p className="muted">
+            {hasActiveFilters
+              ? `${filteredRecords.length} de ${records.length} registro${records.length !== 1 ? "s" : ""}`
+              : `${records.length} registro${records.length !== 1 ? "s" : ""}`
+            } · {total.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+          </p>
         </div>
         {records.length > 0 && (
           <div className="hero-actions">
-            <button type="button" className="button secondary" onClick={() => exportToCSV(records.map(r => ({ Tipo: r.expense_type, Vehículo: r.vehicle_name, Matrícula: r.plate, Proveedor: r.supplier_name, Fecha: r.purchase_date, Importe: r.purchase_price, Factura: r.invoice_number, Pago: r.payment_method, Notas: r.notes })), "compras")}>
+            <button type="button" className="button secondary" onClick={() => exportToCSV(filteredRecords.map(r => ({ Tipo: r.expense_type, Vehículo: r.vehicle_name, Matrícula: r.plate, Proveedor: r.supplier_name, Fecha: r.purchase_date, Importe: r.purchase_price, Factura: r.invoice_number, Pago: r.payment_method, Notas: r.notes })), "compras")}>
               Exportar CSV
             </button>
           </div>
         )}
       </header>
+      {records.length > 0 && (
+        <section className="panel filter-panel" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", padding: "0.75rem 1rem", marginBottom: "0.75rem", alignItems: "center" }}>
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPurchasesPage(0); }}
+            placeholder="Buscar por matrícula, vehículo, proveedor o nº factura..."
+            aria-label="Buscar compras"
+            style={{ flex: "1 1 240px", minWidth: 200 }}
+          />
+          <select
+            value={filterSupplier}
+            onChange={(e) => { setFilterSupplier(e.target.value); setPurchasesPage(0); }}
+            aria-label="Filtrar por proveedor"
+            style={{ flex: "0 1 220px", minWidth: 180 }}
+          >
+            <option value="">Todos los proveedores</option>
+            {supplierOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            value={filterType}
+            onChange={(e) => { setFilterType(e.target.value); setPurchasesPage(0); }}
+            aria-label="Filtrar por tipo"
+            style={{ flex: "0 1 180px", minWidth: 150 }}
+          >
+            <option value="">Todos los tipos</option>
+            {typeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          {hasActiveFilters && (
+            <button type="button" className="button secondary xs" onClick={clearFilters}>Limpiar</button>
+          )}
+        </section>
+      )}
       {records.length === 0 && (
         <EmptyState icon="🛒" title="Sin compras registradas" description="Registra compras de vehículos y gastos asociados (reparaciones, ITV, etc.)." />
       )}
-      {records.length > 0 && (
-        <section className="panel sales-records-panel">
-          <div className="sales-table-scroll">
-            <table className="sales-table">
-              <thead><tr>
-                <th className="sales-th">Tipo</th>
-                <th className="sales-th">Proveedor</th>
-                <th className="sales-th">Fecha</th>
-                <th className="sales-th sales-th-right">Importe</th>
-                <th className="sales-th">Factura</th>
-                <th className="sales-th" style={{ width: "5.5rem" }}>Banco</th>
-                <th className="sales-th" style={{ width: "4rem" }}></th>
-              </tr></thead>
-              <tbody>
-                {pagedPurchases.map((r) => (
-                  <tr key={r.id} className="sales-row">
-                    <td className="sales-td"><span className="badge">{({ vehiculo_compra: "Compra vehículo", reparacion: "Reparación", transporte: "Transporte", documentacion: "Documentación", otros: "Otros" } as Record<string, string>)[r.expense_type] || r.expense_type}</span></td>
-                    <td className="sales-td">{r.supplier_name}</td>
-                    <td className="sales-td">{r.purchase_date ? new Date(r.purchase_date).toLocaleDateString("es-ES") : "—"}</td>
-                    <td className="sales-td sales-td-right"><span className="sales-price">{r.purchase_price.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
-                    <td className="sales-td"><span className="badge badge-info">{r.invoice_number || "—"}</span></td>
-                    <td className="sales-td">
-                      {bankLinked.has(r.id) ? (
-                        <span className="badge badge-success" title="Vinculado a movimiento bancario" style={{ fontSize: "var(--text-xs)" }}>✓ Banco</span>
-                      ) : (
-                        <span className="muted" style={{ fontSize: "var(--text-xs)" }}>—</span>
-                      )}
-                    </td>
-                    <td className="sales-td"><button type="button" className="button danger xs" aria-label={`Eliminar compra de ${r.supplier_name}`} onClick={() => void handleDeletePurchase(r.id, r.supplier_name)}>Eliminar</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <PaginationControls page={purchasesPage} totalPages={purchasesTotalPages} setPage={setPurchasesPage} />
-        </section>
+      {records.length > 0 && filteredRecords.length === 0 && (
+        <div className="panel" style={{ padding: "2rem", textAlign: "center" }}>
+          <p className="muted">No hay compras que coincidan con los filtros.</p>
+          <button type="button" className="button secondary" style={{ marginTop: "0.5rem" }} onClick={clearFilters}>Limpiar filtros</button>
+        </div>
+      )}
+      {filteredRecords.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: selectedInvoice ? "minmax(0, 1fr) minmax(360px, 480px)" : "1fr", gap: "var(--space-md)", alignItems: "start" }}>
+          <section className="panel sales-records-panel">
+            <div className="sales-table-scroll">
+              <table className="sales-table">
+                <thead><tr>
+                  <th className="sales-th">Tipo</th>
+                  <th className="sales-th">Vehículo</th>
+                  <th className="sales-th">Proveedor</th>
+                  <th className="sales-th">Fecha</th>
+                  <th className="sales-th sales-th-right">Importe</th>
+                  <th className="sales-th">Factura</th>
+                  <th className="sales-th" style={{ width: "5.5rem" }}>Banco</th>
+                  <th className="sales-th" style={{ width: "4rem" }}></th>
+                </tr></thead>
+                <tbody>
+                  {pagedPurchases.map((r) => {
+                    const invoice = r.vehicle_id != null ? invoiceMap.get(r.vehicle_id) : undefined;
+                    const isSelected = selectedInvoice?.recordId === r.id;
+                    return (
+                      <tr key={r.id} className="sales-row" style={isSelected ? { background: "var(--color-bg-secondary)" } : undefined}>
+                        <td className="sales-td"><span className="badge">{({ vehiculo_compra: "Compra vehículo", reparacion: "Reparación", transporte: "Transporte", documentacion: "Documentación", otros: "Otros" } as Record<string, string>)[r.expense_type] || r.expense_type}</span></td>
+                        <td className="sales-td">
+                          {r.vehicle_name || r.plate ? (
+                            <>
+                              <div>{r.vehicle_name || "—"}</div>
+                              {r.plate && <div className="muted" style={{ fontSize: "var(--text-xs)" }}>{r.plate}</div>}
+                            </>
+                          ) : <span className="muted">—</span>}
+                        </td>
+                        <td className="sales-td">{r.supplier_name}</td>
+                        <td className="sales-td">{r.purchase_date ? new Date(r.purchase_date).toLocaleDateString("es-ES") : "—"}</td>
+                        <td className="sales-td sales-td-right"><span className="sales-price">{r.purchase_price.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}</span></td>
+                        <td className="sales-td">
+                          {invoice ? (
+                            <button
+                              type="button"
+                              className={isSelected ? "button primary xs" : "button secondary xs"}
+                              title={invoice.fileName}
+                              aria-label={`Ver factura ${r.invoice_number || invoice.fileName}`}
+                              aria-pressed={isSelected}
+                              onClick={() => setSelectedInvoice({
+                                recordId: r.id,
+                                fileName: invoice.fileName,
+                                url: invoice.url,
+                                label: r.invoice_number || invoice.fileName,
+                              })}
+                            >
+                              {r.invoice_number ? `${r.invoice_number} · Ver` : "Ver factura"}
+                            </button>
+                          ) : (
+                            <span className="badge badge-info">{r.invoice_number || "—"}</span>
+                          )}
+                        </td>
+                        <td className="sales-td">
+                          {bankLinked.has(r.id) ? (
+                            <span className="badge badge-success" title="Vinculado a movimiento bancario" style={{ fontSize: "var(--text-xs)" }}>✓ Banco</span>
+                          ) : (
+                            <span className="muted" style={{ fontSize: "var(--text-xs)" }}>—</span>
+                          )}
+                        </td>
+                        <td className="sales-td"><button type="button" className="button danger xs" aria-label={`Eliminar compra de ${r.supplier_name}`} onClick={() => void handleDeletePurchase(r.id, r.supplier_name)}>Eliminar</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <PaginationControls page={purchasesPage} totalPages={purchasesTotalPages} setPage={setPurchasesPage} />
+          </section>
+          {selectedInvoice && (
+            <aside className="panel" style={{ position: "sticky", top: "var(--space-md)", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 2 * var(--space-md))", padding: 0, overflow: "hidden" }} aria-label="Vista previa de factura">
+              <header style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", padding: "var(--space-sm) var(--space-md)", borderBottom: "1px solid var(--color-border-light)" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="eyebrow" style={{ margin: 0 }}>Factura</p>
+                  <p style={{ margin: 0, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={selectedInvoice.fileName}>{selectedInvoice.label}</p>
+                </div>
+                <a href={selectedInvoice.url} target="_blank" rel="noopener noreferrer" className="button secondary xs" aria-label="Abrir factura en nueva pestaña">Abrir</a>
+                <button type="button" className="button secondary xs" onClick={() => setSelectedInvoice(null)} aria-label="Cerrar vista previa de factura">✕</button>
+              </header>
+              <div style={{ flex: 1, minHeight: 0, background: "var(--color-bg-secondary)", display: "flex", alignItems: "stretch", justifyContent: "stretch" }}>
+                {isImage ? (
+                  <img src={selectedInvoice.url} alt={selectedInvoice.fileName} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                ) : (
+                  <iframe src={selectedInvoice.url} title={selectedInvoice.fileName} style={{ width: "100%", height: "100%", border: 0, minHeight: 480 }} />
+                )}
+              </div>
+            </aside>
+          )}
+        </div>
       )}
     </>
   );

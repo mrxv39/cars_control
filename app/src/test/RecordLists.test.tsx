@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { ClientsList, SalesList, PurchasesList, SuppliersList } from '../components/web/RecordLists'
 import type { Client, Vehicle, SalesRecord, PurchaseRecord, Supplier, Company } from '../lib/api'
 
@@ -11,6 +11,7 @@ vi.mock('../lib/api', () => ({
   createSupplier: vi.fn(),
   deleteSupplier: vi.fn(),
   listPurchaseIdsWithBankLink: vi.fn(),
+  getPurchaseInvoicesByVehicleIds: vi.fn(),
 }))
 
 vi.mock('../lib/csv-export', () => ({
@@ -127,6 +128,7 @@ function makeCompany(overrides: Partial<Company> = {}): Company {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(api.listPurchaseIdsWithBankLink).mockResolvedValue(new Set())
+  vi.mocked(api.getPurchaseInvoicesByVehicleIds).mockResolvedValue(new Map())
 })
 
 // ============================================================
@@ -214,10 +216,11 @@ describe('PurchasesList', () => {
   })
 
   it('renders supplier names in table', async () => {
-    render(<PurchasesList records={records} companyId={1} onReload={vi.fn()} />)
+    const { container } = render(<PurchasesList records={records} companyId={1} onReload={vi.fn()} />)
     await waitFor(() => {
-      expect(screen.getByText('AutoVenta')).toBeInTheDocument()
-      expect(screen.getByText('Taller Perez')).toBeInTheDocument()
+      const tbody = container.querySelector('tbody')!
+      expect(within(tbody).getByText('AutoVenta')).toBeInTheDocument()
+      expect(within(tbody).getByText('Taller Perez')).toBeInTheDocument()
     })
   })
 
