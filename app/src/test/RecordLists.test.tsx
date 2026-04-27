@@ -12,6 +12,7 @@ vi.mock('../lib/api', () => ({
   deleteSupplier: vi.fn(),
   listPurchaseIdsWithBankLink: vi.fn(),
   getPurchaseInvoicesByVehicleIds: vi.fn(),
+  uploadVehicleDocument: vi.fn(),
 }))
 
 vi.mock('../lib/csv-export', () => ({

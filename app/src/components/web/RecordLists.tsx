@@ -245,6 +245,8 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
   const [search, setSearch] = useState("");
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const supplierOptions = useMemo(() => {
     const set = new Set<string>();
@@ -262,10 +264,16 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
     return records.filter((r) => {
       if (filterSupplier && r.supplier_name !== filterSupplier) return false;
       if (filterType && r.expense_type !== filterType) return false;
+      if (dateFrom || dateTo) {
+        if (!r.purchase_date) return false;
+        const d = r.purchase_date.slice(0, 10);
+        if (dateFrom && d < dateFrom) return false;
+        if (dateTo && d > dateTo) return false;
+      }
       if (!q) return true;
       return [r.plate, r.vehicle_name, r.supplier_name, r.invoice_number].some((v) => v?.toLowerCase().includes(q));
     });
-  }, [records, search, filterSupplier, filterType]);
+  }, [records, search, filterSupplier, filterType, dateFrom, dateTo]);
 
   const total = useMemo(() => filteredRecords.reduce((s, r) => s + r.purchase_price, 0), [filteredRecords]);
   const { paged: pagedPurchases, page: purchasesPage, totalPages: purchasesTotalPages, setPage: setPurchasesPage } = usePagination(filteredRecords);
@@ -304,8 +312,40 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
   }, [records, selectedInvoice]);
   const isImage = selectedInvoice ? /\.(jpe?g|png|webp|gif|bmp)$/i.test(selectedInvoice.fileName) : false;
 
-  function clearFilters() { setSearch(""); setFilterSupplier(""); setFilterType(""); }
-  const hasActiveFilters = !!(search || filterSupplier || filterType);
+  // Adjuntar factura desde el listado: un único <input type=file> oculto y
+  // recordamos a qué record/vehicle apunta el click activo.
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const pendingTargetRef = React.useRef<{ recordId: number; vehicleId: number } | null>(null);
+  const [uploadingForId, setUploadingForId] = useState<number | null>(null);
+  function startAttach(record: api.PurchaseRecord) {
+    if (record.vehicle_id == null) return;
+    pendingTargetRef.current = { recordId: record.id, vehicleId: record.vehicle_id };
+    fileInputRef.current?.click();
+  }
+  async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const target = pendingTargetRef.current;
+    if (e.target) e.target.value = "";
+    if (!file || !target) return;
+    setUploadingForId(target.recordId);
+    try {
+      const doc = await api.uploadVehicleDocument(target.vehicleId, file, "factura");
+      setInvoiceMap((prev) => {
+        const next = new Map(prev);
+        next.set(target.vehicleId, { fileName: doc.file_name, url: doc.url });
+        return next;
+      });
+      showToast("Factura adjuntada");
+    } catch (err) {
+      showToast(translateError(err), "error");
+    } finally {
+      setUploadingForId(null);
+      pendingTargetRef.current = null;
+    }
+  }
+
+  function clearFilters() { setSearch(""); setFilterSupplier(""); setFilterType(""); setDateFrom(""); setDateTo(""); }
+  const hasActiveFilters = !!(search || filterSupplier || filterType || dateFrom || dateTo);
 
   function handleDeletePurchase(id: number, supplierName: string) {
     dialog.requestConfirm("Eliminar compra", `¿Eliminar registro de compra de "${supplierName}"? Esta acción no se puede deshacer.`, async () => {
@@ -366,6 +406,28 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
             <option value="">Todos los tipos</option>
             {typeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+            Desde
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => { setDateFrom(e.target.value); setPurchasesPage(0); }}
+              aria-label="Fecha desde"
+              style={{ width: 150 }}
+            />
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+            Hasta
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => { setDateTo(e.target.value); setPurchasesPage(0); }}
+              aria-label="Fecha hasta"
+              style={{ width: 150 }}
+            />
+          </label>
           {hasActiveFilters && (
             <button type="button" className="button secondary xs" onClick={clearFilters}>Limpiar</button>
           )}
@@ -430,6 +492,19 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
                             >
                               {r.invoice_number ? `${r.invoice_number} · Ver` : "Ver factura"}
                             </button>
+                          ) : r.vehicle_id != null ? (
+                            <div style={{ display: "flex", gap: "var(--space-xs)", alignItems: "center", flexWrap: "wrap" }}>
+                              {r.invoice_number && <span className="badge badge-info">{r.invoice_number}</span>}
+                              <button
+                                type="button"
+                                className="button secondary xs"
+                                disabled={uploadingForId === r.id}
+                                onClick={() => startAttach(r)}
+                                aria-label={`Adjuntar factura para ${r.vehicle_name || r.supplier_name}`}
+                              >
+                                {uploadingForId === r.id ? "Subiendo..." : "Adjuntar"}
+                              </button>
+                            </div>
                           ) : (
                             <span className="badge badge-info">{r.invoice_number || "—"}</span>
                           )}
@@ -450,6 +525,13 @@ export function PurchasesList({ records, companyId, onReload }: { records: api.P
             </div>
             <PaginationControls page={purchasesPage} totalPages={purchasesTotalPages} setPage={setPurchasesPage} />
           </section>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            style={{ display: "none" }}
+            onChange={(e) => void onFileSelected(e)}
+          />
           {selectedInvoice && (
             <aside className="panel" style={{ position: "sticky", top: "var(--space-md)", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 2 * var(--space-md))", padding: 0, overflow: "hidden" }} aria-label="Vista previa de factura">
               <header style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", padding: "var(--space-sm) var(--space-md)", borderBottom: "1px solid var(--color-border-light)" }}>
